@@ -1,7 +1,6 @@
 package com.example.PrisonManagement.Service;
 import com.example.PrisonManagement.Entity.Infirmary;
 import java.util.List;
-import java.util.Optional;
 
 public interface InfirmaryService {
     List<Infirmary> getAllInfirmaries();

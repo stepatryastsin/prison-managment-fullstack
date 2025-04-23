@@ -2,16 +2,9 @@ package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.io.Serializable;
 
 @Embeddable
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class PrisonerLaborKey implements Serializable {
 
     @Column(name = "prisoner_id")
@@ -19,4 +12,28 @@ public class PrisonerLaborKey implements Serializable {
 
     @Column(name = "staff_id")
     private Integer staffId;
+
+    public PrisonerLaborKey(Integer prisonerId, Integer staffId) {
+        this.prisonerId = prisonerId;
+        this.staffId = staffId;
+    }
+
+    public PrisonerLaborKey() {
+    }
+
+    public Integer getPrisonerId() {
+        return prisonerId;
+    }
+
+    public void setPrisonerId(Integer prisonerId) {
+        this.prisonerId = prisonerId;
+    }
+
+    public Integer getStaffId() {
+        return staffId;
+    }
+
+    public void setStaffId(Integer staffId) {
+        this.staffId = staffId;
+    }
 }

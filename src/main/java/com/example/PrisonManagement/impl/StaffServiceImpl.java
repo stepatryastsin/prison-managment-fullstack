@@ -5,7 +5,6 @@ import com.example.PrisonManagement.Entity.Staff;
 import com.example.PrisonManagement.Repository.JobRepository;
 import com.example.PrisonManagement.Repository.StaffRepository;
 import com.example.PrisonManagement.Service.StaffService;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +37,6 @@ public class StaffServiceImpl implements StaffService {
     @Override
     public Staff createStaff(Staff staff) {
         if (staff.getJob() != null) {
-            // Получаем управляемую сущность Job или сохраняем новую, если такой нет
             staff.setJob(getManagedJob(staff.getJob()));
         }
         return staffRepository.save(staff);
@@ -53,7 +51,6 @@ public class StaffServiceImpl implements StaffService {
                     existingStaff.setSalary(staff.getSalary());
                     existingStaff.setHiredate(staff.getHiredate());
                     if (staff.getJob() != null) {
-                        // Устанавливаем управляемую сущность Job
                         existingStaff.setJob(getManagedJob(staff.getJob()));
                     }
                     return staffRepository.save(existingStaff);
@@ -66,14 +63,6 @@ public class StaffServiceImpl implements StaffService {
     }
 
     private Job getManagedJob(Job job) {
-        if (job.getJobId() != null) {
-            return jobRepository.findById(job.getJobId())
-                    .orElseThrow(() -> new RuntimeException("Job not found with id " + job.getJobId()));
-        } else if (job.getJobDescription() != null && !job.getJobDescription().isEmpty()) {
-            return jobRepository.findByJobDescription(job.getJobDescription())
-                    .orElseGet(() -> jobRepository.save(job));
-        } else {
-            throw new IllegalArgumentException("Job must have either an id or a non-empty jobDescription");
-        }
+      return null;
     }
-}
+}// @todo  переделать !!!!

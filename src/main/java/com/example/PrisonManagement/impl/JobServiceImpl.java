@@ -4,19 +4,25 @@ import com.example.PrisonManagement.Entity.Job;
 import com.example.PrisonManagement.Repository.JobRepository;
 import com.example.PrisonManagement.Repository.StaffRepository;
 import com.example.PrisonManagement.Service.JobService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class JobServiceImpl implements JobService {
 
     private final JobRepository jobRepository;
     private final StaffRepository staffRepository;
+
+    private final Logger logger = LoggerFactory.getLogger(JobServiceImpl.class);
+    @Autowired
+    public JobServiceImpl(JobRepository jobRepository, StaffRepository staffRepository) {
+        this.jobRepository = jobRepository;
+        this.staffRepository = staffRepository;
+    }
 
     @Override
     public List<Job> getAllJobs() {
@@ -47,11 +53,11 @@ public class JobServiceImpl implements JobService {
         long count = staffRepository.countByJob_JobId(id);
         if (count > 0) {
             String errorMessage = "Нельзя удалить работу, так как она используется сотрудниками";
-            log.warn("Попытка удаления работы с id {} не удалась: {}", id, errorMessage);
+            logger.warn("Попытка удаления работы с id {} не удалась: {}", id, errorMessage);
             throw new IllegalStateException(errorMessage);
         }
         if (!jobRepository.existsById(id)) {
-            log.warn("Работа с id {} не найдена для удаления", id);
+            logger.warn("Работа с id {} не найдена для удаления", id);
             throw new IllegalStateException("Работа с id " + id + " не найдена");
         }
         jobRepository.deleteById(id);

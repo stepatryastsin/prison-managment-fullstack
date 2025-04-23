@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.Prisoner;
+
 import com.example.PrisonManagement.Entity.Visitor;
 import com.example.PrisonManagement.Service.VisitorService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +16,10 @@ import java.util.Optional;
 public class VisitorController {
 
     private final VisitorService visitorService;
-    @Autowired
+
     public VisitorController(VisitorService visitorService) {
         this.visitorService = visitorService;
     }
-
 
     @GetMapping
     public List<Visitor> getAllVisitors() {

@@ -1,21 +1,11 @@
 package com.example.PrisonManagement.Entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDate;
-import java.util.Date;
-import java.util.Set;
+
 @Entity
 @Table(name = "prisoner")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+//@todo надо сделать не удаление заключенного а его освобождение soft
 public class Prisoner {
 
     @Id
@@ -53,4 +43,119 @@ public class Prisoner {
     @ManyToOne
     @JoinColumn(name = "security_level_id")
     private SecurityLevel securityLevel;
+
+    public Prisoner(Integer prisonerId,
+                    String firstName,
+                    String lastName,
+                    String birthPlace,
+                    LocalDate dateOfBirth,
+                    String occupation,
+                    String indictment,
+                    LocalDate intakeDate,
+                    LocalDate sentenceEndDate,
+                    Cell cell,
+                    SecurityLevel securityLevel) {
+        this.prisonerId = prisonerId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.birthPlace = birthPlace;
+        this.dateOfBirth = dateOfBirth;
+        this.occupation = occupation;
+        this.indictment = indictment;
+        this.intakeDate = intakeDate;
+        this.sentenceEndDate = sentenceEndDate;
+        this.cell = cell;
+        this.securityLevel = securityLevel;
+    }
+
+    public Prisoner() {
+    }
+
+    public Integer getPrisonerId() {
+        return prisonerId;
+    }
+
+    public void setPrisonerId(Integer prisonerId) {
+        this.prisonerId = prisonerId;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getBirthPlace() {
+        return birthPlace;
+    }
+
+    public void setBirthPlace(String birthPlace) {
+        this.birthPlace = birthPlace;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public String getOccupation() {
+        return occupation;
+    }
+
+    public void setOccupation(String occupation) {
+        this.occupation = occupation;
+    }
+
+    public String getIndictment() {
+        return indictment;
+    }
+
+    public void setIndictment(String indictment) {
+        this.indictment = indictment;
+    }
+
+    public LocalDate getIntakeDate() {
+        return intakeDate;
+    }
+
+    public void setIntakeDate(LocalDate intakeDate) {
+        this.intakeDate = intakeDate;
+    }
+
+    public LocalDate getSentenceEndDate() {
+        return sentenceEndDate;
+    }
+
+    public void setSentenceEndDate(LocalDate sentenceEndDate) {
+        this.sentenceEndDate = sentenceEndDate;
+    }
+
+    public Cell getCell() {
+        return cell;
+    }
+
+    public void setCell(Cell cell) {
+        this.cell = cell;
+    }
+
+    public SecurityLevel getSecurityLevel() {
+        return securityLevel;
+    }
+
+    public void setSecurityLevel(SecurityLevel securityLevel) {
+        this.securityLevel = securityLevel;
+    }
 }

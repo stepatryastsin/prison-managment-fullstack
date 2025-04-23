@@ -23,11 +23,11 @@ import {
   CardMembership as CertificateIcon 
 } from '@mui/icons-material';
 
-const API_URL = 'http://localhost:8080/api/prisoners';
-const CELLS_API_URL = 'http://localhost:8080/api/cells';
+const API_URL                 = 'http://localhost:8080/api/prisoners';
+const CELLS_API_URL           =  'http://localhost:8080/api/cells';
 const SECURITY_LEVELS_API_URL = 'http://localhost:8080/api/sl';
-const BORROWED_API_URL = 'http://localhost:8080/api/borrowed';
-const CERTIFICATES_API_URL = 'http://localhost:8080/api/ownCertificateFrom';
+const BORROWED_API_URL        = 'http://localhost:8080/api/borrowed';
+const CERTIFICATES_API_URL    =  'http://localhost:8080/api/ownCertificateFrom';
 
 const Prisoners = () => {
   const [prisoners, setPrisoners] = useState([]);

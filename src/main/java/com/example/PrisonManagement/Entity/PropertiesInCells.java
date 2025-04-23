@@ -1,15 +1,9 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "properties_in_cells")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class PropertiesInCells {
 
     @EmbeddedId
@@ -22,4 +16,37 @@ public class PropertiesInCells {
     @MapsId("prisonerId")
     @JoinColumn(name = "prisoner_id")
     private Prisoner prisoner;
+
+    public PropertiesInCells(PropertiesInCellsKey id, String description, Prisoner prisoner) {
+        this.id = id;
+        this.description = description;
+        this.prisoner = prisoner;
+    }
+
+    public PropertiesInCells() {
+    }
+
+    public PropertiesInCellsKey getId() {
+        return id;
+    }
+
+    public void setId(PropertiesInCellsKey id) {
+        this.id = id;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Prisoner getPrisoner() {
+        return prisoner;
+    }
+
+    public void setPrisoner(Prisoner prisoner) {
+        this.prisoner = prisoner;
+    }
 }

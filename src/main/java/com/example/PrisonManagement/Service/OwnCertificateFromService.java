@@ -1,9 +1,8 @@
 package com.example.PrisonManagement.Service;
 
 import com.example.PrisonManagement.Entity.OwnCertificateFrom;
-
 import java.util.List;
-import java.util.Optional;
+
 
 public interface OwnCertificateFromService {
     List<OwnCertificateFrom> getAll();

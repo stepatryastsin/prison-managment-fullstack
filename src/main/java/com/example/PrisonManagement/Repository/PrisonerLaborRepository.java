@@ -8,5 +8,4 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PrisonerLaborRepository
         extends JpaRepository<PrisonerLabor, PrisonerLaborKey> {
-
 }

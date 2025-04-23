@@ -1,15 +1,9 @@
 package com.example.PrisonManagement.Entity;
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "programs_and_courses")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+
 public class ProgramsAndCourses {
 
     @Id
@@ -24,7 +18,48 @@ public class ProgramsAndCourses {
     @JoinColumn(name = "instructor_id")
     private Staff instructor;
 
-    // Поле для мягкого удаления (soft delete flag)
     @Column(name = "deleted", nullable = false)
     private Boolean deleted = false;
+
+    public ProgramsAndCourses(Integer courseId, String courseName, Staff instructor, Boolean deleted) {
+        this.courseId = courseId;
+        this.courseName = courseName;
+        this.instructor = instructor;
+        this.deleted = deleted;
+    }
+
+    public ProgramsAndCourses() {
+    }
+
+    public Integer getCourseId() {
+        return courseId;
+    }
+
+    public void setCourseId(Integer courseId) {
+        this.courseId = courseId;
+    }
+
+    public String getCourseName() {
+        return courseName;
+    }
+
+    public void setCourseName(String courseName) {
+        this.courseName = courseName;
+    }
+
+    public Staff getInstructor() {
+        return instructor;
+    }
+
+    public void setInstructor(Staff instructor) {
+        this.instructor = instructor;
+    }
+
+    public Boolean getDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
+    }
 }

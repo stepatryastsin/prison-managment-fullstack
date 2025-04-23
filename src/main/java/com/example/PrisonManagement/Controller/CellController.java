@@ -18,7 +18,7 @@ public class CellController {
 
     private final CellService cellService;
     private final PrisonerService prisonerService;
-
+@Autow
     public CellController(CellService cellService, PrisonerService prisonerService) {
         this.cellService = cellService;
         this.prisonerService = prisonerService;

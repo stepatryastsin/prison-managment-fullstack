@@ -6,31 +6,38 @@ import com.example.PrisonManagement.Repository.CellRepository;
 import com.example.PrisonManagement.Service.CellService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Slf4j
+
 @Service
-@RequiredArgsConstructor
 public class CellServiceImpl implements CellService {
 
+    private final Logger logger =
+            LoggerFactory.getLogger(CellServiceImpl.class);
+
     private final CellRepository cellRepository;
+    @Autowired
+    public CellServiceImpl(CellRepository cellRepository) {
+        this.cellRepository = cellRepository;
+    }
 
     @Override
     public List<Cell> getAllCells() {
-        log.info("Получение списка всех камер");
+        logger.info("Получение списка всех камер");
         return cellRepository.findAll();
     }
 
     @Override
     public Cell getById(Integer id) {
-        log.info("Получение камеры с id {}", id);
+        logger.info("Получение камеры с id {}", id);
         return cellRepository.findById(id)
                 .orElseThrow(() -> {
-                    log.error("Камера с id {} не найдена", id);
+                    logger.error("Камера с id {} не найдена", id);
                     return new EntityNotFoundException("Камера с id " + id + " не найдена");
                 });
     }
@@ -38,23 +45,23 @@ public class CellServiceImpl implements CellService {
     @Override
     @Transactional
     public Cell createCell(Cell cell) {
-        log.info("Создание новой камеры: {}", cell);
+        logger.info("Создание новой камеры: {}", cell);
         return cellRepository.save(cell);
     }
 
     @Override
     @Transactional
     public Cell updateCell(Integer id, Cell cell) {
-        log.info("Обновление камеры с id {}", id);
+        logger.info("Обновление камеры с id {}", id);
         return cellRepository.findById(id)
                 .map(existingCell -> {
                     existingCell.setLastShakedownDate(cell.getLastShakedownDate());
                     Cell updated = cellRepository.save(existingCell);
-                    log.info("Камера с id {} успешно обновлена", id);
+                    logger.info("Камера с id {} успешно обновлена", id);
                     return updated;
                 })
                 .orElseThrow(() -> {
-                    log.error("Камера с id {} не найдена для обновления", id);
+                    logger.error("Камера с id {} не найдена для обновления", id);
                     return new EntityNotFoundException("Камера с id " + id + " не найдена");
                 });
     }
@@ -62,12 +69,12 @@ public class CellServiceImpl implements CellService {
     @Override
     @Transactional
     public void deleteCell(Integer id) {
-        log.info("Удаление камеры с id {}", id);
+        logger.info("Удаление камеры с id {}", id);
         if (!cellRepository.existsById(id)) {
-            log.error("Камера с id {} не найдена для удаления", id);
+            logger.error("Камера с id {} не найдена для удаления", id);
             throw new EntityNotFoundException("Камера с id " + id + " не найдена");
         }
         cellRepository.deleteById(id);
-        log.info("Камера с id {} успешно удалена", id);
+        logger.info("Камера с id {} успешно удалена", id);
     }
 }

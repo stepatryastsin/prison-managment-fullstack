@@ -4,8 +4,9 @@ import com.example.PrisonManagement.Entity.PropertiesInCells;
 import com.example.PrisonManagement.Entity.PropertiesInCellsKey;
 import com.example.PrisonManagement.Service.PropertiesInCellsService;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,18 +15,21 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/properties")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
-@Slf4j
-public class PropertiesInCellsController {
 
+public class PropertiesInCellsController {
+    private final Logger logger = LoggerFactory.getLogger(PropertiesInCellsController.class);
     private final PropertiesInCellsService service;
+    @Autowired
+    public PropertiesInCellsController(PropertiesInCellsService service) {
+        this.service = service;
+    }
 
     // Получить все записи
     @GetMapping
     public List<PropertiesInCells> getAllProperties() {
-        log.info("Запрос на получение всех записей properties_in_cells");
+        logger.info("Запрос на получение всех записей properties_in_cells");
         List<PropertiesInCells> list = service.findAll();
-        log.info("Возвращено {} записей", list.size());
+        logger.info("Возвращено {} записей", list.size());
         return list;
     }
 
@@ -34,16 +38,16 @@ public class PropertiesInCellsController {
     public PropertiesInCells getProperties(@PathVariable Integer prisonerId,
                                            @PathVariable String propertyName) {
         PropertiesInCellsKey key = new PropertiesInCellsKey(propertyName, prisonerId);
-        log.info("Получение записи по составному ключу: {}", key);
+        logger.info("Получение записи по составному ключу: {}", key);
         return service.findById(key);
     }
 
     // Создать новую запись
     @PostMapping
     public PropertiesInCells createProperties(@RequestBody PropertiesInCells properties) {
-        log.info("Создание новой записи properties_in_cells для ключа: {}", properties.getId());
+        logger.info("Создание новой записи properties_in_cells для ключа: {}", properties.getId());
         PropertiesInCells created = service.save(properties);
-        log.info("Запись создана успешно: {}", created.getId());
+        logger.info("Запись создана успешно: {}", created.getId());
         return created;
     }
 
@@ -53,11 +57,11 @@ public class PropertiesInCellsController {
                                               @PathVariable String propertyName,
                                               @RequestBody PropertiesInCells properties) {
         PropertiesInCellsKey key = new PropertiesInCellsKey(propertyName, prisonerId);
-        log.info("Обновление записи properties_in_cells для ключа: {}", key);
+        logger.info("Обновление записи properties_in_cells для ключа: {}", key);
         // Устанавливаем составной ключ для обновляемого объекта
         properties.setId(key);
         PropertiesInCells updated = service.save(properties);
-        log.info("Запись обновлена успешно: {}", updated.getId());
+        logger.info("Запись обновлена успешно: {}", updated.getId());
         return updated;
     }
 
@@ -66,12 +70,12 @@ public class PropertiesInCellsController {
     public void deleteProperties(@PathVariable Integer prisonerId,
                                  @PathVariable String propertyName) {
         PropertiesInCellsKey key = new PropertiesInCellsKey(propertyName, prisonerId);
-        log.info("Запрос на удаление записи properties_in_cells для ключа: {}", key);
+        logger.info("Запрос на удаление записи properties_in_cells для ключа: {}", key);
         try {
             service.delete(key);
-            log.info("Запись с ключом {} удалена", key);
+            logger.info("Запись с ключом {} удалена", key);
         } catch (EntityNotFoundException e) {
-            log.error("Ошибка удаления: {}", e.getMessage());
+            logger.error("Ошибка удаления: {}", e.getMessage());
             throw e;
         }
     }

@@ -1,15 +1,11 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
 
 @Entity
 @Table(name = "enrolled_in")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+
 public class EnrolledIn {
 
     @EmbeddedId
@@ -24,4 +20,37 @@ public class EnrolledIn {
     @MapsId("courseId")
     @JoinColumn(name = "course_id")
     private ProgramsAndCourses course;
+
+    public EnrolledIn(EnrolledInKey id, Prisoner prisoner, ProgramsAndCourses course) {
+        this.id = id;
+        this.prisoner = prisoner;
+        this.course = course;
+    }
+
+    public EnrolledIn() {
+    }
+
+    public EnrolledInKey getId() {
+        return id;
+    }
+
+    public void setId(EnrolledInKey id) {
+        this.id = id;
+    }
+
+    public Prisoner getPrisoner() {
+        return prisoner;
+    }
+
+    public void setPrisoner(Prisoner prisoner) {
+        this.prisoner = prisoner;
+    }
+
+    public ProgramsAndCourses getCourse() {
+        return course;
+    }
+
+    public void setCourse(ProgramsAndCourses course) {
+        this.course = course;
+    }
 }

@@ -11,7 +11,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/infirmary")
 @CrossOrigin(origins = "http://localhost:3000")
-
+// Bug
 public class InfirmaryController {
 
     private final InfirmaryService infirmaryService;

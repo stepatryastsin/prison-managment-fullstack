@@ -1,16 +1,11 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "visitor")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+
 public class Visitor {
 
     @Id
@@ -32,4 +27,69 @@ public class Visitor {
 
     @Column(name = "visit_date")
     private LocalDate visitDate;
+
+    public Visitor(Integer visitorId,
+                   String firstName,
+                   String lastName,
+                   Long phoneNumber,
+                   String relationToPrisoner,
+                   LocalDate visitDate) {
+        this.visitorId = visitorId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber;
+        this.relationToPrisoner = relationToPrisoner;
+        this.visitDate = visitDate;
+    }
+
+    public Visitor() {
+    }
+
+    public Integer getVisitorId() {
+        return visitorId;
+    }
+
+    public void setVisitorId(Integer visitorId) {
+        this.visitorId = visitorId;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public Long getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(Long phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getRelationToPrisoner() {
+        return relationToPrisoner;
+    }
+
+    public void setRelationToPrisoner(String relationToPrisoner) {
+        this.relationToPrisoner = relationToPrisoner;
+    }
+
+    public LocalDate getVisitDate() {
+        return visitDate;
+    }
+
+    public void setVisitDate(LocalDate visitDate) {
+        this.visitDate = visitDate;
+    }
 }

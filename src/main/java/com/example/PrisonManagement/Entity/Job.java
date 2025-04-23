@@ -1,16 +1,10 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-import java.util.Set;
 @Entity
 @Table(name = "job")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+
 public class Job {
 
     @Id
@@ -20,4 +14,28 @@ public class Job {
 
     @Column(name = "job_description", length = 15)
     private String jobDescription;
+
+    public Job(Integer jobId, String jobDescription) {
+        this.jobId = jobId;
+        this.jobDescription = jobDescription;
+    }
+
+    public Job() {
+    }
+
+    public Integer getJobId() {
+        return jobId;
+    }
+
+    public void setJobId(Integer jobId) {
+        this.jobId = jobId;
+    }
+
+    public String getJobDescription() {
+        return jobDescription;
+    }
+
+    public void setJobDescription(String jobDescription) {
+        this.jobDescription = jobDescription;
+    }
 }

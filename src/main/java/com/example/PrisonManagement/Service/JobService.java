@@ -1,6 +1,5 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.Cell;
 import com.example.PrisonManagement.Entity.Job;
 
 import java.util.List;

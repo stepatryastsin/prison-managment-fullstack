@@ -3,6 +3,8 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Entity.Borrowed;
 import com.example.PrisonManagement.Entity.BorrowedKey;
 import com.example.PrisonManagement.Service.BorrowedService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +17,7 @@ import java.util.Optional;
 @RequestMapping("/api/borrowed")
 @CrossOrigin(origins = "http://localhost:3000")
 public class BorrowedController {
-
+    private final Logger logger = LoggerFactory.getLogger(BorrowedController.class);
     private final BorrowedService borrowedService;
 
     public BorrowedController(BorrowedService borrowedService) {

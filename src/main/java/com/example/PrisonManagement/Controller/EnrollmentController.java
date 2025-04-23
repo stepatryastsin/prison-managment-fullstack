@@ -3,9 +3,6 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Entity.EnrolledIn;
 import com.example.PrisonManagement.Entity.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.EnrollmentCertificateServiceInterface;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,9 +57,30 @@ public class EnrollmentController {
         service.deleteCertificate(prisonerId, courseId);
         return ResponseEntity.noContent().build();
     }
-    @Data
+
     public static class EnrollmentRequest {
         private Integer prisonerId;
         private Integer courseId;
+
+        public EnrollmentRequest(Integer prisonerId, Integer courseId) {
+            this.prisonerId = prisonerId;
+            this.courseId = courseId;
+        }
+
+        public Integer getPrisonerId() {
+            return prisonerId;
+        }
+
+        public void setPrisonerId(Integer prisonerId) {
+            this.prisonerId = prisonerId;
+        }
+
+        public Integer getCourseId() {
+            return courseId;
+        }
+
+        public void setCourseId(Integer courseId) {
+            this.courseId = courseId;
+        }
     }
 }

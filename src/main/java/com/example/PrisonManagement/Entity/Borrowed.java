@@ -1,15 +1,11 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
 
 @Entity
 @Table(name = "borrowed")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+
 public class Borrowed {
 
     @EmbeddedId
@@ -23,4 +19,37 @@ public class Borrowed {
     @ManyToOne
     @JoinColumn(name = "ISBN", insertable = false, updatable = false)
     private Library library;
+
+    public Borrowed(BorrowedKey id, Prisoner prisoner, Library library) {
+        this.id = id;
+        this.prisoner = prisoner;
+        this.library = library;
+    }
+
+    public Borrowed() {
+    }
+
+    public BorrowedKey getId() {
+        return id;
+    }
+
+    public void setId(BorrowedKey id) {
+        this.id = id;
+    }
+
+    public Prisoner getPrisoner() {
+        return prisoner;
+    }
+
+    public void setPrisoner(Prisoner prisoner) {
+        this.prisoner = prisoner;
+    }
+
+    public Library getLibrary() {
+        return library;
+    }
+
+    public void setLibrary(Library library) {
+        this.library = library;
+    }
 }

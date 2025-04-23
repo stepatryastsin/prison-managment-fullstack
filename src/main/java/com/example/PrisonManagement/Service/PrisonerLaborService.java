@@ -1,10 +1,7 @@
 package com.example.PrisonManagement.Service;
 
 import com.example.PrisonManagement.Entity.PrisonerLabor;
-import com.example.PrisonManagement.Entity.PrisonerLaborKey;
-
 import java.util.List;
-import java.util.Optional;
 
 public interface PrisonerLaborService {
     List<PrisonerLabor> findAll();

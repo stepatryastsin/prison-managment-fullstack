@@ -2,16 +2,10 @@ package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
 @Embeddable
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class VisitedByKey implements Serializable {
 
     @Column(name = "prisoner_id")
@@ -19,4 +13,28 @@ public class VisitedByKey implements Serializable {
 
     @Column(name = "visitor_id")
     private Integer visitorId;
+
+    public VisitedByKey(Integer prisonerId, Integer visitorId) {
+        this.prisonerId = prisonerId;
+        this.visitorId = visitorId;
+    }
+
+    public VisitedByKey() {
+    }
+
+    public Integer getPrisonerId() {
+        return prisonerId;
+    }
+
+    public void setPrisonerId(Integer prisonerId) {
+        this.prisonerId = prisonerId;
+    }
+
+    public Integer getVisitorId() {
+        return visitorId;
+    }
+
+    public void setVisitorId(Integer visitorId) {
+        this.visitorId = visitorId;
+    }
 }

@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.Service;
 import com.example.PrisonManagement.Entity.Cell;
 import java.util.List;
-import java.util.Optional;
+
 
 public interface CellService {
     List<Cell> getAllCells();

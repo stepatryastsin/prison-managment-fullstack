@@ -4,24 +4,25 @@ import com.example.PrisonManagement.Entity.ProgramsAndCourses;
 import com.example.PrisonManagement.Repository.ProgramsAndCoursesRepository;
 import com.example.PrisonManagement.Service.ProgramsAndCoursesService;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 @Service
-@RequiredArgsConstructor
-@Slf4j
+
 public class ProgramsAndCoursesServiceImpl implements ProgramsAndCoursesService {
 
     private final ProgramsAndCoursesRepository repository;
+    private final Logger logger
+            = LoggerFactory.getLogger(ProgramsAndCoursesServiceImpl.class);
+    public ProgramsAndCoursesServiceImpl(ProgramsAndCoursesRepository repository) {
+        this.repository = repository;
+    }
 
     @Override
     public List<ProgramsAndCourses> getAllCourses() {
-        // Если требуется вернуть только активные курсы, можно использовать:
-        // return repository.findAllByDeletedFalse();
         return repository.findAll();
     }
 
@@ -34,7 +35,7 @@ public class ProgramsAndCoursesServiceImpl implements ProgramsAndCoursesService 
     public ProgramsAndCourses createCourse(ProgramsAndCourses course) {
         course.setDeleted(false); // Курс создаётся активным
         ProgramsAndCourses savedCourse = repository.save(course);
-        log.info("Курс создан с id {}", savedCourse.getCourseId());
+        logger.info("Курс создан с id {}", savedCourse.getCourseId());
         return savedCourse;
     }
 
@@ -46,7 +47,7 @@ public class ProgramsAndCoursesServiceImpl implements ProgramsAndCoursesService 
                     course.setInstructor(courseDetails.getInstructor());
                     course.setDeleted(courseDetails.getDeleted());
                     ProgramsAndCourses updated = repository.save(course);
-                    log.info("Курс с id {} успешно обновлён", id);
+                    logger.info("Курс с id {} успешно обновлён", id);
                     return updated;
                 });
     }
@@ -55,12 +56,12 @@ public class ProgramsAndCoursesServiceImpl implements ProgramsAndCoursesService 
     public boolean softDeleteCourse(Integer id) {
         return repository.findById(id).map(course -> {
             if (Boolean.TRUE.equals(course.getDeleted())) {
-                log.warn("Курс с id {} уже помечен как удалённый", id);
+                logger.warn("Курс с id {} уже помечен как удалённый", id);
                 return false;
             }
             course.setDeleted(true);
             repository.save(course);
-            log.info("Курс с id {} успешно помечен как удалённый (soft delete)", id);
+            logger.info("Курс с id {} успешно помечен как удалённый (soft delete)", id);
             return true;
         }).orElse(false);
     }
@@ -69,10 +70,10 @@ public class ProgramsAndCoursesServiceImpl implements ProgramsAndCoursesService 
     public boolean removeCourse(Integer id) {
         if (repository.existsById(id)) {
             repository.deleteById(id);
-            log.info("Курс с id {} успешно удалён физически", id);
+            logger.info("Курс с id {} успешно удалён физически", id);
             return true;
         }
-        log.warn("Курс с id {} не найден для физического удаления", id);
+        logger.warn("Курс с id {} не найден для физического удаления", id);
         return false;
     }
 
