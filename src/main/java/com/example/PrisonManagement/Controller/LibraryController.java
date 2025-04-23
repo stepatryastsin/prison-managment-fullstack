@@ -15,12 +15,17 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/libraries")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
+
 @Slf4j
 public class LibraryController {
 
     private final LibraryService libraryService;
     private final BorrowedService borrowedService;
+
+    public LibraryController(LibraryService libraryService, BorrowedService borrowedService) {
+        this.libraryService = libraryService;
+        this.borrowedService = borrowedService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Library>> getAllLibraries() {

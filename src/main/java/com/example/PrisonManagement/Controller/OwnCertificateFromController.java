@@ -2,7 +2,6 @@ package com.example.PrisonManagement.Controller;
 
 import com.example.PrisonManagement.Entity.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.OwnCertificateFromService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,13 +12,16 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ownCertificateFrom")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
+
 @Slf4j
 public class OwnCertificateFromController {
 
     private final OwnCertificateFromService ownCertificateFromService;
 
-    // Получить все записи сертификатов
+    public OwnCertificateFromController(OwnCertificateFromService ownCertificateFromService) {
+        this.ownCertificateFromService = ownCertificateFromService;
+    }
+
     @GetMapping
     public ResponseEntity<List<OwnCertificateFrom>> getAll() {
         List<OwnCertificateFrom> list = ownCertificateFromService.getAll();

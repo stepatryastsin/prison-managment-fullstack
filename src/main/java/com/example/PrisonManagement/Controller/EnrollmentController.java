@@ -14,10 +14,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
+
 public class EnrollmentController {
 
     private final EnrollmentCertificateServiceInterface service;
+
+    public EnrollmentController(EnrollmentCertificateServiceInterface service) {
+        this.service = service;
+    }
 
     @PostMapping("/enrollments")
     public ResponseEntity<EnrolledIn> enrollPrisoner(@RequestBody EnrollmentRequest request) {

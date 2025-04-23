@@ -21,11 +21,14 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/job")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
 @Slf4j
 public class JobController {
 
     private final JobService jobService;
+
+    public JobController(JobService jobService) {
+        this.jobService = jobService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Job>> getAllJobs() {

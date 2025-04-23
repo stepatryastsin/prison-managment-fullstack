@@ -1,6 +1,5 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.ProgramsAndCourses;
 import com.example.PrisonManagement.Entity.Staff;
 import com.example.PrisonManagement.Service.StaffService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -3,7 +3,6 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Entity.Borrowed;
 import com.example.PrisonManagement.Entity.BorrowedKey;
 import com.example.PrisonManagement.Service.BorrowedService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +14,13 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/borrowed")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
 public class BorrowedController {
 
     private final BorrowedService borrowedService;
+
+    public BorrowedController(BorrowedService borrowedService) {
+        this.borrowedService = borrowedService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Borrowed>> getAllBorrowed() {

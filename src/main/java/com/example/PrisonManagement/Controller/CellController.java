@@ -3,23 +3,26 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Entity.Cell;
 import com.example.PrisonManagement.Service.CellService;
 import com.example.PrisonManagement.Service.PrisonerService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
+
 
 @RestController
 @RequestMapping("/api/cells")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
 public class CellController {
 
     private final CellService cellService;
     private final PrisonerService prisonerService;
+
+    public CellController(CellService cellService, PrisonerService prisonerService) {
+        this.cellService = cellService;
+        this.prisonerService = prisonerService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Cell>> getAllCells() {
@@ -47,7 +50,6 @@ public class CellController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCell(@PathVariable Integer id) {
-        // Проверяем, привязан ли хотя бы один заключённый к данной камере
         if (prisonerService.existsPrisonerInCell(id)) {
             // Если да, возвращаем статус 409 (CONFLICT), сигнализируя, что удаление невозможно
             return ResponseEntity.status(HttpStatus.CONFLICT).build();

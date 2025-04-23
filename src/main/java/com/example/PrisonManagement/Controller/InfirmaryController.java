@@ -3,22 +3,24 @@ import com.example.PrisonManagement.Entity.Infirmary;
 import com.example.PrisonManagement.Entity.Prisoner;
 import com.example.PrisonManagement.Service.InfirmaryService;
 import com.example.PrisonManagement.Service.PrisonerService;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.Optional;
+
 
 @RestController
 @RequestMapping("/api/infirmary")
 @CrossOrigin(origins = "http://localhost:3000")
-@RequiredArgsConstructor
+
 public class InfirmaryController {
 
     private final InfirmaryService infirmaryService;
     private final PrisonerService prisonerService;
+
+    public InfirmaryController(InfirmaryService infirmaryService, PrisonerService prisonerService) {
+        this.infirmaryService = infirmaryService;
+        this.prisonerService = prisonerService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Infirmary>> getAllInfirmaries() {
@@ -44,7 +46,6 @@ public class InfirmaryController {
         return ResponseEntity.noContent().build();
     }
 
-    // Пример дополнительного эндпоинта для получения заключенного по id
     @GetMapping("/prisoner/{id}")
     public ResponseEntity<Prisoner> getPrisonerById(@PathVariable Integer id) {
         Prisoner prisoner = prisonerService.findById(id);
