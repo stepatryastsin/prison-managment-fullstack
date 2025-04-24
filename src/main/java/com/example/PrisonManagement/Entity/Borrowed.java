@@ -1,26 +1,32 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 
 
 @Entity
 @Table(name = "borrowed")
-
+// ready
 public class Borrowed {
-
+    @NotNull(message = "BorrowedKey is required")
     @EmbeddedId
     private BorrowedKey id;
 
     @ManyToOne
     @MapsId("prisonerId")
     @JoinColumn(name = "prisoner_id")
+    @NotNull(message = "Prisoner is required")
     private Prisoner prisoner;
 
     @ManyToOne
-    @JoinColumn(name = "ISBN", insertable = false, updatable = false)
+    @MapsId("isbn")
+    @JoinColumn(name = "isbn")
+    @NotNull(message = "Library is required")
     private Library library;
 
-    public Borrowed(BorrowedKey id, Prisoner prisoner, Library library) {
+    public Borrowed(BorrowedKey id,
+                    Prisoner prisoner,
+                    Library library) {
         this.id = id;
         this.prisoner = prisoner;
         this.library = library;

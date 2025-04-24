@@ -1,8 +1,8 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "staff")
@@ -13,34 +13,42 @@ public class Staff {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer staffId;
 
-    @Column(name = "first_name", nullable = false, length = 20)
+    @NotBlank(message = "First Name for staff is required")
+    @Size(min = 2, max = 20)
+    @Column(name = "first_name", length = 20, nullable = false)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false, length = 20)
+    @NotBlank(message = "Last Name for staff is required")
+    @Size(min = 2, max = 20)
+    @Column(name = "last_name", length = 20, nullable = false)
     private String lastName;
 
-    @ManyToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "job_id")
+    @NotNull(message = "Job is required")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @Column(name = "salary", precision = 8, scale = 2)
+    @NotNull(message = "Salary is required")
+    @PositiveOrZero(message = "Salary must be positive or zero")
+    @Digits(integer = 6, fraction = 2)
+    @Column(
+            name = "salary",
+            precision = 8,
+            scale = 2,
+            nullable = false
+    )
     private BigDecimal salary;
-
-    @Column(name = "hiredate")
-    private LocalDate hiredate;
 
     public Staff(Integer staffId,
                  String firstName,
                  String lastName,
                  Job job,
-                 BigDecimal salary,
-                 LocalDate hiredate) {
+                 BigDecimal salary) {
         this.staffId = staffId;
         this.firstName = firstName;
         this.lastName = lastName;
         this.job = job;
         this.salary = salary;
-        this.hiredate = hiredate;
     }
 
     public Staff() {
@@ -86,11 +94,4 @@ public class Staff {
         this.salary = salary;
     }
 
-    public LocalDate getHiredate() {
-        return hiredate;
-    }
-
-    public void setHiredate(LocalDate hiredate) {
-        this.hiredate = hiredate;
-    }
 }

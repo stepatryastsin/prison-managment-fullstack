@@ -18,6 +18,7 @@ public class VisitedBy {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Prisoner prisoner;
 
+
     @ManyToOne
     @MapsId("visitorId")
     @JoinColumn(name = "visitor_id")

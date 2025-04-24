@@ -36,8 +36,7 @@ public class BorrowedController {
 
         logger.info("Получено {} книг заключенным ",getAll.size());
 
-        return new ResponseEntity<>(getAll,
-                            HttpStatus.OK);
+        return  ResponseEntity.ok(getAll);
     }
 
     @GetMapping("/{prisonerId}/{isbn}")

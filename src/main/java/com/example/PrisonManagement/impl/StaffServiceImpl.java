@@ -49,7 +49,6 @@ public class StaffServiceImpl implements StaffService {
                     existingStaff.setFirstName(staff.getFirstName());
                     existingStaff.setLastName(staff.getLastName());
                     existingStaff.setSalary(staff.getSalary());
-                    existingStaff.setHiredate(staff.getHiredate());
                     if (staff.getJob() != null) {
                         existingStaff.setJob(getManagedJob(staff.getJob()));
                     }

@@ -2,7 +2,8 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Entity.Infirmary;
 import com.example.PrisonManagement.Entity.Prisoner;
 import com.example.PrisonManagement.Service.InfirmaryService;
-import com.example.PrisonManagement.Service.PrisonerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,17 +18,17 @@ import java.util.List;
 public class InfirmaryController {
 
     private final InfirmaryService infirmaryService;
-    private final PrisonerService prisonerService;
+    private final Logger logger = LoggerFactory.getLogger(InfirmaryController.class);
 
     @Autowired
-    public InfirmaryController(InfirmaryService infirmaryService, PrisonerService prisonerService) {
+    public InfirmaryController(InfirmaryService infirmaryService) {
         this.infirmaryService = infirmaryService;
-        this.prisonerService = prisonerService;
     }
 
     @GetMapping
     public ResponseEntity<List<Infirmary>> getAllInfirmaries() {
-        List<Infirmary> infirmaries = infirmaryService.getAllInfirmaries();
+        final List<Infirmary> infirmaries = infirmaryService.getAllInfirmaries();
+        logger.info("Получено {} больных заключенным ",infirmaries.size());
         return ResponseEntity.ok(infirmaries);
     }
 
@@ -51,7 +52,7 @@ public class InfirmaryController {
 
     @GetMapping("/prisoner/{id}")
     public ResponseEntity<Prisoner> getPrisonerById(@PathVariable Integer id) {
-        Prisoner prisoner = prisonerService.findById(id);
+        Prisoner prisoner = infirmaryService.getInfirmaryById(id);
         return ResponseEntity.ok(prisoner);
     }
 }

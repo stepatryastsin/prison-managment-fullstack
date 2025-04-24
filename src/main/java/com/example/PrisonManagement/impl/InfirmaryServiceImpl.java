@@ -12,15 +12,17 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.List;
-
+import java.util.Optional;
 
 
 @Service
-
 public class InfirmaryServiceImpl implements InfirmaryService {
+
     private final Logger logger = LoggerFactory.getLogger(InfirmaryServiceImpl.class);
+
     private final InfirmaryRepository infirmaryRepository;
     private final PrisonerRepository prisonerRepository;
+
     @Autowired
     public InfirmaryServiceImpl(InfirmaryRepository infirmaryRepository, PrisonerRepository prisonerRepository) {
         this.infirmaryRepository = infirmaryRepository;
@@ -29,17 +31,17 @@ public class InfirmaryServiceImpl implements InfirmaryService {
 
     @Override
     public List<Infirmary> getAllInfirmaries() {
-        logger.info("Получение списка всех записей инкубатории (infirmary)");
+        logger.info("Получение списка всех записей с лазарета");
         return infirmaryRepository.findAll();
     }
 
     @Override
-    public Infirmary getById(Long id) {
-        logger.info("Получение записи infirmary по id {}", id);
+    public Optional<Infirmary> getPrisonerFromInfirmaryById(Integer id) {
+        logger.info("Получение камеры с id {}", id);
         return infirmaryRepository.findById(id)
-                .orElseThrow(() -> {
-                    logger.error("Запись infirmary не найдена по id {}", id);
-                    return new EntityNotFoundException("Запись infirmary не найдена с id: " + id);
+                .map(cell -> {
+                    logger.info("Найдено: {}", cell);
+                    return cell;
                 });
     }
 
@@ -47,7 +49,6 @@ public class InfirmaryServiceImpl implements InfirmaryService {
     @Transactional
     public Infirmary createInfirmary(Infirmary infirmaryDetails) {
         logger.info("Создание новой записи infirmary для заключенного с id {}", infirmaryDetails.getPrisoner().getPrisonerId());
-        // Проверяем, существует ли заключенный
         Prisoner prisoner = prisonerRepository.findById(infirmaryDetails.getPrisoner().getPrisonerId())
                 .orElseThrow(() -> new EntityNotFoundException("Заключенный не найден с id: "
                         + infirmaryDetails.getPrisoner().getPrisonerId()));

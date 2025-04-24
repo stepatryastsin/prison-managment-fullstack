@@ -1,11 +1,17 @@
 package com.example.PrisonManagement.Entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "visitor")
-
+//ready
 public class Visitor {
 
     @Id
@@ -13,25 +19,35 @@ public class Visitor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer visitorId;
 
-    @Column(name = "first_name", length = 20)
+    @NotBlank(message = "First Name is required")
+    @Size(min = 2,max = 20)
+    @Column(name = "first_name", length = 20,nullable = false)
     private String firstName;
 
-    @Column(name = "last_name", length = 20)
+    @NotBlank(message = "Last Name is required")
+    @Size(min = 2,max = 20)
+    @Column(name = "first_name", length = 20,nullable = false)
     private String lastName;
 
-    @Column(name = "phone_number")
-    private Long phoneNumber;
+    @NotBlank(message = "Phone Number is required")
+    @Pattern(regexp = "^\\+?[0-9\\-\\s()]{7,16}$", message = "Invalid phone number")
+    @Column(name = "phone_number", length = 16, unique = true, nullable = false)
+    private String phoneNumber;
 
-    @Column(name = "relation_to_prisoner", length = 20)
+    @NotBlank(message = "Relation is required")
+    @Size(max = 20)
+    @Column(name = "relation_to_prisoner", length = 20, nullable = false)
     private String relationToPrisoner;
 
+    @PastOrPresent
     @Column(name = "visit_date")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate visitDate;
 
     public Visitor(Integer visitorId,
                    String firstName,
                    String lastName,
-                   Long phoneNumber,
+                   String phoneNumber,
                    String relationToPrisoner,
                    LocalDate visitDate) {
         this.visitorId = visitorId;
@@ -69,11 +85,11 @@ public class Visitor {
         this.lastName = lastName;
     }
 
-    public Long getPhoneNumber() {
+    public String getPhoneNumber() {
         return phoneNumber;
     }
 
-    public void setPhoneNumber(Long phoneNumber) {
+    public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 

@@ -24,6 +24,7 @@ public class CellServiceImpl implements CellService {
 
     private final CellRepository cellRepository;
     private final PrisonerRepository prisonerRepository;
+
     @Autowired
     public CellServiceImpl(CellRepository cellRepository,PrisonerRepository prisonerRepository) {
         this.cellRepository = cellRepository;
@@ -39,11 +40,11 @@ public class CellServiceImpl implements CellService {
     @Override
     public Optional<Cell> getCellById(Integer id) {
         logger.info("Получение камеры с id {}", id);
-        return Optional.ofNullable(cellRepository.findById(id)
-                .orElseThrow(() -> {
-                    logger.error("Камера с id {} не найдена", id);
-                    return new EntityNotFoundException("Камера с id " + id + " не найдена");
-                }));
+        return cellRepository.findById(id)
+                .map(cell -> {
+                    logger.info("Найдено: {}", cell);
+                    return cell;
+                });
     }
 
     @Override

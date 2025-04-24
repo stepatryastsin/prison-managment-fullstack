@@ -32,7 +32,7 @@ public class BorrowedServiceImpl implements BorrowedService {
 
     @Override
     public List<Borrowed> getAllBorrowed() {
-        logger.info("Получение всех записей Borrowed");
+        logger.info("Получение всех записей с заимствованием книг");
         return borrowedRepository.findAll();
     }
 
@@ -89,7 +89,7 @@ public class BorrowedServiceImpl implements BorrowedService {
     public Prisoner getPrisonerByIdFromBorrowed(Integer id) {
         return borrowedRepository.findPrisonerByPrisonerId(id)
                 .orElseThrow(() -> {
-                    logger.info("Заключенный с Id {} не найден", id);
+                    logger.error("Заключенный с Id {} не найден", id);
                     return new EntityNotFoundException("Prisoner с id=" + id + " не найден");
                 });
     }
@@ -98,7 +98,7 @@ public class BorrowedServiceImpl implements BorrowedService {
     public Library getLibraryByIdFromBorrowed(BigDecimal isbn) {
         return borrowedRepository.findLibraryByIsbn(isbn)
                 .orElseThrow(() -> {
-                    logger.info("Книга с ISBN {} не найден", isbn);
+                    logger.error("Книга с ISBN {} не найден", isbn);
                     return new EntityNotFoundException("Prisoner с id=" + isbn + " не найден");
                 });
     }
