@@ -3,6 +3,8 @@ import com.example.PrisonManagement.Entity.Infirmary;
 import com.example.PrisonManagement.Entity.Prisoner;
 import com.example.PrisonManagement.Service.InfirmaryService;
 import com.example.PrisonManagement.Service.PrisonerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -17,6 +19,7 @@ public class InfirmaryController {
     private final InfirmaryService infirmaryService;
     private final PrisonerService prisonerService;
 
+    @Autowired
     public InfirmaryController(InfirmaryService infirmaryService, PrisonerService prisonerService) {
         this.infirmaryService = infirmaryService;
         this.prisonerService = prisonerService;
@@ -43,7 +46,7 @@ public class InfirmaryController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInfirmary(@PathVariable Long id) {
         infirmaryService.deleteInfirmary(id);
-        return ResponseEntity.noContent().build();
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @GetMapping("/prisoner/{id}")

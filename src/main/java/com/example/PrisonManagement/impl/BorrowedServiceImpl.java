@@ -2,12 +2,16 @@ package com.example.PrisonManagement.impl;
 
 import com.example.PrisonManagement.Entity.Borrowed;
 import com.example.PrisonManagement.Entity.BorrowedKey;
+import com.example.PrisonManagement.Entity.Library;
+import com.example.PrisonManagement.Entity.Prisoner;
 import com.example.PrisonManagement.Repository.BorrowedRepository;
 import com.example.PrisonManagement.Service.BorrowedService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,8 +22,10 @@ import java.util.Optional;
 @Service
 public class BorrowedServiceImpl implements BorrowedService {
     private final Logger logger = LoggerFactory.getLogger(BorrowedServiceImpl.class);
+
     private final BorrowedRepository borrowedRepository;
 
+    @Autowired
     public BorrowedServiceImpl(BorrowedRepository borrowedRepository) {
         this.borrowedRepository = borrowedRepository;
     }
@@ -32,8 +38,11 @@ public class BorrowedServiceImpl implements BorrowedService {
 
     @Override
     public Optional<Borrowed> getBorrowedById(BorrowedKey id) {
-        logger.info("Получение записи Borrowed по id: {}", id);
-        return borrowedRepository.findById(id);
+        return borrowedRepository.findById(id)
+                .map(borrowed -> {
+                    logger.info("Найдено: {}", borrowed);
+                    return borrowed;
+                });
     }
 
     @Override
@@ -74,5 +83,23 @@ public class BorrowedServiceImpl implements BorrowedService {
     public boolean existsByIsbn(BigDecimal isbn) {
         logger.info("Проверка наличия записи Borrowed по ISBN: {}", isbn);
         return borrowedRepository.existsByIsbn(isbn);
+    }
+
+    @Override
+    public Prisoner getPrisonerByIdFromBorrowed(Integer id) {
+        return borrowedRepository.findPrisonerByPrisonerId(id)
+                .orElseThrow(() -> {
+                    logger.info("Заключенный с Id {} не найден", id);
+                    return new EntityNotFoundException("Prisoner с id=" + id + " не найден");
+                });
+    }
+
+    @Override
+    public Library getLibraryByIdFromBorrowed(BigDecimal isbn) {
+        return borrowedRepository.findLibraryByIsbn(isbn)
+                .orElseThrow(() -> {
+                    logger.info("Книга с ISBN {} не найден", isbn);
+                    return new EntityNotFoundException("Prisoner с id=" + isbn + " не найден");
+                });
     }
 }

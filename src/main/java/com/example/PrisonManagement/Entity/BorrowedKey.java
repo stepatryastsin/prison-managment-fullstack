@@ -40,4 +40,12 @@ public class BorrowedKey implements Serializable {
     public void setIsbn(BigDecimal isbn) {
         this.isbn = isbn;
     }
+
+    @Override
+    public String toString() {
+        return "BorrowedKey{" +
+                "prisonerId=" + prisonerId +
+                ", isbn=" + isbn +
+                '}';
+    }
 }

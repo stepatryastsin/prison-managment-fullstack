@@ -50,4 +50,13 @@ public class Library {
     public void setGenre(String genre) {
         this.genre = genre;
     }
+
+    @Override
+    public String toString() {
+        return "Library{" +
+                "isbn=" + isbn +
+                ", bookName='" + bookName + '\'' +
+                ", genre='" + genre + '\'' +
+                '}';
+    }
 }

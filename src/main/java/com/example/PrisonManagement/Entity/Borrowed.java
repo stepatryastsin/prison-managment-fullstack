@@ -52,4 +52,13 @@ public class Borrowed {
     public void setLibrary(Library library) {
         this.library = library;
     }
+
+    @Override
+    public String toString() {
+        return "Borrowed{" +
+                "id=" + id +
+                ", prisoner=" + prisoner +
+                ", library=" + library +
+                '}';
+    }
 }

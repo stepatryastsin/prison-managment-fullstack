@@ -3,6 +3,7 @@ package com.example.PrisonManagement.impl;
 
 import com.example.PrisonManagement.Entity.Cell;
 import com.example.PrisonManagement.Repository.CellRepository;
+import com.example.PrisonManagement.Repository.PrisonerRepository;
 import com.example.PrisonManagement.Service.CellService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 
 @Service
@@ -21,9 +23,11 @@ public class CellServiceImpl implements CellService {
             LoggerFactory.getLogger(CellServiceImpl.class);
 
     private final CellRepository cellRepository;
+    private final PrisonerRepository prisonerRepository;
     @Autowired
-    public CellServiceImpl(CellRepository cellRepository) {
+    public CellServiceImpl(CellRepository cellRepository,PrisonerRepository prisonerRepository) {
         this.cellRepository = cellRepository;
+        this.prisonerRepository = prisonerRepository;
     }
 
     @Override
@@ -33,13 +37,13 @@ public class CellServiceImpl implements CellService {
     }
 
     @Override
-    public Cell getById(Integer id) {
+    public Optional<Cell> getCellById(Integer id) {
         logger.info("Получение камеры с id {}", id);
-        return cellRepository.findById(id)
+        return Optional.ofNullable(cellRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.error("Камера с id {} не найдена", id);
                     return new EntityNotFoundException("Камера с id " + id + " не найдена");
-                });
+                }));
     }
 
     @Override
@@ -77,4 +81,10 @@ public class CellServiceImpl implements CellService {
         cellRepository.deleteById(id);
         logger.info("Камера с id {} успешно удалена", id);
     }
+
+    @Override
+    public boolean hasPrisoners(Integer id) {
+        return prisonerRepository.existsByCell_CellNum(id);
+    }
+
 }

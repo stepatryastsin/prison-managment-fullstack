@@ -158,4 +158,21 @@ public class Prisoner {
     public void setSecurityLevel(SecurityLevel securityLevel) {
         this.securityLevel = securityLevel;
     }
+
+    @Override
+    public String toString() {
+        return "Prisoner{" +
+                "prisonerId=" + prisonerId +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", birthPlace='" + birthPlace + '\'' +
+                ", dateOfBirth=" + dateOfBirth +
+                ", occupation='" + occupation + '\'' +
+                ", indictment='" + indictment + '\'' +
+                ", intakeDate=" + intakeDate +
+                ", sentenceEndDate=" + sentenceEndDate +
+                ", cell=" + cell +
+                ", securityLevel=" + securityLevel +
+                '}';
+    }
 }

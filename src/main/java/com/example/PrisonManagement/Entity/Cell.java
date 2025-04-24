@@ -14,6 +14,8 @@ public class Cell {
 
     @Column(name = "last_shakedown_date")
     private LocalDate lastShakedownDate;
+
+
     public void setLastShakedownDate(LocalDate lastShakedownDate) {
         this.lastShakedownDate = lastShakedownDate;
     }
@@ -33,4 +35,11 @@ public class Cell {
         return lastShakedownDate;
     }
 
+    @Override
+    public String toString() {
+        return "Cell{" +
+                "cellNum=" + cellNum +
+                ", lastShakedownDate=" + lastShakedownDate +
+                '}';
+    }
 }

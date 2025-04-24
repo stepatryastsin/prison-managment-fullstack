@@ -3,6 +3,8 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Entity.EnrolledIn;
 import com.example.PrisonManagement.Entity.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.EnrollmentCertificateServiceInterface;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,26 +17,29 @@ import java.util.List;
 public class EnrollmentController {
 
     private final EnrollmentCertificateServiceInterface service;
-
+    @Autowired
     public EnrollmentController(EnrollmentCertificateServiceInterface service) {
         this.service = service;
     }
 
     @PostMapping("/enrollments")
     public ResponseEntity<EnrolledIn> enrollPrisoner(@RequestBody EnrollmentRequest request) {
-        EnrolledIn enrollment = service.enrollPrisoner(request.getPrisonerId(), request.getCourseId());
+        EnrolledIn enrollment =
+                service.enrollPrisoner(request.getPrisonerId(), request.getCourseId());
         return ResponseEntity.ok(enrollment);
     }
 
     @PostMapping("/certificates")
     public ResponseEntity<OwnCertificateFrom> issueCertificate(@RequestBody EnrollmentRequest request) {
-        OwnCertificateFrom certificate = service.issueCertificate(request.getPrisonerId(), request.getCourseId());
+        OwnCertificateFrom certificate =
+                service.issueCertificate(request.getPrisonerId(), request.getCourseId());
         return ResponseEntity.ok(certificate);
     }
 
     @GetMapping("/enrollments")
     public ResponseEntity<List<EnrolledIn>> getEnrollments() {
-        List<EnrolledIn> enrollments = service.getAllEnrollments();
+        List<EnrolledIn> enrollments =
+                service.getAllEnrollments();
         return ResponseEntity.ok(enrollments);
     }
 
@@ -48,14 +53,14 @@ public class EnrollmentController {
     public ResponseEntity<Void> deleteEnrollment(@PathVariable Integer prisonerId,
                                                  @PathVariable Integer courseId) {
         service.deleteEnrollment(prisonerId, courseId);
-        return ResponseEntity.noContent().build();
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @DeleteMapping("/certificates/{prisonerId}/{courseId}")
     public ResponseEntity<Void> deleteCertificate(@PathVariable Integer prisonerId,
                                                   @PathVariable Integer courseId) {
         service.deleteCertificate(prisonerId, courseId);
-        return ResponseEntity.noContent().build();
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     public static class EnrollmentRequest {
