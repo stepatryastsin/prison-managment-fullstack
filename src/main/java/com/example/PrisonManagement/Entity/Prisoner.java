@@ -1,39 +1,51 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "prisoner")
-//@todo надо сделать не удаление заключенного а его освобождение soft
+//ready
 public class Prisoner {
 
     @Id
     @Column(name = "prisoner_id")
     private Integer prisonerId;
 
+    @NotBlank(message = "First name is required")
+    @Size(max = 15, message = "First name must be ≤15 characters")
     @Column(name = "first_name", nullable = false, length = 15)
     private String firstName;
 
+    @NotBlank(message = "Last name is required")
+    @Size(max = 15, message = "Last name must be ≤15 characters")
     @Column(name = "last_name", nullable = false, length = 15)
     private String lastName;
 
+    @Size(max = 20, message = "Birth place must be ≤20 characters")
     @Column(name = "birth_place", length = 20)
     private String birthPlace;
 
+    @Past(message = "Date of birth must be in the past")
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    @Size(max = 20, message = "Occupation must be ≤20 characters")
     @Column(name = "occupation", length = 20)
     private String occupation;
 
+    @Size(max = 50, message = "Indictment must be ≤50 characters")
     @Column(name = "indictment", length = 50)
     private String indictment;
 
-    @Column(name = "intake_date")
+    @PastOrPresent(message = "Intake date cannot be in the future")
+    @Column(name = "intake_date", nullable = false)
     private LocalDate intakeDate;
 
-    @Column(name = "sentence_end_date")
+    @Future(message = "Sentence end date must be in the future")
+    @Column(name = "sentence_end_date", nullable = false)
     private LocalDate sentenceEndDate;
 
     @ManyToOne
@@ -41,8 +53,15 @@ public class Prisoner {
     private Cell cell;
 
     @ManyToOne
-    @JoinColumn(name = "security_level_id")
+    @JoinColumn(name = "security_level_id", nullable = false)
+    @NotNull(message = "Security level is required")
     private SecurityLevel securityLevel;
+
+    @Column(name = "is_released", nullable = false)
+    private Boolean isReleased = false;
+
+    public Prisoner() {
+    }
 
     public Prisoner(Integer prisonerId,
                     String firstName,
@@ -54,7 +73,8 @@ public class Prisoner {
                     LocalDate intakeDate,
                     LocalDate sentenceEndDate,
                     Cell cell,
-                    SecurityLevel securityLevel) {
+                    SecurityLevel securityLevel,
+                    Boolean isReleased) {
         this.prisonerId = prisonerId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -66,9 +86,7 @@ public class Prisoner {
         this.sentenceEndDate = sentenceEndDate;
         this.cell = cell;
         this.securityLevel = securityLevel;
-    }
-
-    public Prisoner() {
+        this.isReleased = isReleased;
     }
 
     public Integer getPrisonerId() {
@@ -159,6 +177,50 @@ public class Prisoner {
         this.securityLevel = securityLevel;
     }
 
+    public Boolean getReleased() {
+        return isReleased;
+    }
+
+    public void setReleased(Boolean released) {
+        isReleased = released;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Prisoner prisoner)) return false;
+
+        return getPrisonerId().equals(prisoner.getPrisonerId()) &&
+                getFirstName().equals(prisoner.getFirstName()) &&
+                getLastName().equals(prisoner.getLastName()) &&
+                getBirthPlace().equals(prisoner.getBirthPlace()) &&
+                getDateOfBirth().equals(prisoner.getDateOfBirth()) &&
+                getOccupation().equals(prisoner.getOccupation()) &&
+                getIndictment().equals(prisoner.getIndictment()) &&
+                getIntakeDate().equals(prisoner.getIntakeDate()) &&
+                getSentenceEndDate().equals(prisoner.getSentenceEndDate()) &&
+                getCell().equals(prisoner.getCell()) &&
+                getSecurityLevel().equals(prisoner.getSecurityLevel()) &&
+                isReleased.equals(prisoner.isReleased);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getPrisonerId().hashCode();
+        result = 31 * result + getFirstName().hashCode();
+        result = 31 * result + getLastName().hashCode();
+        result = 31 * result + getBirthPlace().hashCode();
+        result = 31 * result + getDateOfBirth().hashCode();
+        result = 31 * result + getOccupation().hashCode();
+        result = 31 * result + getIndictment().hashCode();
+        result = 31 * result + getIntakeDate().hashCode();
+        result = 31 * result + getSentenceEndDate().hashCode();
+        result = 31 * result + getCell().hashCode();
+        result = 31 * result + getSecurityLevel().hashCode();
+        result = 31 * result + isReleased.hashCode();
+        return result;
+    }
+
     @Override
     public String toString() {
         return "Prisoner{" +
@@ -173,6 +235,7 @@ public class Prisoner {
                 ", sentenceEndDate=" + sentenceEndDate +
                 ", cell=" + cell +
                 ", securityLevel=" + securityLevel +
+                ", isReleased=" + isReleased +
                 '}';
     }
 }

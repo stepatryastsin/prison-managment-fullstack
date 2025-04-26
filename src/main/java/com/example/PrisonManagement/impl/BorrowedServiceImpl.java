@@ -80,7 +80,7 @@ public class BorrowedServiceImpl implements BorrowedService {
     }
 
     @Override
-    public boolean existsByIsbn(BigDecimal isbn) {
+    public boolean existsByIsbn(String isbn) {
         logger.info("Проверка наличия записи Borrowed по ISBN: {}", isbn);
         return borrowedRepository.existsByIsbn(isbn);
     }
@@ -95,7 +95,7 @@ public class BorrowedServiceImpl implements BorrowedService {
     }
 
     @Override
-    public Library getLibraryByIdFromBorrowed(BigDecimal isbn) {
+    public Library getLibraryByIdFromBorrowed(String isbn) {
         return borrowedRepository.findLibraryByIsbn(isbn)
                 .orElseThrow(() -> {
                     logger.error("Книга с ISBN {} не найден", isbn);

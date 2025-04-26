@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.swing.*;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -41,7 +42,7 @@ public class BorrowedController {
 
     @GetMapping("/{prisonerId}/{isbn}")
     public ResponseEntity<Borrowed> getBorrowedById(@PathVariable Integer prisonerId,
-                                                    @PathVariable BigDecimal isbn) {
+                                                    @PathVariable String isbn) {
         BorrowedKey key = new BorrowedKey(prisonerId, isbn);
 
         return borrowedService
@@ -68,7 +69,7 @@ public class BorrowedController {
 
     @PutMapping("/{prisonerId}/{isbn}")
     public ResponseEntity<Borrowed> updateBorrowed(@PathVariable Integer prisonerId,
-                                                   @PathVariable BigDecimal isbn,
+                                                   @PathVariable String isbn,
                                                    @RequestBody Borrowed borrowed) {
         BorrowedKey key = new BorrowedKey(prisonerId, isbn);
 
@@ -88,7 +89,7 @@ public class BorrowedController {
 
     @DeleteMapping("/{prisonerId}/{isbn}")
     public ResponseEntity<Void> deleteBorrowed(@PathVariable Integer prisonerId,
-                                               @PathVariable BigDecimal isbn) {
+                                               @PathVariable String isbn) {
         BorrowedKey key = new BorrowedKey(prisonerId, isbn);
 
         final Prisoner prevPrisoner = borrowedService.getPrisonerByIdFromBorrowed(prisonerId);

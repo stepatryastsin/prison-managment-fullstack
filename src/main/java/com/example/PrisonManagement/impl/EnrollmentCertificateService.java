@@ -46,8 +46,7 @@ public class EnrollmentCertificateService implements EnrollmentCertificateServic
         ProgramsAndCourses course = programsAndCoursesRepository.findById(courseId)
                 .orElseThrow(() -> new EntityNotFoundException("Курс с id " + courseId + " не найден"));
 
-        EnrolledInKey key = new EnrolledInKey(prisonerId, courseId);
-        EnrolledIn enrollment = new EnrolledIn(key, prisoner, course);
+        EnrolledIn enrollment = new EnrolledIn(prisoner, course);
         return enrolledInRepository.save(enrollment);
     }
 

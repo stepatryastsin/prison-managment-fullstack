@@ -50,6 +50,22 @@ public class Cell {
     }
 
     @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Cell cell)) return false;
+
+        return getCellNum().equals(cell.getCellNum()) &&
+               getLastShakedownDate().equals(cell.getLastShakedownDate());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getCellNum().hashCode();
+        result = 31 * result + getLastShakedownDate().hashCode();
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "Cell{" +
                 "cellNum=" + cellNum +

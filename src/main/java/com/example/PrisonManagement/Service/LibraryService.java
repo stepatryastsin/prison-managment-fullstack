@@ -7,8 +7,8 @@ import java.util.List;
 
 public interface LibraryService {
     List<Library> getAllLibrary();
-    Library getById(BigDecimal id);
+    Library getByIsbn(String isbn);
     Library createLibrary(Library library);
-    Library updateLibrary(BigDecimal id, Library library);
-    void deleteLibrary(BigDecimal id);
+    Library updateLibrary(String isbn, Library library);
+    void deleteLibrary(String isbn);
 }

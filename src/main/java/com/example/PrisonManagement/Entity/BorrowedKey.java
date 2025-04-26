@@ -4,9 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
-import java.util.Objects;
-// ready
+
+
 @Embeddable
+// ready
 public class BorrowedKey implements Serializable {
 
     @NotNull(message = "Prisoner is required")
@@ -49,23 +50,25 @@ public class BorrowedKey implements Serializable {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public final boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof BorrowedKey)) return false;
-        BorrowedKey that = (BorrowedKey) o;
-        return Objects.equals(prisonerId, that.prisonerId)
-                && Objects.equals(isbn, that.isbn);
+        if (!(o instanceof BorrowedKey that)) return false;
+
+        return getPrisonerId().equals(that.getPrisonerId()) && getIsbn().equals(that.getIsbn());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(prisonerId, isbn);
+        int result = getPrisonerId().hashCode();
+        result = 31 * result + getIsbn().hashCode();
+        return result;
     }
+
     @Override
     public String toString() {
         return "BorrowedKey{" +
                 "prisonerId=" + prisonerId +
-                ", isbn=" + isbn +
+                ", isbn='" + isbn + '\'' +
                 '}';
     }
 }

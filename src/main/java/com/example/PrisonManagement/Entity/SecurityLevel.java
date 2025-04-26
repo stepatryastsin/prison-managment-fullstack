@@ -2,23 +2,24 @@ package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+
 
 @Entity
 @Table(name = "security_level")
+//ready
 public class SecurityLevel {
-
-
     @Id
     @Column(name = "security_level_no")
     private Integer securityLevelNo;
 
-    @NotBlank
-    @Size(max = 10)
     @Column(name = "description", length = 10, nullable = false)
+    @NotBlank(message = "Description cannot be blank")
+    @NotNull(message = "Description cannot be null")
     private String description;
 
-    public SecurityLevel(Integer securityLevelNo, String description) {
+    public SecurityLevel(Integer securityLevelNo,
+                         String description) {
         this.securityLevelNo = securityLevelNo;
         this.description = description;
     }
@@ -40,5 +41,29 @@ public class SecurityLevel {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SecurityLevel that)) return false;
+
+        return getSecurityLevelNo().equals(that.getSecurityLevelNo()) &&
+                getDescription().equals(that.getDescription());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getSecurityLevelNo().hashCode();
+        result = 31 * result + getDescription().hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "SecurityLevel{" +
+                "securityLevelNo=" + securityLevelNo +
+                ", description='" + description + '\'' +
+                '}';
     }
 }

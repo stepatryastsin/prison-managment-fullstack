@@ -60,7 +60,7 @@ public class InfirmaryServiceImpl implements InfirmaryService {
 
     @Override
     @Transactional
-    public Infirmary updateInfirmary(Long id, Infirmary updatedInfirmary) {
+    public Infirmary updateInfirmary(Integer id, Infirmary updatedInfirmary) {
         logger.info("Обновление записи infirmary с id {}", id);
         return infirmaryRepository.findById(id)
                 .map(existing -> {
@@ -86,12 +86,9 @@ public class InfirmaryServiceImpl implements InfirmaryService {
 
     @Override
     @Transactional
-    public void deleteInfirmary(Long id) {
+    public void deleteInfirmary(Integer id) {
         logger.info("Удаление записи infirmary с id {}", id);
-        if (!infirmaryRepository.existsById(id)) {
-            logger.error("Запись infirmary не найдена с id {}", id);
-            throw new EntityNotFoundException("Запись infirmary не найдена с id: " + id);
-        }
+
         infirmaryRepository.deleteById(id);
         logger.info("Запись infirmary с id {} успешно удалена", id);
     }

@@ -1,6 +1,10 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "infirmary")
@@ -12,20 +16,26 @@ public class Infirmary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer prescriptionNum;
 
+    @NotNull(message = "Prisoner is required")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prisoner_id")
+    @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
-    @Column(name = "related_doctor", length = 40)
+    @Column(name = "related_doctor", length = 40, nullable = false)
+    @NotBlank(message = "Related doctor is required")
+    @Size(max = 40, message = "Doctor name must be up to 40 characters")
     private String relatedDoctor;
 
     @Column(name = "drug_name", length = 50)
+    @Size(max = 50, message = "Drug name must be up to 50 characters")
     private String drugName;
 
     @Column(name = "drug_usage_day")
+    @PositiveOrZero(message = "Usage days must be zero or positive")
     private Integer drugUsageDay;
 
     @Column(name = "disease_type", length = 20)
+    @Size(max = 20, message = "Disease type must be up to 20 characters")
     private String diseaseType;
 
     public Infirmary(Integer prescriptionNum, Prisoner prisoner, String relatedDoctor, String drugName, Integer drugUsageDay, String diseaseType) {
@@ -86,5 +96,41 @@ public class Infirmary {
 
     public void setDiseaseType(String diseaseType) {
         this.diseaseType = diseaseType;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Infirmary infirmary)) return false;
+
+        return getPrescriptionNum().equals(infirmary.getPrescriptionNum()) &&
+               getPrisoner().equals(infirmary.getPrisoner()) &&
+               getRelatedDoctor().equals(infirmary.getRelatedDoctor()) &&
+               getDrugName().equals(infirmary.getDrugName()) &&
+               getDrugUsageDay().equals(infirmary.getDrugUsageDay()) &&
+               getDiseaseType().equals(infirmary.getDiseaseType());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getPrescriptionNum().hashCode();
+        result = 31 * result + getPrisoner().hashCode();
+        result = 31 * result + getRelatedDoctor().hashCode();
+        result = 31 * result + getDrugName().hashCode();
+        result = 31 * result + getDrugUsageDay().hashCode();
+        result = 31 * result + getDiseaseType().hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Infirmary{" +
+                "prescriptionNum=" + prescriptionNum +
+                ", prisoner=" + prisoner +
+                ", relatedDoctor='" + relatedDoctor + '\'' +
+                ", drugName='" + drugName + '\'' +
+                ", drugUsageDay=" + drugUsageDay +
+                ", diseaseType='" + diseaseType + '\'' +
+                '}';
     }
 }

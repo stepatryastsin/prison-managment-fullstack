@@ -2,10 +2,12 @@ package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 
 @Entity
 @Table(name = "enrolled_in")
-
+// ready
 public class EnrolledIn {
 
     @EmbeddedId
@@ -13,16 +15,16 @@ public class EnrolledIn {
 
     @ManyToOne
     @MapsId("prisonerId")
-    @JoinColumn(name = "prisoner_id")
+    @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
     @ManyToOne
     @MapsId("courseId")
-    @JoinColumn(name = "course_id")
+    @JoinColumn(name = "course_id", nullable = false)
     private ProgramsAndCourses course;
 
-    public EnrolledIn(EnrolledInKey id, Prisoner prisoner, ProgramsAndCourses course) {
-        this.id = id;
+    public EnrolledIn(Prisoner prisoner, ProgramsAndCourses course) {
+        this.id = new EnrolledInKey(prisoner.getPrisonerId(),course.getCourseId());
         this.prisoner = prisoner;
         this.course = course;
     }
@@ -52,5 +54,32 @@ public class EnrolledIn {
 
     public void setCourse(ProgramsAndCourses course) {
         this.course = course;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof EnrolledIn that)) return false;
+
+        return getId().equals(that.getId()) &&
+               getPrisoner().equals(that.getPrisoner()) &&
+               getCourse().equals(that.getCourse());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getId().hashCode();
+        result = 31 * result + getPrisoner().hashCode();
+        result = 31 * result + getCourse().hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "EnrolledIn{" +
+                "id=" + id +
+                ", prisoner=" + prisoner +
+                ", course=" + course +
+                '}';
     }
 }

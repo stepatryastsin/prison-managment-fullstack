@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-
 import java.time.LocalDate;
 
 @Entity
@@ -26,7 +25,7 @@ public class Visitor {
 
     @NotBlank(message = "Last Name is required")
     @Size(min = 2,max = 20)
-    @Column(name = "first_name", length = 20,nullable = false)
+    @Column(name = "last_name", length = 20,nullable = false)
     private String lastName;
 
     @NotBlank(message = "Phone Number is required")
@@ -107,5 +106,41 @@ public class Visitor {
 
     public void setVisitDate(LocalDate visitDate) {
         this.visitDate = visitDate;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Visitor visitor)) return false;
+
+        return getVisitorId().equals(visitor.getVisitorId()) &&
+                getFirstName().equals(visitor.getFirstName()) &&
+                getLastName().equals(visitor.getLastName()) &&
+                getPhoneNumber().equals(visitor.getPhoneNumber()) &&
+                getRelationToPrisoner().equals(visitor.getRelationToPrisoner()) &&
+                getVisitDate().equals(visitor.getVisitDate());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getVisitorId().hashCode();
+        result = 31 * result + getFirstName().hashCode();
+        result = 31 * result + getLastName().hashCode();
+        result = 31 * result + getPhoneNumber().hashCode();
+        result = 31 * result + getRelationToPrisoner().hashCode();
+        result = 31 * result + getVisitDate().hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Visitor{" +
+                "visitorId=" + visitorId +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", phoneNumber='" + phoneNumber + '\'' +
+                ", relationToPrisoner='" + relationToPrisoner + '\'' +
+                ", visitDate=" + visitDate +
+                '}';
     }
 }

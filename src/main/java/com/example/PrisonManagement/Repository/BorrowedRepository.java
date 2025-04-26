@@ -21,7 +21,7 @@ public interface BorrowedRepository extends
 
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false " +
                     "END FROM Borrowed b WHERE b.id.isbn = :isbn")
-    boolean existsByIsbn(@Param("isbn") BigDecimal isbn);
+    boolean existsByIsbn(@Param("isbn") String isbn);
 
     @Query("""
       SELECT DISTINCT b.prisoner
@@ -35,6 +35,6 @@ public interface BorrowedRepository extends
         FROM Borrowed b
        WHERE b.id.isbn = :isbn
       """)
-    Optional<Library> findLibraryByIsbn(@Param("isbn") BigDecimal isbn);
+    Optional<Library> findLibraryByIsbn(@Param("isbn") String isbn);
 
 }

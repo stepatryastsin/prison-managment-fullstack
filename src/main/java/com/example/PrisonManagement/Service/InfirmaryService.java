@@ -7,6 +7,6 @@ public interface InfirmaryService {
     List<Infirmary> getAllInfirmaries();
     Optional<Infirmary> getPrisonerFromInfirmaryById(Integer id);
     Infirmary createInfirmary(Infirmary infirmary);
-    Infirmary updateInfirmary(Long id, Infirmary infirmary);
-    void deleteInfirmary(Long id);
+    Infirmary updateInfirmary(Integer id, Infirmary infirmary);
+    void deleteInfirmary(Integer id);
 }

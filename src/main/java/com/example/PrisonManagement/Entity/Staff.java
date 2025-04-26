@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "staff")
+//ready
 public class Staff {
 
     @Id
@@ -94,4 +95,36 @@ public class Staff {
         this.salary = salary;
     }
 
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Staff staff)) return false;
+
+        return getStaffId().equals(staff.getStaffId()) &&
+                getFirstName().equals(staff.getFirstName()) &&
+                getLastName().equals(staff.getLastName()) &&
+                getJob().equals(staff.getJob()) &&
+                getSalary().equals(staff.getSalary());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getStaffId().hashCode();
+        result = 31 * result + getFirstName().hashCode();
+        result = 31 * result + getLastName().hashCode();
+        result = 31 * result + getJob().hashCode();
+        result = 31 * result + getSalary().hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Staff{" +
+                "staffId=" + staffId +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", job=" + job +
+                ", salary=" + salary +
+                '}';
+    }
 }

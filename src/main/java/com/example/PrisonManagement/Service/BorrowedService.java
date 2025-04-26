@@ -5,7 +5,6 @@ import com.example.PrisonManagement.Entity.BorrowedKey;
 import com.example.PrisonManagement.Entity.Library;
 import com.example.PrisonManagement.Entity.Prisoner;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,9 +20,9 @@ public interface BorrowedService {
 
     void deleteBorrowed(BorrowedKey id);
 
-    boolean existsByIsbn(BigDecimal isbn);
+    boolean existsByIsbn(String isbn);
 
     Prisoner getPrisonerByIdFromBorrowed(Integer id);
 
-    Library  getLibraryByIdFromBorrowed(BigDecimal isbn);
+    Library  getLibraryByIdFromBorrowed(String isbn);
 }

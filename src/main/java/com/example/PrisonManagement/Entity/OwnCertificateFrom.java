@@ -11,13 +11,12 @@ public class OwnCertificateFrom {
 
     @ManyToOne
     @MapsId("prisonerId")
-    @JoinColumn(name = "prisoner_id", nullable = true)
+    @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
     @ManyToOne
     @MapsId("courseId")
-    @JoinColumn(name = "course_id", insertable = false, updatable = false, nullable = true,
-            foreignKey = @ForeignKey(name = "fk_owncert_course"))
+    @JoinColumn(name = "course_id", nullable = false)
     private ProgramsAndCourses course;
 
     public OwnCertificateFrom(OwnCertificateFromKey id, Prisoner prisoner, ProgramsAndCourses course) {
@@ -51,5 +50,32 @@ public class OwnCertificateFrom {
 
     public void setCourse(ProgramsAndCourses course) {
         this.course = course;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof OwnCertificateFrom that)) return false;
+
+        return getId().equals(that.getId()) &&
+               getPrisoner().equals(that.getPrisoner()) &&
+               getCourse().equals(that.getCourse());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getId().hashCode();
+        result = 31 * result + getPrisoner().hashCode();
+        result = 31 * result + getCourse().hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "OwnCertificateFrom{" +
+                "id=" + id +
+                ", prisoner=" + prisoner +
+                ", course=" + course +
+                '}';
     }
 }

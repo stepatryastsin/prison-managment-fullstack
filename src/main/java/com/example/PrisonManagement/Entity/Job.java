@@ -1,6 +1,8 @@
 package com.example.PrisonManagement.Entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "job")
@@ -12,7 +14,9 @@ public class Job {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer jobId;
 
-    @Column(name = "job_description", length = 15)
+    @Column(name = "job_description", length = 15, nullable = false)
+    @NotBlank(message = "Job Description is required")
+    @Size(max = 15, message = "Description must be up to 15 characters")
     private String jobDescription;
 
     public Job(Integer jobId, String jobDescription) {
@@ -37,5 +41,29 @@ public class Job {
 
     public void setJobDescription(String jobDescription) {
         this.jobDescription = jobDescription;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Job job)) return false;
+
+        return getJobId().equals(job.getJobId()) &&
+                getJobDescription().equals(job.getJobDescription());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getJobId().hashCode();
+        result = 31 * result + getJobDescription().hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Job{" +
+                "jobId=" + jobId +
+                ", jobDescription='" + jobDescription + '\'' +
+                '}';
     }
 }

@@ -39,20 +39,20 @@ public class InfirmaryController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Infirmary> updateInfirmary(@PathVariable Long id, @RequestBody Infirmary infirmary) {
+    public ResponseEntity<Infirmary> updateInfirmary(@PathVariable Integer id, @RequestBody Infirmary infirmary) {
         Infirmary updatedInfirmary = infirmaryService.updateInfirmary(id, infirmary);
         return ResponseEntity.ok(updatedInfirmary);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteInfirmary(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteInfirmary(@PathVariable Integer id) {
         infirmaryService.deleteInfirmary(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @GetMapping("/prisoner/{id}")
     public ResponseEntity<Prisoner> getPrisonerById(@PathVariable Integer id) {
-        Prisoner prisoner = infirmaryService.getInfirmaryById(id);
+        Prisoner prisoner = null;
         return ResponseEntity.ok(prisoner);
     }
 }

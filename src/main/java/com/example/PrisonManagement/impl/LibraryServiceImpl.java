@@ -18,6 +18,7 @@ public class LibraryServiceImpl implements LibraryService {
 
     private final LibraryRepository libraryRepository;
     private final Logger logger = LoggerFactory.getLogger(LibraryServiceImpl.class);
+
     @Autowired
     public LibraryServiceImpl(LibraryRepository libraryRepository) {
         this.libraryRepository = libraryRepository;
@@ -30,12 +31,12 @@ public class LibraryServiceImpl implements LibraryService {
     }
 
     @Override
-    public Library getById(BigDecimal id) {
-        logger.info("Поиск книги с ISBN {}", id);
-        return libraryRepository.findById(id)
+    public Library getByIsbn(String isbn) {
+        logger.info("Поиск книги с ISBN {}", isbn);
+        return libraryRepository.findByIsbn(isbn)
                 .orElseThrow(() -> {
-                    logger.error("Книга с ISBN {} не найдена", id);
-                    return new EntityNotFoundException("Книга с ISBN " + id + " не найдена");
+                    logger.error("Книга с ISBN {} не найдена", isbn);
+                    return new EntityNotFoundException("Книга с ISBN " + isbn + " не найдена");
                 });
     }
 
@@ -47,31 +48,29 @@ public class LibraryServiceImpl implements LibraryService {
 
     @Override
     @Transactional
-    public Library updateLibrary(BigDecimal id, Library updatedLibrary) {
-        logger.info("Обновление книги с ISBN {}", id);
-        return libraryRepository.findById(id)
-                .map(existingLibrary -> {
-                    existingLibrary.setBookName(updatedLibrary.getBookName());
-                    existingLibrary.setGenre(updatedLibrary.getGenre());
-                    Library saved = libraryRepository.save(existingLibrary);
-                    logger.info("Книга с ISBN {} успешно обновлена", id);
-                    return saved;
-                })
+    public Library updateLibrary(String isbn, Library updatedLibrary) {
+        logger.info("Обновление книги с ISBN {}", isbn);
+        Library existing = libraryRepository.findByIsbn(isbn)
                 .orElseThrow(() -> {
-                    logger.error("Книга с ISBN {} не найдена для обновления", id);
-                    return new EntityNotFoundException("Книга с ISBN " + id + " не найдена");
+                    logger.error("Книга с ISBN {} не найдена для обновления", isbn);
+                    return new EntityNotFoundException("Книга с ISBN " + isbn + " не найдена");
                 });
+        existing.setBookName(updatedLibrary.getBookName());
+        existing.setGenre(updatedLibrary.getGenre());
+        Library saved = libraryRepository.save(existing);
+        logger.info("Книга с ISBN {} успешно обновлена", isbn);
+        return saved;
     }
 
     @Override
     @Transactional
-    public void deleteLibrary(BigDecimal id) {
-        logger.info("Удаление книги с ISBN {}", id);
-        if (!libraryRepository.existsById(id)) {
-            logger.error("Книга с ISBN {} не найдена для удаления", id);
-            throw new EntityNotFoundException("Книга с ISBN " + id + " не найдена");
+    public void deleteLibrary(String isbn) {
+        logger.info("Удаление книги с ISBN {}", isbn);
+        if (!libraryRepository.existsByIsbn(isbn)) {
+            logger.error("Книга с ISBN {} не найдена для удаления", isbn);
+            throw new EntityNotFoundException("Книга с ISBN " + isbn + " не найдена");
         }
-        libraryRepository.deleteById(id);
-        logger.info("Книга с ISBN {} успешно удалена", id);
+        libraryRepository.deleteByIsbn(isbn);
+        logger.info("Книга с ISBN {} успешно удалена", isbn);
     }
 }
