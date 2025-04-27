@@ -1,6 +1,5 @@
 package com.example.PrisonManagement.Service;
-import com.example.PrisonManagement.Entity.Cell;
-import org.springframework.data.repository.query.Param;
+import com.example.PrisonManagement.Model.Cell;
 
 import java.util.List;
 import java.util.Optional;

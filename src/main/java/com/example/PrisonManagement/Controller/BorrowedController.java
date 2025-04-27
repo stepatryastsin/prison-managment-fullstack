@@ -1,9 +1,9 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.Borrowed;
-import com.example.PrisonManagement.Entity.BorrowedKey;
-import com.example.PrisonManagement.Entity.Library;
-import com.example.PrisonManagement.Entity.Prisoner;
+import com.example.PrisonManagement.Model.Borrowed;
+import com.example.PrisonManagement.Model.BorrowedKey;
+import com.example.PrisonManagement.Model.Library;
+import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Service.BorrowedService;
 import com.example.PrisonManagement.Service.PrisonerService;
 import org.slf4j.Logger;
@@ -13,8 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.*;
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController

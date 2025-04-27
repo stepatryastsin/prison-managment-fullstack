@@ -1,4 +1,4 @@
-package com.example.PrisonManagement.Entity;
+package com.example.PrisonManagement.Model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;

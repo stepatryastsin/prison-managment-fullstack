@@ -1,7 +1,8 @@
 package com.example.PrisonManagement.Controller;
-import com.example.PrisonManagement.Entity.Infirmary;
-import com.example.PrisonManagement.Entity.Prisoner;
+import com.example.PrisonManagement.Model.Infirmary;
+import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Service.InfirmaryService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,45 +15,56 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/infirmary")
 @CrossOrigin(origins = "http://localhost:3000")
-// Bug
 public class InfirmaryController {
 
-    private final InfirmaryService infirmaryService;
+    private final InfirmaryService service;
     private final Logger logger = LoggerFactory.getLogger(InfirmaryController.class);
 
     @Autowired
-    public InfirmaryController(InfirmaryService infirmaryService) {
-        this.infirmaryService = infirmaryService;
+    public InfirmaryController(InfirmaryService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public ResponseEntity<List<Infirmary>> getAllInfirmaries() {
-        final List<Infirmary> infirmaries = infirmaryService.getAllInfirmaries();
-        logger.info("Получено {} больных заключенным ",infirmaries.size());
-        return ResponseEntity.ok(infirmaries);
+    public ResponseEntity<List<Infirmary>> getAll() {
+        List<Infirmary> list = service.findAll();
+        logger.info("Найдено {} записей", list.size());
+        return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/{prescriptionNum}")
+    public ResponseEntity<Infirmary> getById(@PathVariable Integer prescriptionNum) {
+        Infirmary inf = service.findById(prescriptionNum);
+        return ResponseEntity.ok(inf);
+    }
+
+    @GetMapping("/prisoner/{prisonerId}")
+    public ResponseEntity<Prisoner> getPrisoner(@PathVariable Integer prisonerId) {
+        Infirmary inf = service.findByPrisonerId(prisonerId);
+        return ResponseEntity.ok(inf.getPrisoner());
     }
 
     @PostMapping
-    public ResponseEntity<Infirmary> createInfirmary(@RequestBody Infirmary infirmary) {
-        Infirmary savedInfirmary = infirmaryService.createInfirmary(infirmary);
-        return ResponseEntity.ok(savedInfirmary);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Infirmary create(@RequestBody @Valid Infirmary infirmary) {
+        Infirmary created = service.create(infirmary);
+        logger.info("Создана запись prescriptionNum={}", created.getPrescriptionNum());
+        return created;
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Infirmary> updateInfirmary(@PathVariable Integer id, @RequestBody Infirmary infirmary) {
-        Infirmary updatedInfirmary = infirmaryService.updateInfirmary(id, infirmary);
-        return ResponseEntity.ok(updatedInfirmary);
+    @PutMapping("/{prescriptionNum}")
+    public Infirmary update(
+            @PathVariable Integer prescriptionNum,
+            @RequestBody @Valid Infirmary infirmary) {
+        Infirmary updated = service.update(prescriptionNum, infirmary);
+        logger.info("Обновлена запись prescriptionNum={}", prescriptionNum);
+        return updated;
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteInfirmary(@PathVariable Integer id) {
-        infirmaryService.deleteInfirmary(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-    }
-
-    @GetMapping("/prisoner/{id}")
-    public ResponseEntity<Prisoner> getPrisonerById(@PathVariable Integer id) {
-        Prisoner prisoner = null;
-        return ResponseEntity.ok(prisoner);
+    @DeleteMapping("/{prescriptionNum}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer prescriptionNum) {
+        service.delete(prescriptionNum);
+        logger.info("Удалена запись prescriptionNum={}", prescriptionNum);
     }
 }

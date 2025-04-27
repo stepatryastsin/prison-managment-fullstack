@@ -1,5 +1,5 @@
 package com.example.PrisonManagement.Service;
-import com.example.PrisonManagement.Entity.Visitor;
+import com.example.PrisonManagement.Model.Visitor;
 
 import java.util.List;
 import java.util.Optional;

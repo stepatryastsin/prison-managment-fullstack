@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.SecurityLevel;
+import com.example.PrisonManagement.Model.SecurityLevel;
 import com.example.PrisonManagement.Service.SecurityLevelService;
 
 import org.springframework.http.HttpStatus;

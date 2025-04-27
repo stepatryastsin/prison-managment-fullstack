@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.Job;
+import com.example.PrisonManagement.Model.Job;
 
 import java.util.List;
 import java.util.Optional;

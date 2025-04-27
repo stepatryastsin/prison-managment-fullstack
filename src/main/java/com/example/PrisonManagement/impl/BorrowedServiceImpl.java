@@ -1,9 +1,9 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.Borrowed;
-import com.example.PrisonManagement.Entity.BorrowedKey;
-import com.example.PrisonManagement.Entity.Library;
-import com.example.PrisonManagement.Entity.Prisoner;
+import com.example.PrisonManagement.Model.Borrowed;
+import com.example.PrisonManagement.Model.BorrowedKey;
+import com.example.PrisonManagement.Model.Library;
+import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Repository.BorrowedRepository;
 import com.example.PrisonManagement.Service.BorrowedService;
 import jakarta.persistence.EntityNotFoundException;
@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 

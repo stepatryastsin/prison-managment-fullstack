@@ -1,9 +1,8 @@
 package com.example.PrisonManagement.Controller;
 
 
-import com.example.PrisonManagement.Entity.Visitor;
+import com.example.PrisonManagement.Model.Visitor;
 import com.example.PrisonManagement.Service.VisitorService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

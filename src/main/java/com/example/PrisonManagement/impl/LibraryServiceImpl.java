@@ -1,76 +1,64 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.Library;
+import com.example.PrisonManagement.Model.Library;
 import com.example.PrisonManagement.Repository.LibraryRepository;
 import com.example.PrisonManagement.Service.LibraryService;
-import jakarta.persistence.EntityNotFoundException;
+
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import java.math.BigDecimal;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 
 
 @Service
+@Transactional
 public class LibraryServiceImpl implements LibraryService {
 
-    private final LibraryRepository libraryRepository;
-    private final Logger logger = LoggerFactory.getLogger(LibraryServiceImpl.class);
+    private final LibraryRepository repo;
 
     @Autowired
-    public LibraryServiceImpl(LibraryRepository libraryRepository) {
-        this.libraryRepository = libraryRepository;
+    public LibraryServiceImpl(LibraryRepository repo) {
+        this.repo = repo;
     }
 
     @Override
-    public List<Library> getAllLibrary() {
-        logger.info("Получение списка всех книг из библиотеки");
-        return libraryRepository.findAll();
+    public List<Library> findAll() {
+        return repo.findAll();
     }
 
     @Override
-    public Library getByIsbn(String isbn) {
-        logger.info("Поиск книги с ISBN {}", isbn);
-        return libraryRepository.findByIsbn(isbn)
-                .orElseThrow(() -> {
-                    logger.error("Книга с ISBN {} не найдена", isbn);
-                    return new EntityNotFoundException("Книга с ISBN " + isbn + " не найдена");
-                });
+    public Library findByIsbn(String isbn) {
+        return repo.findByIsbn(isbn)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Книга с ISBN " + isbn + " не найдена"));
     }
 
     @Override
-    public Library createLibrary(Library library) {
-        logger.info("Создание новой книги: {}", library);
-        return libraryRepository.save(library);
-    }
-
-    @Override
-    @Transactional
-    public Library updateLibrary(String isbn, Library updatedLibrary) {
-        logger.info("Обновление книги с ISBN {}", isbn);
-        Library existing = libraryRepository.findByIsbn(isbn)
-                .orElseThrow(() -> {
-                    logger.error("Книга с ISBN {} не найдена для обновления", isbn);
-                    return new EntityNotFoundException("Книга с ISBN " + isbn + " не найдена");
-                });
-        existing.setBookName(updatedLibrary.getBookName());
-        existing.setGenre(updatedLibrary.getGenre());
-        Library saved = libraryRepository.save(existing);
-        logger.info("Книга с ISBN {} успешно обновлена", isbn);
-        return saved;
-    }
-
-    @Override
-    @Transactional
-    public void deleteLibrary(String isbn) {
-        logger.info("Удаление книги с ISBN {}", isbn);
-        if (!libraryRepository.existsByIsbn(isbn)) {
-            logger.error("Книга с ISBN {} не найдена для удаления", isbn);
-            throw new EntityNotFoundException("Книга с ISBN " + isbn + " не найдена");
+    public Library create(Library library) {
+        if (repo.existsByIsbn(library.getIsbn())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Книга с таким ISBN уже существует");
         }
-        libraryRepository.deleteByIsbn(isbn);
-        logger.info("Книга с ISBN {} успешно удалена", isbn);
+        return repo.save(library);
+    }
+
+    @Override
+    public Library update(String isbn, Library library) {
+        Library existing = findByIsbn(isbn);
+        existing.setBookName(library.getBookName());
+        existing.setGenre(library.getGenre());
+        return repo.save(existing);
+    }
+
+    @Override
+    public void delete(String isbn) {
+        if (!repo.existsByIsbn(isbn)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Книга с ISBN " + isbn + " не найдена");
+        }
+        repo.deleteByIsbn(isbn);
     }
 }

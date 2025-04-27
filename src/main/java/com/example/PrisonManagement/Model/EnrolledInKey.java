@@ -1,4 +1,4 @@
-package com.example.PrisonManagement.Entity;
+package com.example.PrisonManagement.Model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -6,9 +6,10 @@ import jakarta.validation.constraints.NotNull;
 
 import java.io.Serializable;
 
-@Embeddable
 
-public class OwnCertificateFromKey implements Serializable {
+@Embeddable
+// ready
+public class EnrolledInKey implements Serializable {
 
     @NotNull(message = "Prisoner ID is required")
     @Column(name = "prisoner_id", nullable = false)
@@ -18,12 +19,12 @@ public class OwnCertificateFromKey implements Serializable {
     @Column(name = "course_id", nullable = false)
     private Integer courseId;
 
-    public OwnCertificateFromKey(Integer prisonerId, Integer courseId) {
+    public EnrolledInKey(Integer prisonerId, Integer courseId) {
         this.prisonerId = prisonerId;
         this.courseId = courseId;
     }
 
-    public OwnCertificateFromKey() {
+    public EnrolledInKey() {
     }
 
     public Integer getPrisonerId() {
@@ -45,9 +46,10 @@ public class OwnCertificateFromKey implements Serializable {
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof OwnCertificateFromKey that)) return false;
+        if (!(o instanceof EnrolledInKey that)) return false;
 
-        return getPrisonerId().equals(that.getPrisonerId()) && getCourseId().equals(that.getCourseId());
+        return getPrisonerId().equals(that.getPrisonerId()) &&
+               getCourseId().equals(that.getCourseId());
     }
 
     @Override
@@ -59,7 +61,7 @@ public class OwnCertificateFromKey implements Serializable {
 
     @Override
     public String toString() {
-        return "OwnCertificateFromKey{" +
+        return "EnrolledInKey{" +
                 "prisonerId=" + prisonerId +
                 ", courseId=" + courseId +
                 '}';

@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.EnrolledIn;
-import com.example.PrisonManagement.Entity.OwnCertificateFrom;
+import com.example.PrisonManagement.Model.EnrolledIn;
+import com.example.PrisonManagement.Model.OwnCertificateFrom;
 import java.util.List;
 
 public interface EnrollmentCertificateServiceInterface {

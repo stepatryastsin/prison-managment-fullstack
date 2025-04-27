@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.Library;
+import com.example.PrisonManagement.Model.Library;
 import com.example.PrisonManagement.Service.BorrowedService;
 import com.example.PrisonManagement.Service.LibraryService;
 import jakarta.validation.Valid;
@@ -11,7 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -30,43 +29,44 @@ public class LibraryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Library>> getAllLibraries() {
-        List<Library> libraries = libraryService.getAllLibrary();
-        logger.info("Получено {} записей библиотеки", libraries.size());
-        return ResponseEntity.ok(libraries);
+    public List<Library> getAll() {
+        List<Library> all = libraryService.findAll();
+        logger.info("Получено {} книг", all.size());
+        return all;
     }
 
     @GetMapping("/{isbn}")
-    public ResponseEntity<Library> getLibraryByIsbn(@PathVariable String isbn) {
-        Library library = libraryService.getByIsbn(isbn);
-        logger.info("Найдена книга с ISBN {}", isbn);
-        return ResponseEntity.ok(library);
+    public Library getByIsbn(@PathVariable String isbn) {
+        Library lib = libraryService.findByIsbn(isbn);
+        logger.info("Найдена книга ISBN={}", isbn);
+        return lib;
     }
 
     @PostMapping
-    public ResponseEntity<Library> createLibrary(@RequestBody @Valid Library library) {
-        Library createdLibrary = libraryService.createLibrary(library);
-        logger.info("Создана новая книга с ISBN {}", createdLibrary.getIsbn());
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdLibrary);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Library create(@RequestBody @Valid Library library) {
+        Library created = libraryService.create(library);
+        logger.info("Создана книга ISBN={}", created.getIsbn());
+        return created;
     }
 
     @PutMapping("/{isbn}")
-    public ResponseEntity<Library> updateLibrary(
+    public Library update(
             @PathVariable String isbn,
             @RequestBody @Valid Library library) {
-        Library updatedLibrary = libraryService.updateLibrary(isbn, library);
-        logger.info("Книга с ISBN {} успешно обновлена", isbn);
-        return ResponseEntity.ok(updatedLibrary);
+        Library updated = libraryService.update(isbn, library);
+        logger.info("Обновлена книга ISBN={}", isbn);
+        return updated;
     }
 
     @DeleteMapping("/{isbn}")
-    public ResponseEntity<Void> deleteLibrary(@PathVariable String isbn) {
+    public ResponseEntity<Void> delete(@PathVariable String isbn) {
         if (borrowedService.existsByIsbn(isbn)) {
-            logger.warn("Невозможно удалить книгу с ISBN {}: книга заимствована", isbn);
+            logger.warn("Нельзя удалить ISBN={} — книга заимствована", isbn);
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
-        libraryService.deleteLibrary(isbn);
-        logger.info("Книга с ISBN {} успешно удалена", isbn);
+        libraryService.delete(isbn);
+        logger.info("Удалена книга ISBN={}", isbn);
         return ResponseEntity.noContent().build();
     }
 }

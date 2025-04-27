@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.Visitor;
+import com.example.PrisonManagement.Model.Visitor;
 import com.example.PrisonManagement.Repository.VisitorRepository;
 import com.example.PrisonManagement.Service.VisitorService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.Job;
+import com.example.PrisonManagement.Model.Job;
 import com.example.PrisonManagement.Repository.JobRepository;
 import com.example.PrisonManagement.Repository.StaffRepository;
 import com.example.PrisonManagement.Service.JobService;

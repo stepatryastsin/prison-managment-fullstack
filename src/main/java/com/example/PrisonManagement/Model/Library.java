@@ -1,4 +1,4 @@
-package com.example.PrisonManagement.Entity;
+package com.example.PrisonManagement.Model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -15,32 +15,32 @@ public class Library {
     private Long internalId;
 
     @NaturalId
-    @NotBlank(message = "ISBN is required")
-    @Pattern(regexp = "^(?:97[89])?\\d{9}[\\dX]$", message = "Invalid ISBN format")
+    @NotBlank(message = "Это поле не может быть пустым : ISBN")
+    @Pattern(
+            regexp = "^(?:97[89])?\\d{9}[\\dX]$",
+            message = "Неверный формат ISBN: допустимы только ISBN-10 или ISBN-13"
+    )
     @Column(name = "ISBN", length = 13, nullable = false, unique = true)
     private String isbn;
 
-    @NotBlank(message = "Book name is required")
-    @Size(max = 30, message = "Book name must be up to 30 characters")
+    @NotBlank(message = "Нужно название книги")
+    @Size(max = 30, message = "Длинна книги не может привышать 30 символов")
     @Column(name = "book_name", length = 30, nullable = false)
     private String bookName;
 
-    @NotBlank(message = "Genre is required")
-    @Size(max = 15, message = "Genre must be up to 15 characters")
+    @NotBlank(message = "Нужен жанр книги")
+    @Size(max = 15, message = "Жанр не может привышать 15 символов")
     @Column(name = "genre", length = 15, nullable = false)
     private String genre;
 
-    // 1. Пустой конструктор для JPA
     public Library() {}
 
-    // 2. Конструктор без internalId (он генерируется БД)
     public Library(String isbn, String bookName, String genre) {
         this.isbn = isbn;
         this.bookName = bookName;
         this.genre = genre;
     }
 
-    // 3. Геттеры/сеттеры
     public Long getInternalId() { return internalId; }
     public String getIsbn()        { return isbn;       }
     public void setIsbn(String isbn)               { this.isbn = isbn; }

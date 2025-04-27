@@ -1,4 +1,4 @@
-package com.example.PrisonManagement.Entity;
+package com.example.PrisonManagement.Model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -13,9 +13,7 @@ public class SecurityLevel {
     @Column(name = "security_level_no")
     private Integer securityLevelNo;
 
-    @Column(name = "description", length = 10, nullable = false)
-    @NotBlank(message = "Description cannot be blank")
-    @NotNull(message = "Description cannot be null")
+    @Column(name = "description", length = 10)
     private String description;
 
     public SecurityLevel(Integer securityLevelNo,

@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.EnrolledIn;
-import com.example.PrisonManagement.Entity.OwnCertificateFrom;
+import com.example.PrisonManagement.Model.EnrolledIn;
+import com.example.PrisonManagement.Model.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.EnrollmentCertificateServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.OwnCertificateFrom;
+import com.example.PrisonManagement.Model.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.OwnCertificateFromService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.*;
+import com.example.PrisonManagement.Model.*;
 import com.example.PrisonManagement.Repository.EnrolledInRepository;
 import com.example.PrisonManagement.Repository.OwnCertificateFromRepository;
 import com.example.PrisonManagement.Repository.PrisonerRepository;

@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.OwnCertificateFrom;
+import com.example.PrisonManagement.Model.OwnCertificateFrom;
 import java.util.List;
 
 

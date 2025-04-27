@@ -1,4 +1,4 @@
-package com.example.PrisonManagement.Entity;
+package com.example.PrisonManagement.Model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -16,18 +16,18 @@ public class Infirmary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer prescriptionNum;
 
-    @NotNull(message = "Prisoner is required")
+    @NotNull(message = "Необходим заключенный")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
     @Column(name = "related_doctor", length = 40, nullable = false)
-    @NotBlank(message = "Related doctor is required")
-    @Size(max = 40, message = "Doctor name must be up to 40 characters")
+    @NotBlank(message = "Необходим лечащий врач")
+    @Size(max = 40, message = "Имя доктора не должно превышать 40 символов")
     private String relatedDoctor;
 
     @Column(name = "drug_name", length = 50)
-    @Size(max = 50, message = "Drug name must be up to 50 characters")
+    @Size(max = 50, message = "Название препарата не должно превышать 50 символов")
     private String drugName;
 
     @Column(name = "drug_usage_day")
@@ -38,7 +38,12 @@ public class Infirmary {
     @Size(max = 20, message = "Disease type must be up to 20 characters")
     private String diseaseType;
 
-    public Infirmary(Integer prescriptionNum, Prisoner prisoner, String relatedDoctor, String drugName, Integer drugUsageDay, String diseaseType) {
+    public Infirmary(Integer prescriptionNum,
+                     Prisoner prisoner,
+                     String relatedDoctor,
+                     String drugName,
+                     Integer drugUsageDay,
+                     String diseaseType) {
         this.prescriptionNum = prescriptionNum;
         this.prisoner = prisoner;
         this.relatedDoctor = relatedDoctor;

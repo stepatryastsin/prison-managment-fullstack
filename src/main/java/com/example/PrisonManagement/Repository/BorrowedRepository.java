@@ -1,15 +1,14 @@
 package com.example.PrisonManagement.Repository;
 
-import com.example.PrisonManagement.Entity.Borrowed;
-import com.example.PrisonManagement.Entity.BorrowedKey;
-import com.example.PrisonManagement.Entity.Library;
-import com.example.PrisonManagement.Entity.Prisoner;
+import com.example.PrisonManagement.Model.Borrowed;
+import com.example.PrisonManagement.Model.BorrowedKey;
+import com.example.PrisonManagement.Model.Library;
+import com.example.PrisonManagement.Model.Prisoner;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface BorrowedRepository extends

@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.impl;
 
 
-import com.example.PrisonManagement.Entity.Cell;
+import com.example.PrisonManagement.Model.Cell;
 import com.example.PrisonManagement.Repository.CellRepository;
 import com.example.PrisonManagement.Repository.PrisonerRepository;
 import com.example.PrisonManagement.Service.CellService;

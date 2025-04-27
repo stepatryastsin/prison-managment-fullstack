@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.SecurityLevel;
+import com.example.PrisonManagement.Model.SecurityLevel;
 
 import java.util.List;
 import java.util.Optional;

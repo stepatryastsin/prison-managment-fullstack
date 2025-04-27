@@ -1,8 +1,6 @@
-package com.example.PrisonManagement.Entity;
+package com.example.PrisonManagement.Model;
 
 import jakarta.persistence.*;
-
-import java.util.Objects;
 
 
 @Entity

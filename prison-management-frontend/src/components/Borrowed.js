@@ -34,12 +34,10 @@ const BorrowedFrontend = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Состояния для диалога создания/редактирования записи
   const [integratedDialogOpen, setIntegratedDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentRecord, setCurrentRecord] = useState({ id: { prisonerId: '', isbn: '' } });
 
-  // Списки для выбора заключённого и книги
   const [prisonersList, setPrisonersList] = useState([]);
   const [booksList, setBooksList] = useState([]);
   const [loadingPrisoners, setLoadingPrisoners] = useState(false);
@@ -47,7 +45,6 @@ const BorrowedFrontend = () => {
   const [errorPrisoners, setErrorPrisoners] = useState(null);
   const [errorBooks, setErrorBooks] = useState(null);
 
-  // Диалоги для детальной информации
   const [openPrisonerDetailDialog, setOpenPrisonerDetailDialog] = useState(false);
   const [prisonerDetail, setPrisonerDetail] = useState(null);
   const [openBookDetailDialog, setOpenBookDetailDialog] = useState(false);
@@ -55,7 +52,6 @@ const BorrowedFrontend = () => {
 
   const navigate = useNavigate();
 
-  // Загрузка записей Borrowed
   const fetchBorrowed = () => {
     fetch(API_URL)
       .then((res) => {
@@ -78,7 +74,6 @@ const BorrowedFrontend = () => {
     fetchBorrowed();
   }, []);
 
-  // Функция удаления записи Borrowed
   const handleDelete = (record) => {
     fetch(`${API_URL}/${record.id.prisonerId}/${record.id.isbn}`, {
       method: 'DELETE',
@@ -89,7 +84,6 @@ const BorrowedFrontend = () => {
     });
   };
 
-  // Подготовка данных для создания/редактирования
   const handleOpenIntegratedDialogForCreate = () => {
     setIsEditing(false);
     setCurrentRecord({ id: { prisonerId: '', isbn: '' } });
@@ -102,7 +96,6 @@ const BorrowedFrontend = () => {
     openIntegratedDialog();
   };
 
-  // Загрузка списков заключённых и книг для диалога
   const openIntegratedDialog = () => {
     // Загрузка заключённых
     setLoadingPrisoners(true);
@@ -122,7 +115,6 @@ const BorrowedFrontend = () => {
         setLoadingPrisoners(false);
       });
 
-    // Загрузка книг
     setLoadingBooks(true);
     fetch(BOOKS_URL)
       .then((res) => {
@@ -145,7 +137,6 @@ const BorrowedFrontend = () => {
 
   const handleCloseIntegratedDialog = () => setIntegratedDialogOpen(false);
 
-  // Выбор заключённого/книги
   const handleSelectPrisoner = (prisoner) => {
     setCurrentRecord((prev) => ({
       ...prev,
@@ -160,7 +151,6 @@ const BorrowedFrontend = () => {
     }));
   };
 
-  // Переход к созданию нового заключённого или книги
   const handleCreatePrisoner = () => {
     setIntegratedDialogOpen(false);
     navigate('/prisoners');
@@ -170,7 +160,6 @@ const BorrowedFrontend = () => {
     navigate('/library');
   };
 
-  // Отправка данных на сервер
   const handleConfirmSelection = () => {
     const payload = {
       id: {
@@ -206,7 +195,6 @@ const BorrowedFrontend = () => {
     }
   };
 
-  // Просмотр деталей заключённого
   const handleShowPrisonerDetails = (prisonerId) => {
     fetch(`${PRISONERS_URL}/${prisonerId}`)
       .then((res) => res.json())
@@ -220,7 +208,6 @@ const BorrowedFrontend = () => {
     setPrisonerDetail(null);
   };
 
-  // Просмотр деталей книги
   const handleShowBookDetails = (isbn) => {
     fetch(`${BOOKS_URL}/${isbn}`)
       .then((res) => res.json())
@@ -234,7 +221,6 @@ const BorrowedFrontend = () => {
     setBookDetail(null);
   };
 
-  // Группировка записей по ID заключённого
   const groupedBorrowed = borrowedList.reduce((acc, record) => {
     const prisonerId = record.prisoner?.prisonerId || record.id?.prisonerId;
     if (prisonerId) {
@@ -324,7 +310,6 @@ const BorrowedFrontend = () => {
         ))
       )}
 
-      {/* Диалог создания/редактирования записи */}
       <Dialog
         open={integratedDialogOpen}
         onClose={handleCloseIntegratedDialog}
@@ -418,7 +403,6 @@ const BorrowedFrontend = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Диалог подробностей заключённого */}
       <Dialog open={openPrisonerDetailDialog} onClose={handleClosePrisonerDetailDialog}>
         <DialogTitle>Детальная информация о заключённом</DialogTitle>
         <DialogContent>
@@ -427,7 +411,6 @@ const BorrowedFrontend = () => {
               <Typography>ID: {prisonerDetail.prisonerId}</Typography>
               <Typography>Имя: {prisonerDetail.firstName}</Typography>
               <Typography>Фамилия: {prisonerDetail.lastName}</Typography>
-              {/* Добавьте другие поля при необходимости */}
             </Box>
           ) : (
             <Typography>Загрузка...</Typography>
@@ -438,7 +421,6 @@ const BorrowedFrontend = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Диалог подробностей книги */}
       <Dialog open={openBookDetailDialog} onClose={handleCloseBookDetailDialog}>
         <DialogTitle>Детальная информация о книге</DialogTitle>
         <DialogContent>

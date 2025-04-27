@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.VisitedBy;
-import com.example.PrisonManagement.Entity.VisitedByKey;
+import com.example.PrisonManagement.Model.VisitedBy;
+import com.example.PrisonManagement.Model.VisitedByKey;
 
 
 import java.util.List;

@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.ProgramsAndCourses;
+import com.example.PrisonManagement.Model.ProgramsAndCourses;
 import com.example.PrisonManagement.Service.ProgramsAndCoursesService;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;

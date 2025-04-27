@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.SecurityLevel;
+import com.example.PrisonManagement.Model.SecurityLevel;
 import com.example.PrisonManagement.Repository.SecurityLevelRepository;
 import com.example.PrisonManagement.Service.SecurityLevelService;
 import jakarta.persistence.EntityNotFoundException;

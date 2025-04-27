@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableRow, 
-  Typography, 
-  TextField, 
-  Button, 
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+  TextField,
+  Button,
   Stack,
   Box
 } from '@mui/material';
@@ -19,9 +19,12 @@ function Cells() {
   const [cells, setCells] = useState([]);
   const [editingCellId, setEditingCellId] = useState(null);
   const [editingDate, setEditingDate] = useState('');
+  const [editErrors, setEditErrors] = useState({});
+
   const [searchTerm, setSearchTerm] = useState('');
   const [newCellNum, setNewCellNum] = useState('');
   const [newLastShakedownDate, setNewLastShakedownDate] = useState('');
+  const [createErrors, setCreateErrors] = useState({});
 
   useEffect(() => {
     fetchCells();
@@ -44,18 +47,17 @@ function Cells() {
     setEditingCellId(cell.cellNum);
     const dateStr = cell.lastShakedownDate ? cell.lastShakedownDate.split('T')[0] : '';
     setEditingDate(dateStr);
+    setEditErrors({});
   };
 
   const handleCancel = () => {
     setEditingCellId(null);
     setEditingDate('');
+    setEditErrors({});
   };
 
   const handleSave = async (cellNum) => {
-    const updatedCell = {
-      cellNum, 
-      lastShakedownDate: editingDate
-    };
+    const updatedCell = { cellNum, lastShakedownDate: editingDate };
 
     try {
       const response = await fetch(`${API_URL}/${cellNum}`, {
@@ -63,9 +65,22 @@ function Cells() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedCell),
       });
+
       if (!response.ok) {
-        throw new Error('Ошибка обновления данных');
+        const problem = await response.json();
+        // Если сервер вернул простое сообщение — показываем alert
+        if (problem.message) {
+          alert(problem.message);
+        }
+        // Если вернул разбивку по полям — отображаем её рядом с инпутом
+        if (problem.errors) {
+          setEditErrors(problem.errors);
+        }
+        return;
       }
+
+      // Успешно обновлено — сбрасываем ошибки и перезагружаем список
+      setEditErrors({});
       await fetchCells();
       setEditingCellId(null);
       setEditingDate('');
@@ -76,7 +91,7 @@ function Cells() {
 
   const handleCreate = async () => {
     if (!newCellNum) {
-      alert("Введите номер камеры");
+      alert('Введите номер камеры');
       return;
     }
     const newCell = {
@@ -90,9 +105,14 @@ function Cells() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCell),
       });
+
       if (!response.ok) {
-        throw new Error('Ошибка создания камеры');
+        const problem = await response.json();
+        setCreateErrors(problem.errors || {});
+        return;
       }
+
+      setCreateErrors({});
       await fetchCells();
       setNewCellNum('');
       setNewLastShakedownDate('');
@@ -108,7 +128,6 @@ function Cells() {
           method: 'DELETE'
         });
         if (response.status === 409) {
-          // Если камера занята заключённым, выводим уведомление
           alert('Невозможно удалить камеру, так как в ней находится заключённый.');
           return;
         }
@@ -132,6 +151,7 @@ function Cells() {
         Управление камерами
       </Typography>
 
+      {/* Форма создания */}
       <Box sx={{ mb: 3, p: 2, border: '1px solid #ccc', borderRadius: 2, backgroundColor: '#fafafa' }}>
         <Typography variant="h6" gutterBottom>
           Создать новую камеру
@@ -139,9 +159,11 @@ function Cells() {
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <TextField
             label="Номер камеры"
+            type="number"
             value={newCellNum}
             onChange={(e) => setNewCellNum(e.target.value)}
-            type="number"
+            error={!!createErrors.cellNum}
+            helperText={createErrors.cellNum}
             sx={{ flex: 1 }}
           />
           <TextField
@@ -150,6 +172,8 @@ function Cells() {
             InputLabelProps={{ shrink: true }}
             value={newLastShakedownDate}
             onChange={(e) => setNewLastShakedownDate(e.target.value)}
+            error={!!createErrors.lastShakedownDate}
+            helperText={createErrors.lastShakedownDate}
             sx={{ flex: 1 }}
           />
           <Button variant="contained" color="primary" onClick={handleCreate} sx={{ whiteSpace: 'nowrap' }}>
@@ -173,7 +197,6 @@ function Cells() {
           <TableRow>
             <TableCell><strong>Номер камеры</strong></TableCell>
             <TableCell><strong>Дата последней проверки</strong></TableCell>
-            <TableCell><strong>ID заключённого</strong></TableCell>
             <TableCell align="center"><strong>Действия</strong></TableCell>
           </TableRow>
         </TableHead>
@@ -184,53 +207,34 @@ function Cells() {
               <TableCell>
                 {editingCellId === cell.cellNum ? (
                   <TextField
+                    type="date"
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
                     value={editingDate}
                     onChange={(e) => setEditingDate(e.target.value)}
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
+                    error={!!editErrors.lastShakedownDate}
+                    helperText={editErrors.lastShakedownDate}
                   />
                 ) : (
                   cell.lastShakedownDate ? cell.lastShakedownDate.split('T')[0] : ''
                 )}
               </TableCell>
-              <TableCell>
-                { cell.prisoners && cell.prisoners.length > 0 
-                  ? cell.prisoners.map(p => p.id).join(', ') 
-                  : '-' 
-                }
-              </TableCell>
               <TableCell align="center">
                 {editingCellId === cell.cellNum ? (
                   <Stack direction="row" spacing={1} justifyContent="center">
-                    <Button 
-                      variant="contained" 
-                      color="primary"
-                      onClick={() => handleSave(cell.cellNum)}
-                    >
+                    <Button variant="contained" color="primary" onClick={() => handleSave(cell.cellNum)}>
                       Сохранить
                     </Button>
-                    <Button 
-                      variant="outlined" 
-                      color="secondary"
-                      onClick={handleCancel}
-                    >
+                    <Button variant="outlined" color="secondary" onClick={handleCancel}>
                       Отмена
                     </Button>
                   </Stack>
                 ) : (
                   <Stack direction="row" spacing={1} justifyContent="center">
-                    <Button 
-                      variant="outlined" 
-                      onClick={() => handleEdit(cell)}
-                    >
+                    <Button variant="outlined" onClick={() => handleEdit(cell)}>
                       Редактировать
                     </Button>
-                    <Button 
-                      variant="outlined" 
-                      color="error"
-                      onClick={() => handleDelete(cell.cellNum)}
-                    >
+                    <Button variant="outlined" color="error" onClick={() => handleDelete(cell.cellNum)}>
                       Удалить
                     </Button>
                   </Stack>

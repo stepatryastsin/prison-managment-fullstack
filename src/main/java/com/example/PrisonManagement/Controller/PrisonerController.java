@@ -1,59 +1,63 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.Prisoner;
+import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Service.PrisonerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/prisoners")
 @CrossOrigin(origins = "http://localhost:3000")
-
 public class PrisonerController {
 
-    private final PrisonerService prisonerService;
+    private final PrisonerService service;
     private final Logger logger = LoggerFactory.getLogger(PrisonerController.class);
 
-    public PrisonerController(PrisonerService prisonerService) {
-        this.prisonerService = prisonerService;
+    @Autowired
+    public PrisonerController(PrisonerService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public ResponseEntity<List<Prisoner>> getAllPrisoners() {
-        List<Prisoner> prisoners = prisonerService.getAllPrisoners();
-        logger.info("Получено {} заключённых", prisoners.size());
-        return ResponseEntity.ok(prisoners);
+    public ResponseEntity<List<Prisoner>> getAll() {
+        List<Prisoner> list = service.getAll();
+        logger.info("Найдено {} заключённых", list.size());
+        return ResponseEntity.ok(list);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Prisoner> getPrisonerById(@PathVariable Integer id) {
-        Prisoner prisoner = prisonerService.findById(id);
-        logger.info("Найден заключённый с id {}", id);
-        return ResponseEntity.ok(prisoner);
+    @GetMapping("/{prisonerId}")
+    public ResponseEntity<Prisoner> getById(@PathVariable Integer prisonerId) {
+        Prisoner p = service.findById(prisonerId);
+        return ResponseEntity.ok(p);
     }
 
     @PostMapping
-    public ResponseEntity<Prisoner> createPrisoner(@RequestBody Prisoner prisoner) {
-        Prisoner created = prisonerService.createPrisoner(prisoner);
-        logger.info("Создан новый заключённый с id {}", created.getPrisonerId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Prisoner create(@RequestBody @Validated Prisoner prisoner) {
+        Prisoner created = service.create(prisoner);
+        logger.info("Создан заключённый prisonerId={}", created.getPrisonerId());
+        return created;
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Prisoner> updatePrisoner(@PathVariable Integer id, @RequestBody Prisoner prisoner) {
-        Prisoner updated = prisonerService.updatePrisoner(id, prisoner);
-        logger.info("Обновлён заключённый с id {}", id);
-        return ResponseEntity.ok(updated);
+    @PutMapping("/{prisonerId}")
+    public Prisoner update(
+            @PathVariable Integer prisonerId,
+            @RequestBody @Validated Prisoner prisoner) {
+        Prisoner updated = service.update(prisonerId, prisoner);
+        logger.info("Обновлён заключённый prisonerId={}", prisonerId);
+        return updated;
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePrisoner(@PathVariable Integer id) {
-        prisonerService.deletePrisoner(id);
-        logger.info("Удалён заключённый с id {}", id);
-        return ResponseEntity.noContent().build();
+    @DeleteMapping("/{prisonerId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer prisonerId) {
+        service.delete(prisonerId);
+        logger.info("Удалён заключённый prisonerId={}", prisonerId);
     }
 }

@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.PropertiesInCells;
-import com.example.PrisonManagement.Entity.PropertiesInCellsKey;
+import com.example.PrisonManagement.Model.PropertiesInCells;
+import com.example.PrisonManagement.Model.PropertiesInCellsKey;
 
 import java.util.List;
 

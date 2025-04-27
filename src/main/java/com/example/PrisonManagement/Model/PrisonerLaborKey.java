@@ -1,4 +1,4 @@
-package com.example.PrisonManagement.Entity;
+package com.example.PrisonManagement.Model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -8,23 +8,22 @@ import java.io.Serializable;
 
 
 @Embeddable
-// ready
-public class EnrolledInKey implements Serializable {
+public class PrisonerLaborKey implements Serializable {
 
     @NotNull(message = "Prisoner ID is required")
     @Column(name = "prisoner_id", nullable = false)
     private Integer prisonerId;
 
-    @NotNull(message = "Course ID is required")
-    @Column(name = "course_id", nullable = false)
-    private Integer courseId;
+    @NotNull(message = "Staff ID is required")
+    @Column(name = "staff_id", nullable = false)
+    private Integer staffId;
 
-    public EnrolledInKey(Integer prisonerId, Integer courseId) {
+    public PrisonerLaborKey(Integer prisonerId, Integer staffId) {
         this.prisonerId = prisonerId;
-        this.courseId = courseId;
+        this.staffId = staffId;
     }
 
-    public EnrolledInKey() {
+    public PrisonerLaborKey() {
     }
 
     public Integer getPrisonerId() {
@@ -35,35 +34,35 @@ public class EnrolledInKey implements Serializable {
         this.prisonerId = prisonerId;
     }
 
-    public Integer getCourseId() {
-        return courseId;
+    public Integer getStaffId() {
+        return staffId;
     }
 
-    public void setCourseId(Integer courseId) {
-        this.courseId = courseId;
+    public void setStaffId(Integer staffId) {
+        this.staffId = staffId;
     }
 
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof EnrolledInKey that)) return false;
+        if (!(o instanceof PrisonerLaborKey that)) return false;
 
         return getPrisonerId().equals(that.getPrisonerId()) &&
-               getCourseId().equals(that.getCourseId());
+                getStaffId().equals(that.getStaffId());
     }
 
     @Override
     public int hashCode() {
         int result = getPrisonerId().hashCode();
-        result = 31 * result + getCourseId().hashCode();
+        result = 31 * result + getStaffId().hashCode();
         return result;
     }
 
     @Override
     public String toString() {
-        return "EnrolledInKey{" +
+        return "PrisonerLaborKey{" +
                 "prisonerId=" + prisonerId +
-                ", courseId=" + courseId +
+                ", staffId=" + staffId +
                 '}';
     }
 }

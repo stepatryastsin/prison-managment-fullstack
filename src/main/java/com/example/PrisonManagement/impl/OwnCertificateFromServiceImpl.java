@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.OwnCertificateFrom;
-import com.example.PrisonManagement.Entity.OwnCertificateFromKey;
+import com.example.PrisonManagement.Model.OwnCertificateFrom;
+import com.example.PrisonManagement.Model.OwnCertificateFromKey;
 import com.example.PrisonManagement.Repository.OwnCertificateFromRepository;
 import com.example.PrisonManagement.Service.OwnCertificateFromService;
 import jakarta.persistence.EntityNotFoundException;

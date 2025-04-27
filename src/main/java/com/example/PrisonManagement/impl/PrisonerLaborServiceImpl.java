@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.PrisonerLabor;
-import com.example.PrisonManagement.Entity.PrisonerLaborKey;
+import com.example.PrisonManagement.Model.PrisonerLabor;
+import com.example.PrisonManagement.Model.PrisonerLaborKey;
 import com.example.PrisonManagement.Repository.PrisonerLaborRepository;
 import com.example.PrisonManagement.Service.PrisonerLaborService;
 import jakarta.persistence.EntityNotFoundException;

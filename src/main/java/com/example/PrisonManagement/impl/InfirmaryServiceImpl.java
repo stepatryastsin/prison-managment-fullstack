@@ -1,95 +1,75 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.Infirmary;
-import com.example.PrisonManagement.Entity.Prisoner;
+import com.example.PrisonManagement.Model.Infirmary;
 import com.example.PrisonManagement.Repository.InfirmaryRepository;
-import com.example.PrisonManagement.Repository.PrisonerRepository;
 import com.example.PrisonManagement.Service.InfirmaryService;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
-import java.util.Optional;
-
 
 @Service
+@Transactional
 public class InfirmaryServiceImpl implements InfirmaryService {
 
-    private final Logger logger = LoggerFactory.getLogger(InfirmaryServiceImpl.class);
-
-    private final InfirmaryRepository infirmaryRepository;
-    private final PrisonerRepository prisonerRepository;
+    private final InfirmaryRepository repo;
 
     @Autowired
-    public InfirmaryServiceImpl(InfirmaryRepository infirmaryRepository, PrisonerRepository prisonerRepository) {
-        this.infirmaryRepository = infirmaryRepository;
-        this.prisonerRepository = prisonerRepository;
+    public InfirmaryServiceImpl(InfirmaryRepository repo) {
+        this.repo = repo;
     }
 
     @Override
-    public List<Infirmary> getAllInfirmaries() {
-        logger.info("Получение списка всех записей с лазарета");
-        return infirmaryRepository.findAll();
+    public List<Infirmary> findAll() {
+        return repo.findAll();
     }
 
     @Override
-    public Optional<Infirmary> getPrisonerFromInfirmaryById(Integer id) {
-        logger.info("Получение камеры с id {}", id);
-        return infirmaryRepository.findById(id)
-                .map(cell -> {
-                    logger.info("Найдено: {}", cell);
-                    return cell;
-                });
+    public Infirmary findById(Integer prescriptionNum) {
+        return repo.findById(prescriptionNum)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Запись с prescriptionNum=" + prescriptionNum + " не найдена"));
     }
 
     @Override
-    @Transactional
-    public Infirmary createInfirmary(Infirmary infirmaryDetails) {
-        logger.info("Создание новой записи infirmary для заключенного с id {}", infirmaryDetails.getPrisoner().getPrisonerId());
-        Prisoner prisoner = prisonerRepository.findById(infirmaryDetails.getPrisoner().getPrisonerId())
-                .orElseThrow(() -> new EntityNotFoundException("Заключенный не найден с id: "
-                        + infirmaryDetails.getPrisoner().getPrisonerId()));
-        infirmaryDetails.setPrisoner(prisoner);
-        Infirmary savedInfirmary = infirmaryRepository.save(infirmaryDetails);
-        logger.info("Запись infirmary успешно создана с id {}", savedInfirmary.getPrescriptionNum());
-        return savedInfirmary;
+    public Infirmary findByPrisonerId(Integer prisonerId) {
+        return repo.findByPrisoner_PrisonerId(prisonerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Запись для prisonerId=" + prisonerId + " не найдена"));
     }
 
     @Override
-    @Transactional
-    public Infirmary updateInfirmary(Integer id, Infirmary updatedInfirmary) {
-        logger.info("Обновление записи infirmary с id {}", id);
-        return infirmaryRepository.findById(id)
-                .map(existing -> {
-                    if (updatedInfirmary.getPrisoner() != null) {
-                        Prisoner prisoner = prisonerRepository.findById(updatedInfirmary.getPrisoner().getPrisonerId())
-                                .orElseThrow(() -> new EntityNotFoundException("Заключенный не найден с id: "
-                                        + updatedInfirmary.getPrisoner().getPrisonerId()));
-                        existing.setPrisoner(prisoner);
-                    }
-                    existing.setRelatedDoctor(updatedInfirmary.getRelatedDoctor());
-                    existing.setDrugName(updatedInfirmary.getDrugName());
-                    existing.setDrugUsageDay(updatedInfirmary.getDrugUsageDay());
-                    existing.setDiseaseType(updatedInfirmary.getDiseaseType());
-                    Infirmary saved = infirmaryRepository.save(existing);
-                    logger.info("Запись infirmary с id {} успешно обновлена", id);
-                    return saved;
-                })
-                .orElseThrow(() -> {
-                    logger.error("Запись infirmary не найдена с id {}", id);
-                    return new EntityNotFoundException("Запись infirmary не найдена с id: " + id);
-                });
+    public Infirmary create(Infirmary infirmary) {
+        Integer pid = infirmary.getPrisoner().getPrisonerId();
+        if (repo.existsByPrisoner_PrisonerId(pid)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "У заключённого с id=" + pid + " уже есть запись");
+        }
+        return repo.save(infirmary);
     }
 
     @Override
-    @Transactional
-    public void deleteInfirmary(Integer id) {
-        logger.info("Удаление записи infirmary с id {}", id);
+    public Infirmary update(Integer prescriptionNum, Infirmary infirmary) {
+        Infirmary existing = findById(prescriptionNum);
+        existing.setRelatedDoctor(infirmary.getRelatedDoctor());
+        existing.setDrugName(infirmary.getDrugName());
+        existing.setDrugUsageDay(infirmary.getDrugUsageDay());
+        existing.setDiseaseType(infirmary.getDiseaseType());
+        return repo.save(existing);
+    }
 
-        infirmaryRepository.deleteById(id);
-        logger.info("Запись infirmary с id {} успешно удалена", id);
+    @Override
+    public void delete(Integer prescriptionNum) {
+        if (!repo.existsById(prescriptionNum)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Запись с prescriptionNum=" + prescriptionNum + " не найдена");
+        }
+        repo.deleteById(prescriptionNum);
     }
 }

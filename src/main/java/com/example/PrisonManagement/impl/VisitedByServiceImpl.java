@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.VisitedBy;
-import com.example.PrisonManagement.Entity.VisitedByKey;
+import com.example.PrisonManagement.Model.VisitedBy;
+import com.example.PrisonManagement.Model.VisitedByKey;
 import com.example.PrisonManagement.Repository.VisitedByRepository;
 import com.example.PrisonManagement.Service.VisitedByService;
 import org.springframework.beans.factory.annotation.Autowired;

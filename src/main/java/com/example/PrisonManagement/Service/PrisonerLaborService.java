@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.PrisonerLabor;
+import com.example.PrisonManagement.Model.PrisonerLabor;
 import java.util.List;
 
 public interface PrisonerLaborService {

@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.Job;
+import com.example.PrisonManagement.Model.Job;
 
 import com.example.PrisonManagement.Service.JobService;
 

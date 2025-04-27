@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.Cell;
+import com.example.PrisonManagement.Model.Cell;
 import com.example.PrisonManagement.Service.CellService;
 
 
@@ -43,10 +43,11 @@ public class CellController {
     }
 
     @PostMapping
-    public ResponseEntity<Cell> createCell(@RequestBody Cell cell) {
-        final Cell createCell = cellService.createCell(cell);
-        logger.info("Камера {} была зарегестрированна ",createCell);
-        return new ResponseEntity<>(createCell, HttpStatus.CREATED);
+    public ResponseEntity<Cell> createCell(
+            @Valid @RequestBody Cell cell) {
+       final Cell created = cellService.createCell(cell);
+        logger.info("Камера {} была зарегистрирована", created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")

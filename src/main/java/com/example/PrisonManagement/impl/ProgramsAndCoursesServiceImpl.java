@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Entity.ProgramsAndCourses;
+import com.example.PrisonManagement.Model.ProgramsAndCourses;
 import com.example.PrisonManagement.Repository.ProgramsAndCoursesRepository;
 import com.example.PrisonManagement.Service.ProgramsAndCoursesService;
 import jakarta.persistence.EntityNotFoundException;

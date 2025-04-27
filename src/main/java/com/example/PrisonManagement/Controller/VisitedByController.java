@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.Controller;
 
-import com.example.PrisonManagement.Entity.VisitedBy;
-import com.example.PrisonManagement.Entity.VisitedByKey;
+import com.example.PrisonManagement.Model.VisitedBy;
+import com.example.PrisonManagement.Model.VisitedByKey;
 import com.example.PrisonManagement.Service.VisitedByService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

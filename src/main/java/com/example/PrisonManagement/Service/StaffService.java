@@ -1,6 +1,6 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Entity.Staff;
+import com.example.PrisonManagement.Model.Staff;
 
 import java.math.BigDecimal;
 import java.util.List;

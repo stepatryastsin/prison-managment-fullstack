@@ -1,13 +1,12 @@
 package com.example.PrisonManagement.Service;
-import com.example.PrisonManagement.Entity.Prisoner;
+import com.example.PrisonManagement.Model.Prisoner;
 import java.util.List;
-import java.util.Optional;
 
 public interface PrisonerService {
-    List<Prisoner> getAllPrisoners();
+    List<Prisoner> getAll();
     Prisoner findById(Integer id);
-    Prisoner createPrisoner(Prisoner prisoner);
-    Prisoner updatePrisoner(Integer id, Prisoner prisoner);
-    void deletePrisoner(Integer id);
-    boolean existsPrisonerInCell(Integer cellId);
+    Prisoner create(Prisoner prisoner);
+    Prisoner update(Integer id, Prisoner prisoner);
+    void delete(Integer id);
 }
+
