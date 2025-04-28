@@ -36,8 +36,6 @@ public class EnrollmentCertificateService {
         this.courseRepo   = courseRepo;
     }
 
-    // ========== ENROLLMENTS ==========
-
     public List<EnrolledIn> findAllEnrollments() {
         return enrollRepo.findAll();
     }
@@ -51,14 +49,11 @@ public class EnrollmentCertificateService {
     }
 
     public EnrolledIn enrollPrisoner(EnrolledIn enrollmentDto) {
-        // Из JSON читаем только ключ
         EnrolledInKey key = enrollmentDto.getId();
 
-        // Ленивая загрузка proxy-объектов из PersistenceContext
         Prisoner prisoner = prisonerRepo.getReferenceById(key.getPrisonerId());
         ProgramsAndCourses course = courseRepo.getReferenceById(key.getCourseId());
 
-        // Создаём новую связь, Hibernate не будет мерджить «пустые» объекты
         EnrolledIn enrollment = new EnrolledIn(prisoner, course);
 
         if (enrollRepo.existsById(enrollment.getId())) {
@@ -78,7 +73,6 @@ public class EnrollmentCertificateService {
         }
     }
 
-    // ========== CERTIFICATES ==========
 
     public List<OwnCertificateFrom> findAllCertificates() {
         return certRepo.findAll();
@@ -109,11 +103,15 @@ public class EnrollmentCertificateService {
     }
 
     public void deleteCertificate(Integer prisonerId, Integer courseId) {
-        int deleted = certRepo.deleteByPrisonerIdAndCourseId(prisonerId, courseId);
-        if (deleted == 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Certificate (" + prisonerId + "," + courseId + ") not found");
-        }
+        OwnCertificateFromKey certKey = new OwnCertificateFromKey(prisonerId, courseId);
+        OwnCertificateFrom cert = certRepo.findById(certKey)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Certificate " + certKey + " not found"
+                ));
+        certRepo.delete(cert);
+
+        EnrolledInKey enrollKey = new EnrolledInKey(prisonerId, courseId);
+        enrollRepo.findById(enrollKey).ifPresent(enrollRepo::delete);
     }
 }

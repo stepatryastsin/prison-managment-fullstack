@@ -13,7 +13,7 @@ public class PropertiesInCells {
     private PropertiesInCellsKey id;
 
     @NotBlank(message = "Description is required")
-    @Column(name = "description", length = 50, nullable = false)
+    @Column(name = "description", length = 50)
     private String description;
 
     @ManyToOne

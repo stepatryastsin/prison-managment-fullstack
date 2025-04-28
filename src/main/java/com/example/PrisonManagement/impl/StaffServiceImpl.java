@@ -41,7 +41,6 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public Staff create(Staff staff) {
-        // cascade PERSIST/MERGE on Job will handle new or existing Job
         return repo.save(staff);
     }
 

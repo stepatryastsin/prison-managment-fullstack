@@ -31,6 +31,8 @@ public class Infirmary {
     private String drugName;
 
     @Column(name = "drug_usage_day")
+
+
     @PositiveOrZero(message = "Usage days must be zero or positive")
     private Integer drugUsageDay;
 

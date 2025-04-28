@@ -16,37 +16,37 @@ public class Prisoner {
     @Column(name = "prisoner_id")
     private Integer prisonerId;
 
-    @NotBlank(message = "First name is required")
-    @Size(max = 15, message = "First name must be ≤15 characters")
+    @NotBlank(message = "Имя обязательно")
+    @Size(max = 15, message = "Имя должно быть не более 15 символов")
     @Column(name = "first_name", nullable = false, length = 15)
     private String firstName;
 
-    @NotBlank(message = "Last name is required")
-    @Size(max = 15, message = "Last name must be ≤15 characters")
+    @NotBlank(message = "Фамилия обязательна")
+    @Size(max = 15, message = "Фамилия должна быть не более 15 символов")
     @Column(name = "last_name", nullable = false, length = 15)
     private String lastName;
 
-    @Size(max = 20, message = "Birth place must be ≤20 characters")
+    @Size(max = 20, message = "Место рождения должно быть не более 20 символов")
     @Column(name = "birth_place", length = 20)
     private String birthPlace;
 
-    @Past(message = "Date of birth must be in the past")
+    @Past(message = "Дата рождения должна быть в прошлом")
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @Size(max = 20, message = "Occupation must be ≤20 characters")
+    @Size(max = 20, message = "Профессия должна быть не более 20 символов")
     @Column(name = "occupation", length = 20)
     private String occupation;
 
-    @Size(max = 50, message = "Indictment must be ≤50 characters")
+    @Size(max = 50, message = "Обвинение должно быть не более 50 символов")
     @Column(name = "indictment", length = 50)
     private String indictment;
 
-    @PastOrPresent(message = "Intake date cannot be in the future")
+    @PastOrPresent(message = "Дата начала наказания не может быть в будущем")
     @Column(name = "intake_date", nullable = false)
     private LocalDate intakeDate;
 
-    @Future(message = "Sentence end date must be in the future")
+    @Future(message = "Дата окончания наказания должна быть в будущем")
     @Column(name = "sentence_end_date", nullable = false)
     private LocalDate sentenceEndDate;
 
@@ -56,7 +56,7 @@ public class Prisoner {
 
     @ManyToOne
     @JoinColumn(name = "security_level_id", nullable = false)
-    @NotNull(message = "Security level is required")
+    @NotNull(message = "Уровень безопасности обязателен")
     private SecurityLevel securityLevel;
 
     @Column(name = "is_released", nullable = false)

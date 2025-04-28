@@ -3,8 +3,10 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Model.ProgramsAndCourses;
 import com.example.PrisonManagement.Service.ProgramsAndCoursesService;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,11 +17,12 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/courses")
 @CrossOrigin(origins = "http://localhost:3000")
-
+//todo refactor structure
 public class ProgramsAndCoursesController {
 
     private final ProgramsAndCoursesService service;
     private final Logger logger = LoggerFactory.getLogger(ProgramsAndCoursesController.class);
+   @Autowired
     public ProgramsAndCoursesController(ProgramsAndCoursesService service) {
         this.service = service;
     }
@@ -31,55 +34,72 @@ public class ProgramsAndCoursesController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProgramsAndCourses> getCourseById(@PathVariable Integer id) {
+    public ResponseEntity<ProgramsAndCourses> getCourseById(
+            @PathVariable("id") Integer id
+    ) {
         Optional<ProgramsAndCourses> courseOpt = service.getCourseById(id);
         return courseOpt.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<ProgramsAndCourses> createCourse(@RequestBody ProgramsAndCourses course) {
+    public ResponseEntity<ProgramsAndCourses> createCourse(
+            @RequestBody @Valid ProgramsAndCourses course
+    ) {
         ProgramsAndCourses created = service.createCourse(course);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProgramsAndCourses> updateCourse(@PathVariable Integer id,
-                                                           @RequestBody ProgramsAndCourses courseDetails) {
+    public ResponseEntity<ProgramsAndCourses> updateCourse(
+            @PathVariable("id") Integer id,
+            @RequestBody @Valid ProgramsAndCourses courseDetails
+    ) {
         Optional<ProgramsAndCourses> updatedCourse = service.updateCourse(id, courseDetails);
         return updatedCourse.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}/staff")
-    public ResponseEntity<Integer> getStaffIdByCourseId(@PathVariable Integer id) {
+    public ResponseEntity<Integer> getStaffIdByCourseId(
+            @PathVariable("id") Integer id
+    ) {
         try {
             Integer staffId = service.getInstructorIdByCourseId(id);
             return ResponseEntity.ok(staffId);
         } catch (EntityNotFoundException e) {
+            logger.warn("Course not found when fetching staff ID: {}", id, e);
             return ResponseEntity.notFound().build();
         }
     }
 
     @DeleteMapping("/{id}/full")
-    public ResponseEntity<Void> removeCourse(@PathVariable Integer id) {
+    public ResponseEntity<Void> removeCourse(
+            @PathVariable("id") Integer id
+    ) {
         boolean removed = service.removeCourse(id);
-        return removed ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        return removed
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> softDeleteCourse(@PathVariable Integer id) {
+    public ResponseEntity<Void> softDeleteCourse(
+            @PathVariable("id") Integer id
+    ) {
         boolean deleted = service.softDeleteCourse(id);
-        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        return deleted
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 
     @GetMapping("/{id}/status")
-    public ResponseEntity<Boolean> getCourseStatus(@PathVariable Integer id) {
+    public ResponseEntity<Boolean> getCourseStatus(
+            @PathVariable("id") Integer id
+    ) {
         Optional<ProgramsAndCourses> courseOpt = service.getCourseById(id);
-        if (courseOpt.isPresent()) {
-            Boolean status = !courseOpt.get().getDeleted();
-            return ResponseEntity.ok(status);
-        }
-        return ResponseEntity.notFound().build();
+        return courseOpt
+                .map(c -> ResponseEntity.ok(!c.getDeleted()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

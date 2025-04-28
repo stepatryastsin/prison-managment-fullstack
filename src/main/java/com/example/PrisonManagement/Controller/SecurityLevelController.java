@@ -3,13 +3,13 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Model.SecurityLevel;
 import com.example.PrisonManagement.Service.SecurityLevelService;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/sl")
@@ -19,56 +19,51 @@ public class SecurityLevelController {
 
     private final SecurityLevelService securityLevelService;
     private final Logger logger = LoggerFactory.getLogger(SecurityLevelController.class);
+
     public SecurityLevelController(SecurityLevelService securityLevelService) {
         this.securityLevelService = securityLevelService;
     }
 
     @GetMapping
-    public ResponseEntity<List<SecurityLevel>> getAllSecurityLevels() {
-        logger.info("Контроллер: получение списка всех уровней безопасности");
-        List<SecurityLevel> levels = securityLevelService.getSecurityLevels();
-        return new ResponseEntity<>(levels, HttpStatus.OK);
+    public ResponseEntity<List<SecurityLevel>> getAll() {
+        logger.info("GET /api/security-levels - fetching all security levels");
+        List<SecurityLevel> levels = securityLevelService.findAll();
+        logger.info("GET /api/security-levels - returned {} levels", levels.size());
+        return ResponseEntity.ok(levels);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SecurityLevel> getSecurityLevelById(@PathVariable Integer id) {
-        logger.info("Контроллер: поиск уровня безопасности по id: {}", id);
-        Optional<SecurityLevel> levelOpt = securityLevelService.getById(id);
-        return levelOpt.map(level -> new ResponseEntity<>(level, HttpStatus.OK))
-                .orElseGet(() -> {
-                    logger.warn("Контроллер: уровень безопасности с id {} не найден", id);
-                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-                });
+    public ResponseEntity<SecurityLevel> getById(@PathVariable Integer id) {
+        logger.info("GET /api/security-levels/{} - fetching security level", id);
+        SecurityLevel level = securityLevelService.findById(id);
+        logger.info("GET /api/security-levels/{} - found security level {}", id, level.getDescription());
+        return ResponseEntity.ok(level);
     }
 
     @PostMapping
-    public ResponseEntity<SecurityLevel> createSecurityLevel(@RequestBody SecurityLevel securityLevel) {
-        logger.info("Контроллер: создание нового уровня безопасности");
-        SecurityLevel createdLevel = securityLevelService.createSecurityLevel(securityLevel);
-        return new ResponseEntity<>(createdLevel, HttpStatus.CREATED);
+    public ResponseEntity<SecurityLevel> create(@RequestBody @Valid SecurityLevel level) {
+        logger.info("POST /api/security-levels - creating security level with id={}", level.getSecurityLevelNo());
+        SecurityLevel created = securityLevelService.create(level);
+        logger.info("POST /api/security-levels - created security level {}", created.getSecurityLevelNo());
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SecurityLevel> updateSecurityLevel(@PathVariable Integer id,
-                                                             @RequestBody SecurityLevel securityLevel) {
-        logger.info("Контроллер: обновление уровня безопасности с id: {}", id);
-        Optional<SecurityLevel> updatedLevel = securityLevelService.updateSecurityLevel(id, securityLevel);
-        return updatedLevel.map(level -> new ResponseEntity<>(level, HttpStatus.OK))
-                .orElseGet(() -> {
-                    logger.warn("Контроллер: не найден уровень безопасности с id {} для обновления", id);
-                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-                });
+    public ResponseEntity<SecurityLevel> update(
+            @PathVariable Integer id,
+            @RequestBody @Valid SecurityLevel levelDetails
+    ) {
+        logger.info("PUT /api/security-levels/{} - updating security level", id);
+        SecurityLevel updated = securityLevelService.update(id, levelDetails);
+        logger.info("PUT /api/security-levels/{} - updated security level", id);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSecurityLevel(@PathVariable Integer id) {
-        logger.info("Контроллер: запрос на удаление уровня безопасности с id: {}", id);
-        try {
-            securityLevelService.deleteSecurityLevel(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } catch (Exception e) {
-            logger.error("Контроллер: ошибка при удалении уровня безопасности с id {}: {}", id, e.getMessage());
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        logger.info("DELETE /api/security-levels/{} - deleting security level", id);
+        securityLevelService.delete(id);
+        logger.info("DELETE /api/security-levels/{} - deleted security level", id);
+        return ResponseEntity.noContent().build();
     }
 }

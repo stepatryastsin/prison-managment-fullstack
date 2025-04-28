@@ -9,8 +9,9 @@ import java.util.Optional;
 
 public interface VisitedByService {
     List<VisitedBy> findAll();
-    Optional<VisitedBy> findById(VisitedByKey key);
-    VisitedBy save(VisitedBy visitedBy) ;
+    VisitedBy findById(VisitedByKey key);
+    VisitedBy create(VisitedBy visitedBy);
+    VisitedBy update(Integer prisonerId, Integer visitorId, VisitedBy visitedBy);
     void deleteById(VisitedByKey key);
     boolean existsById(VisitedByKey key);
 }

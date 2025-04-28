@@ -15,6 +15,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/staff")
 @CrossOrigin(origins = "http://localhost:3000")
+//todo logging
 public class StaffController {
 
     private final StaffService service;

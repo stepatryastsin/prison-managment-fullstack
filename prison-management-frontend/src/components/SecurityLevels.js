@@ -34,7 +34,6 @@ const API_URL = 'http://localhost:8080/api/sl'
 const SecurityLevels = () => {
   const [securityLevels, setSecurityLevels] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [editingLevelNo, setEditingLevelNo] = useState(null)
   const [editingDescription, setEditingDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -45,22 +44,38 @@ const SecurityLevels = () => {
     fetchSecurityLevels()
   }, [])
 
+  const openSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity })
+  }
+  const closeSnackbar = () => setSnackbar(s => ({ ...s, open: false }))
+
+  // helper to read JSON error payload
+  const checkResponse = async (res) => {
+    if (!res.ok) {
+      let errMsg = res.statusText
+      try {
+        const errJson = await res.json()
+        if (errJson.message) errMsg = errJson.message
+      } catch {}
+      throw new Error(errMsg)
+    }
+    return res.json()
+  }
+
   const fetchSecurityLevels = async () => {
     setLoading(true)
     try {
-      const response = await fetch(API_URL)
-      if (!response.ok) throw new Error('Сетевая ошибка')
-      const data = await response.json()
+      const res = await fetch(API_URL)
+      const data = await checkResponse(res)
       setSecurityLevels(data)
-    } catch (error) {
-      console.error('Ошибка загрузки уровней безопасности:', error)
-      setError(error)
+    } catch (err) {
+      openSnackbar(`Ошибка загрузки: ${err.message}`, 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleEdit = (level) => {
+  const handleEdit = level => {
     setEditingLevelNo(level.securityLevelNo)
     setEditingDescription(level.description)
   }
@@ -70,32 +85,30 @@ const SecurityLevels = () => {
     setEditingDescription('')
   }
 
-  const handleSave = async (securityLevelNo) => {
+  const handleSave = async levelNo => {
     try {
-      const response = await fetch(`${API_URL}/${securityLevelNo}`, {
+      const res = await fetch(`${API_URL}/${levelNo}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ securityLevelNo, description: editingDescription }),
+        body: JSON.stringify({ securityLevelNo: levelNo, description: editingDescription }),
       })
-      if (!response.ok) throw new Error('Ошибка обновления данных')
+      await checkResponse(res)
       openSnackbar('Уровень безопасности обновлён', 'success')
       fetchSecurityLevels()
       handleCancel()
-    } catch (error) {
-      console.error('Ошибка при обновлении уровня безопасности:', error)
-      openSnackbar('Ошибка обновления', 'error')
+    } catch (err) {
+      openSnackbar(`Ошибка обновления: ${err.message}`, 'error')
     }
   }
 
-  const handleDelete = async (levelNo) => {
+  const handleDelete = async levelNo => {
     try {
-      const response = await fetch(`${API_URL}/${levelNo}`, { method: 'DELETE' })
-      if (!response.ok) throw new Error('Ошибка удаления')
+      const res = await fetch(`${API_URL}/${levelNo}`, { method: 'DELETE' })
+      await checkResponse(res)
       openSnackbar('Уровень безопасности удалён', 'success')
       fetchSecurityLevels()
-    } catch (error) {
-      console.error('Ошибка при удалении:', error)
-      openSnackbar('Ошибка удаления', 'error')
+    } catch (err) {
+      openSnackbar(`Ошибка удаления: ${err.message}`, 'error')
     } finally {
       setDeleteConfirm({ open: false, levelNo: null })
     }
@@ -109,40 +122,30 @@ const SecurityLevels = () => {
     )
   }, [securityLevels, searchQuery])
 
-  const openSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity })
-  }
-
-  const closeSnackbar = () => setSnackbar({ ...snackbar, open: false })
-
   return (
     <Paper sx={{ p: 3, maxWidth: 1000, mx: 'auto', my: 3, boxShadow: 4 }}>
       <Typography variant="h4" gutterBottom align="center">
         Уровни безопасности
       </Typography>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <TextField
           label="Поиск по уровню или описанию"
-          variant="outlined"
           size="small"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
                 <SearchIcon color="action" />
               </InputAdornment>
-            ),
+            )
           }}
           sx={{ width: 300 }}
         />
         {loading && <CircularProgress size={24} />}
       </Box>
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error.message}
-        </Typography>
-      )}
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress />
@@ -164,14 +167,11 @@ const SecurityLevels = () => {
                   {editingLevelNo === level.securityLevelNo ? (
                     <TextField
                       value={editingDescription}
-                      onChange={(e) => setEditingDescription(e.target.value)}
-                      variant="outlined"
+                      onChange={e => setEditingDescription(e.target.value)}
                       size="small"
                       fullWidth
                     />
-                  ) : (
-                    level.description
-                  )}
+                  ) : level.description}
                 </TableCell>
                 <TableCell align="center">
                   {editingLevelNo === level.securityLevelNo ? (
@@ -195,7 +195,9 @@ const SecurityLevels = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Удалить">
-                        <IconButton color="error" onClick={() => setDeleteConfirm({ open: true, levelNo: level.securityLevelNo })}>
+                        <IconButton color="error"
+                          onClick={() => setDeleteConfirm({ open: true, levelNo: level.securityLevelNo })}
+                        >
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
@@ -206,14 +208,13 @@ const SecurityLevels = () => {
             ))}
             {filteredLevels.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} align="center">
-                  Нет данных
-                </TableCell>
+                <TableCell colSpan={3} align="center">Нет данных</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       )}
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
@@ -221,20 +222,24 @@ const SecurityLevels = () => {
         TransitionComponent={Slide}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar.severity} onClose={closeSnackbar} sx={{ width: '100%' }}>
+        <Alert onClose={closeSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
 
-      {/* Диалог подтверждения удаления */}
-      <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, levelNo: null })}>
+      <Dialog
+        open={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, levelNo: null })}
+      >
         <DialogTitle>Удаление уровня</DialogTitle>
         <DialogContent>
-          Вы уверены, что хотите удалить уровень безопасности №{deleteConfirm.levelNo}?
+          Вы уверены, что хотите удалить уровень №{deleteConfirm.levelNo}?
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteConfirm({ open: false, levelNo: null })}>Отмена</Button>
-          <Button onClick={() => handleDelete(deleteConfirm.levelNo)} color="error">
+          <Button onClick={() => setDeleteConfirm({ open: false, levelNo: null })}>
+            Отмена
+          </Button>
+          <Button color="error" onClick={() => handleDelete(deleteConfirm.levelNo)}>
             Удалить
           </Button>
         </DialogActions>

@@ -3,6 +3,7 @@ package com.example.PrisonManagement.Model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 
 @Entity
@@ -14,6 +15,7 @@ public class SecurityLevel {
     private Integer securityLevelNo;
 
     @Column(name = "description", length = 10)
+    @Size(min = 1, max = 5,message = "Слишком длинное или короткое название")
     private String description;
 
     public SecurityLevel(Integer securityLevelNo,

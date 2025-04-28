@@ -21,6 +21,8 @@ import {
   ListItemButton,
   ListItemText,
   Stack,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckIcon from '@mui/icons-material/Check';
@@ -32,7 +34,12 @@ const STAFF_API = 'http://localhost:8080/api/staff';
 const CoursesFrontend = () => {
   const [coursesList, setCoursesList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+  // Состояние для Snackbar ошибок
+  const [errorMessage, setErrorMessage] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  // Диалог создания/редактирования
   const [integratedDialogOpen, setIntegratedDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentRecord, setCurrentRecord] = useState({
@@ -41,27 +48,42 @@ const CoursesFrontend = () => {
     instructor: { staffId: '', firstName: '', lastName: '' },
     deleted: false,
   });
+
+  // Состояния преподавателей
   const [staffList, setStaffList] = useState([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
-  const [errorStaff, setErrorStaff] = useState(null);
-  const [openStaffSelector, setOpenStaffSelector] = useState(false);
+
+  // Фильтрация и навигация
   const [searchTerm, setSearchTerm] = useState('');
+  const [openStaffSelector, setOpenStaffSelector] = useState(false);
   const navigate = useNavigate();
 
+  // Показать ошибку
+  const showError = async (res) => {
+    try {
+      const err = await res.json();
+      setErrorMessage(err.message || 'Произошла ошибка');
+    } catch {
+      setErrorMessage('Произошла ошибка');
+    }
+    setSnackbarOpen(true);
+  };
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  // Загрузка курсов
   const fetchCourses = async () => {
+    setLoading(true);
     try {
       const res = await fetch(COURSES_API);
-      if (!res.ok) throw new Error('Ошибка при загрузке курсов');
+      if (!res.ok) return showError(res);
       const data = await res.json();
-      // Обеспечим, чтобы courseName всегда был строкой
-      const normalizedData = data.map(course => ({
-        ...course,
-        courseName: course.courseName || '',
-      }));
-      setCoursesList(normalizedData);
-      setLoading(false);
-    } catch (err) {
-      setError(err);
+      setCoursesList(data.map(c => ({ ...c, courseName: c.courseName || '' })));
+    } catch {
+      setErrorMessage('Ошибка при запросе курсов');
+      setSnackbarOpen(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -70,232 +92,186 @@ const CoursesFrontend = () => {
     fetchCourses();
   }, []);
 
-  // Мягкое удаление курса (soft delete)
-  const handleMarkInactive = (course) => {
-    fetch(`${COURSES_API}/${course.courseId}`, { method: 'DELETE' })
-      .then((res) => {
-        if (res.ok) fetchCourses();
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  };
-
-  // Восстановление курса (активация)
-  const handleMarkActive = (course) => {
-    const payload = {
-      courseName: course.courseName,
-      instructor: course.instructor,
-      deleted: false,
-    };
-    fetch(`${COURSES_API}/${course.courseId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then((res) => {
-      if (res.ok) fetchCourses();
-    });
-  };
-
-  // Полное удаление курса (hard delete)
-  const handleFullDelete = (course) => {
-    if (
-      window.confirm(
-        `Вы действительно хотите полностью удалить курс "${course.courseName}"? Это действие нельзя отменить!`
-      )
-    ) {
-      fetch(`${COURSES_API}/${course.courseId}/full`, { method: 'DELETE' })
-        .then((res) => {
-          if (res.ok) {
-            fetchCourses();
-          } else {
-            alert('Ошибка полного удаления курса');
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          alert('Ошибка при выполнении запроса полного удаления');
-        });
+  // Soft delete
+  const handleMarkInactive = async (course) => {
+    try {
+      const res = await fetch(`${COURSES_API}/${course.courseId}`, { method: 'DELETE' });
+      if (!res.ok) return showError(res);
+      fetchCourses();
+    } catch {
+      setErrorMessage('Ошибка при удалении курса');
+      setSnackbarOpen(true);
     }
   };
 
-  const openDialogForCreate = () => {
-    setIsEditing(false);
-    setCurrentRecord({
-      courseId: null,
-      courseName: '',
-      instructor: { staffId: '', firstName: '', lastName: '' },
-      deleted: false,
-    });
-    setIntegratedDialogOpen(true);
+  // Reactivate
+  const handleMarkActive = async (course) => {
+    try {
+      const payload = { ...course, deleted: false };
+      const res = await fetch(`${COURSES_API}/${course.courseId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return showError(res);
+      fetchCourses();
+    } catch {
+      setErrorMessage('Ошибка при активации курса');
+      setSnackbarOpen(true);
+    }
   };
 
+  // Hard delete
+  const handleFullDelete = async (course) => {
+    if (!window.confirm(`Полностью удалить курс "${course.courseName}"?`)) return;
+    try {
+      const res = await fetch(`${COURSES_API}/${course.courseId}/full`, { method: 'DELETE' });
+      if (!res.ok) return showError(res);
+      fetchCourses();
+    } catch {
+      setErrorMessage('Ошибка при полном удалении курса');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // Открыть диалог создания
+  const openDialogForCreate = () => {
+    setIsEditing(false);
+    setCurrentRecord({ courseId: null, courseName: '', instructor: { staffId: '', firstName: '', lastName: '' }, deleted: false });
+    setIntegratedDialogOpen(true);
+  };
+  // Открыть диалог редактирования
   const openDialogForEdit = (course) => {
     setIsEditing(true);
     setCurrentRecord(course);
     setIntegratedDialogOpen(true);
   };
+  const handleCourseNameChange = (e) => setCurrentRecord(prev => ({ ...prev, courseName: e.target.value }));
 
-  const handleCourseNameChange = (e) => {
-    setCurrentRecord((prev) => ({ ...prev, courseName: e.target.value }));
-  };
-
-  const handleSelectStaff = (staff) => {
-    setCurrentRecord((prev) => ({ ...prev, instructor: staff }));
-    setOpenStaffSelector(false);
-  };
-
+  // Загрузка преподавателей
   const fetchStaff = async () => {
     setLoadingStaff(true);
     try {
       const res = await fetch(STAFF_API);
-      if (!res.ok) throw new Error('Ошибка при загрузке персонала');
-      const data = await res.json();
-      setStaffList(data);
-      setLoadingStaff(false);
-    } catch (err) {
-      setErrorStaff(err);
+      if (!res.ok) return showError(res);
+      setStaffList(await res.json());
+    } catch {
+      setErrorMessage('Ошибка при запросе преподавателей');
+      setSnackbarOpen(true);
+    } finally {
       setLoadingStaff(false);
     }
   };
-
   const handleOpenStaffSelector = () => {
     fetchStaff();
     setOpenStaffSelector(true);
   };
+  const handleSelectStaff = (staff) => {
+    setCurrentRecord(prev => ({ ...prev, instructor: staff }));
+    setOpenStaffSelector(false);
+  };
 
-  const handleConfirmSelection = () => {
-    const payload = {
-      courseName: currentRecord.courseName,
-      instructor: currentRecord.instructor,
-      deleted: currentRecord.deleted,
-    };
-    if (isEditing) {
-      fetch(`${COURSES_API}/${currentRecord.courseId}`, {
-        method: 'PUT',
+  // Подтвердить создание/редактирование
+  const handleConfirmSelection = async () => {
+    try {
+      const payload = { courseName: currentRecord.courseName, instructor: currentRecord.instructor, deleted: currentRecord.deleted };
+      const url = isEditing ? `${COURSES_API}/${currentRecord.courseId}` : COURSES_API;
+      const method = isEditing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }).then((res) => {
-        if (res.ok) {
-          fetchCourses();
-          setIntegratedDialogOpen(false);
-        }
       });
-    } else {
-      fetch(COURSES_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).then((res) => {
-        if (res.ok) {
-          fetchCourses();
-          setIntegratedDialogOpen(false);
-        }
-      });
+      if (!res.ok) return showError(res);
+      fetchCourses();
+      setIntegratedDialogOpen(false);
+    } catch {
+      setErrorMessage('Ошибка при сохранении курса');
+      setSnackbarOpen(true);
     }
   };
 
-  const getCoursesCountForStaff = (staffId) => {
-    return coursesList.filter(
-      (course) =>
-        course.instructor &&
-        course.instructor.staffId.toString() === staffId.toString()
-    ).length;
-  };
-
-  const groupedCourses = coursesList.reduce((acc, course) => {
-    const key =
-      course.instructor && course.instructor.staffId
-        ? course.instructor.staffId
-        : 'Без инструктора';
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(course);
+  // Группировка и фильтрация
+  const grouped = coursesList.reduce((acc, c) => {
+    const key = c.instructor?.staffId ?? 'Без инструктора';
+    (acc[key] = acc[key] || []).push(c);
+    return acc;
+  }, {});
+  const filtered = Object.entries(grouped).reduce((acc, [key, group]) => {
+    const g = group.filter(c => c.courseName.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (g.length) acc[key] = g;
     return acc;
   }, {});
 
-  const filteredGroupedCourses = Object.keys(groupedCourses).reduce(
-    (filtered, key) => {
-      const group = groupedCourses[key];
-      const groupFiltered = group.filter((course) =>
-        course.courseName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      if (groupFiltered.length) filtered[key] = groupFiltered;
-      return filtered;
-    },
-    {}
-  );
-
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" align="center" gutterBottom sx={{ mb: 3 }}>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={handleSnackbarClose} sx={{ width: '100%' }}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
+      <Typography variant="h4" align="center" sx={{ mb: 2 }}>
         Курсы и программы
       </Typography>
       <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Button variant="contained" color="primary" onClick={openDialogForCreate}>
+        <Button variant="contained" onClick={openDialogForCreate}>
           Добавить курс
         </Button>
         <TextField
-          label="Поиск курса"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
           size="small"
+          label="Поиск"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
         />
       </Stack>
+
       {loading ? (
-        <Typography align="center">Загрузка курсов...</Typography>
-      ) : error ? (
-        <Typography align="center" color="error">
-          {error.message}
-        </Typography>
+        <Typography align="center">Загрузка...</Typography>
       ) : (
-        Object.keys(filteredGroupedCourses).map((key) => (
+        Object.entries(filtered).map(([key, group]) => (
           <Accordion key={key} defaultExpanded sx={{ mb: 2 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">
+              <Typography sx={{ flexGrow: 1 }}>
                 {key === 'Без инструктора'
                   ? 'Без инструктора'
-                  : `Преподаватель ID: ${key} - ${filteredGroupedCourses[key][0].instructor.firstName} ${filteredGroupedCourses[key][0].instructor.lastName}`}
+                  : `Преподаватель ${key}: ${group[0].instructor.firstName} ${group[0].instructor.lastName}`}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                (Курсов: {filteredGroupedCourses[key].length})
-              </Typography>
+              <Typography>({group.length} курс{group.length > 1 ? 'а' : ''})</Typography>
             </AccordionSummary>
             <AccordionDetails>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>
-                      <strong>ID курса</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Название курса</strong>
-                    </TableCell>
-                    <TableCell align="center">
-                      <strong>Действия</strong>
-                    </TableCell>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Название</TableCell>
+                    <TableCell align="center">Действия</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredGroupedCourses[key].map((course) => (
+                  {group.map(course => (
                     <TableRow key={course.courseId} sx={{ opacity: course.deleted ? 0.6 : 1 }}>
                       <TableCell>{course.courseId}</TableCell>
                       <TableCell>{course.courseName}</TableCell>
                       <TableCell align="center">
                         <Stack direction="row" spacing={1} justifyContent="center">
-                          <Button variant="outlined" color="primary" onClick={() => openDialogForEdit(course)}>
-                            Редактировать
-                          </Button>
+                          <Button onClick={() => openDialogForEdit(course)}>Ред.</Button>
                           {!course.deleted ? (
-                            <Button variant="outlined" color="secondary" onClick={() => handleMarkInactive(course)}>
+                            <Button color="secondary" onClick={() => handleMarkInactive(course)}>
                               Неактивный
                             </Button>
                           ) : (
-                            <Button variant="outlined" color="success" onClick={() => handleMarkActive(course)}>
+                            <Button color="success" onClick={() => handleMarkActive(course)}>
                               Активировать
                             </Button>
                           )}
-                          <Button variant="outlined" color="error" onClick={() => handleFullDelete(course)}>
-                            Полное удаление
+                          <Button color="error" onClick={() => handleFullDelete(course)}>
+                            Удалить навсегда
                           </Button>
                         </Stack>
                       </TableCell>
@@ -308,66 +284,51 @@ const CoursesFrontend = () => {
         ))
       )}
 
-      {/* Диалог для создания / редактирования курса */}
+      {/* Создание/редактирование */}
       <Dialog open={integratedDialogOpen} onClose={() => setIntegratedDialogOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>{isEditing ? 'Редактировать курс' : 'Добавить курс'}</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent>
           <TextField
-            label="Название курса"
             fullWidth
             margin="normal"
+            label="Название курса"
             value={currentRecord.courseName}
             onChange={handleCourseNameChange}
           />
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-            <Typography variant="body1" sx={{ mr: 2 }}>
-              {currentRecord.instructor && currentRecord.instructor.staffId
-                ? `Преподаватель: ${currentRecord.instructor.staffId} - ${currentRecord.instructor.firstName} ${currentRecord.instructor.lastName}`
+          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+            <Typography sx={{ flexGrow: 1 }}>
+              {currentRecord.instructor.staffId
+                ? `Преподаватель: ${currentRecord.instructor.firstName} ${currentRecord.instructor.lastName}`
                 : 'Преподаватель не выбран'}
             </Typography>
-            <Button variant="outlined" onClick={handleOpenStaffSelector}>
-              Выбрать преподавателя
-            </Button>
+            <Button onClick={handleOpenStaffSelector}>Выбрать</Button>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIntegratedDialogOpen(false)}>Отмена</Button>
-          <Button onClick={handleConfirmSelection} color="primary">
-            Подтвердить
-          </Button>
+          <Button onClick={handleConfirmSelection}>Сохранить</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Диалог выбора преподавателя */}
+      {/* Выбор преподавателя */}
       <Dialog open={openStaffSelector} onClose={() => setOpenStaffSelector(false)} fullWidth maxWidth="sm">
         <DialogTitle>Выберите преподавателя</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent>
           {loadingStaff ? (
-            <Typography>Загрузка преподавателей...</Typography>
-          ) : errorStaff ? (
-            <Typography color="error">{errorStaff.message}</Typography>
+            <Typography>Загрузка...</Typography>
           ) : staffList.length > 0 ? (
             <List>
-              {staffList.map((staff) => {
-                const coursesCount = getCoursesCountForStaff(staff.staffId);
-                return (
-                  <ListItem key={staff.staffId} disablePadding>
-                    <ListItemButton onClick={() => handleSelectStaff(staff)}>
-                      {currentRecord.instructor.staffId === staff.staffId && (
-                        <CheckIcon color="primary" sx={{ mr: 1 }} />
-                      )}
-                      <ListItemText
-                        primary={`ID: ${staff.staffId} - ${staff.firstName} ${staff.lastName} ${
-                          coursesCount > 0 ? `(Используется в ${coursesCount} курсах)` : ''
-                        }`}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                );
-              })}
+              {staffList.map(staff => (
+                <ListItem key={staff.staffId} disablePadding>
+                  <ListItemButton onClick={() => handleSelectStaff(staff)}>
+                    {currentRecord.instructor.staffId === staff.staffId && <CheckIcon sx={{ mr: 1 }} />}
+                    <ListItemText primary={`${staff.firstName} ${staff.lastName} (ID: ${staff.staffId})`} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
             </List>
           ) : (
-            <Typography>Нет доступных преподавателей</Typography>
+            <Typography>Нет преподавателей</Typography>
           )}
         </DialogContent>
         <DialogActions>

@@ -18,10 +18,12 @@ import {
   ListItemText,
   Stack,
   Box,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 
 const STAFF_API_URL = 'http://localhost:8080/api/staff';
-const JOB_API_URL = 'http://localhost:8080/api/job';
+const JOB_API_URL   = 'http://localhost:8080/api/job';
 
 const Staff = () => {
   const [staffList, setStaffList] = useState([]);
@@ -37,15 +39,21 @@ const Staff = () => {
   const [jobDialogOpen, setJobDialogOpen] = useState(false);
   const [jobs, setJobs] = useState([]);
 
+  // Snackbar state
+  const [errorMessage,   setErrorMessage]   = useState('');
+  const [snackbarOpen,   setSnackbarOpen]   = useState(false);
+
   useEffect(() => {
     fetchStaff();
     fetchJobs();
   }, []);
 
+  // Fetch staff with error handling
   const fetchStaff = async () => {
     try {
       const res = await fetch(STAFF_API_URL);
       if (!res.ok) {
+        // parse your ResponseError JSON
         const err = await res.json();
         throw err;
       }
@@ -58,24 +66,35 @@ const Staff = () => {
   const fetchJobs = async () => {
     try {
       const res = await fetch(JOB_API_URL);
-      if (!res.ok) throw new Error('Ошибка загрузки должностей');
+      if (!res.ok) {
+        const err = await res.json();
+        throw err;
+      }
       setJobs(await res.json());
     } catch (err) {
-      console.error(err);
+      showError(err, 'Ошибка загрузки должностей');
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'jobDescription') {
-      setFormData(f => ({ ...f, job: { ...f.job, jobDescription: value } }));
+      setFormData(f => ({
+        ...f,
+        job: { ...f.job, jobDescription: value }
+      }));
     } else {
       setFormData(f => ({ ...f, [name]: value }));
     }
   };
 
   const clearForm = () => {
-    setFormData({ firstName: '', lastName: '', job: { jobId: null, jobDescription: '' }, salary: '' });
+    setFormData({
+      firstName: '',
+      lastName: '',
+      job: { jobId: null, jobDescription: '' },
+      salary: '',
+    });
     setOriginalJob({ jobId: null, jobDescription: '' });
     setEditingId(null);
   };
@@ -97,10 +116,9 @@ const Staff = () => {
 
     const payload = {
       firstName: formData.firstName,
-      lastName: formData.lastName,
-      salary: Number(formData.salary),
+      lastName:  formData.lastName,
+      salary:    Number(formData.salary),
     };
-    // attach job object
     const existing = jobs.find(j => j.jobDescription === formData.job.jobDescription);
     payload.job = existing
       ? { jobId: existing.jobId, jobDescription: existing.jobDescription }
@@ -108,9 +126,10 @@ const Staff = () => {
 
     try {
       const method = editingId ? 'PUT' : 'POST';
-      const url = editingId ? `${STAFF_API_URL}/${editingId}` : STAFF_API_URL;
-      const res = await fetch(url, {
-        method, headers: { 'Content-Type': 'application/json' },
+      const url    = editingId ? `${STAFF_API_URL}/${editingId}` : STAFF_API_URL;
+      const res    = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
@@ -129,9 +148,9 @@ const Staff = () => {
     setOriginalJob({ jobId: s.job?.jobId ?? null, jobDescription: s.job?.jobDescription ?? '' });
     setFormData({
       firstName: s.firstName,
-      lastName: s.lastName,
-      job: { jobId: s.job?.jobId ?? null, jobDescription: s.job?.jobDescription ?? '' },
-      salary: s.salary?.toString() ?? '',
+      lastName:  s.lastName,
+      job:       { jobId: s.job?.jobId ?? null, jobDescription: s.job?.jobDescription ?? '' },
+      salary:    s.salary?.toString() ?? '',
     });
   };
 
@@ -161,53 +180,96 @@ const Staff = () => {
     setJobDialogOpen(true);
   };
   const handleSelectJob = (job) => {
-    setFormData(f => ({ ...f, job: { jobId: job.jobId, jobDescription: job.jobDescription } }));
+    setFormData(f => ({
+      ...f,
+      job: { jobId: job.jobId, jobDescription: job.jobDescription }
+    }));
     setJobDialogOpen(false);
   };
 
+  // Show ResponseError in Snackbar
   const showError = (err, fallback) => {
     let msg = fallback;
-    if (err && err.message) {
-      msg = `${err.message}${err.status ? ` (${err.status})` : ''}${err.time ? ` at ${err.time}` : ''}`;
+    if (err && typeof err.message === 'string') {
+      msg = err.message;
     }
-    alert(msg);
+    setErrorMessage(msg);
+    setSnackbarOpen(true);
     console.error(fallback, err);
+  };
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   return (
     <Paper sx={{ p: 4, maxWidth: 1200, m: 'auto', mt: 4, bgcolor: '#fafafa' }}>
+      {/* Snackbar для ошибок */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity="error" sx={{ width: '100%' }}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
       <Typography variant="h5" align="center" gutterBottom>
         {editingId ? 'Редактировать сотрудника' : 'Добавить сотрудника'}
       </Typography>
+
       <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mb: 4 }}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={4}>
             <TextField
-              fullWidth label="Имя" name="firstName"
-              value={formData.firstName} onChange={handleChange}
-              required variant="outlined" sx={{ bgcolor: '#fff' }}
+              fullWidth
+              label="Имя"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              required
+              variant="outlined"
+              sx={{ bgcolor: '#fff' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
-              fullWidth label="Фамилия" name="lastName"
-              value={formData.lastName} onChange={handleChange}
-              required variant="outlined" sx={{ bgcolor: '#fff' }}
+              fullWidth
+              label="Фамилия"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              required
+              variant="outlined"
+              sx={{ bgcolor: '#fff' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
-              fullWidth label="Должность" name="jobDescription"
-              value={formData.job.jobDescription} onClick={handleShowJobDialog}
-              InputProps={{ readOnly: true }} helperText="Нажмите для выбора"
-              required variant="outlined" sx={{ bgcolor: '#fff', cursor: 'pointer' }}
+              fullWidth
+              label="Должность"
+              name="jobDescription"
+              value={formData.job.jobDescription}
+              onClick={handleShowJobDialog}
+              InputProps={{ readOnly: true }}
+              helperText="Нажмите для выбора"
+              required
+              variant="outlined"
+              sx={{ bgcolor: '#fff', cursor: 'pointer' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
-              fullWidth label="Зарплата" name="salary" type="number"
-              value={formData.salary} onChange={handleChange}
-              required variant="outlined" sx={{ bgcolor: '#fff' }}
+              fullWidth
+              label="Зарплата"
+              name="salary"
+              type="number"
+              value={formData.salary}
+              onChange={handleChange}
+              required
+              variant="outlined"
+              sx={{ bgcolor: '#fff' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -227,8 +289,11 @@ const Staff = () => {
 
       <Typography variant="h6" gutterBottom>Поиск</Typography>
       <TextField
-        fullWidth placeholder="Поиск..." variant="outlined"
-        value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+        fullWidth
+        placeholder="Поиск..."
+        variant="outlined"
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
         sx={{ mb: 3, bgcolor: '#fff' }}
       />
 

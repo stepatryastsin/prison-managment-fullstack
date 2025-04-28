@@ -5,11 +5,8 @@ import com.example.PrisonManagement.Service.CellService;
 
 
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,7 +17,7 @@ import java.util.List;
 @RequestMapping("/api/cells")
 @CrossOrigin(origins = "http://localhost:3000")
 public class CellController {
-
+    //todo logging
     private final CellService service;
 
     @Autowired

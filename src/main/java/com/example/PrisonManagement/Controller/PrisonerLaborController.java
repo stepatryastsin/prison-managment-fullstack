@@ -5,6 +5,7 @@ import com.example.PrisonManagement.Model.PrisonerLaborKey;
 import com.example.PrisonManagement.Service.PrisonerLaborService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ public class PrisonerLaborController {
 
     private final PrisonerLaborService prisonerLaborService;
     private final Logger logger = LoggerFactory.getLogger(PrisonerLaborController.class);
+    @Autowired
     public PrisonerLaborController(PrisonerLaborService prisonerLaborService) {
         this.prisonerLaborService = prisonerLaborService;
     }

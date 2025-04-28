@@ -15,19 +15,21 @@ import {
   DialogContent,
   DialogActions,
   Box,
+  Snackbar,
+  Alert,
 } from '@mui/material';
-import { 
-  Edit as EditIcon, 
-  Delete as DeleteIcon, 
-  Book as BookIcon, 
-  CardMembership as CertificateIcon 
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Book as BookIcon,
+  CardMembership as CertificateIcon,
 } from '@mui/icons-material';
 
-const API_URL                 = 'http://localhost:8080/api/prisoners';
-const CELLS_API_URL           =  'http://localhost:8080/api/cells';
+const API_URL = 'http://localhost:8080/api/prisoners';
+const CELLS_API_URL = 'http://localhost:8080/api/cells';
 const SECURITY_LEVELS_API_URL = 'http://localhost:8080/api/sl';
-const BORROWED_API_URL        = 'http://localhost:8080/api/borrowed';
-const CERTIFICATES_API_URL    =  'http://localhost:8080/api/ownCertificateFrom';
+const BORROWED_API_URL = 'http://localhost:8080/api/borrowed';
+const CERTIFICATES_API_URL = 'http://localhost:8080/api/ownCertificateFrom';
 
 const Prisoners = () => {
   const [prisoners, setPrisoners] = useState([]);
@@ -59,25 +61,41 @@ const Prisoners = () => {
   const [certificatesDialogOpen, setCertificatesDialogOpen] = useState(false);
   const [selectedCertificates, setSelectedCertificates] = useState([]);
 
+  // Состояния для отображения ошибок
+  const [errorMessage, setErrorMessage] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  // Функции для работы с уведомлением об ошибке
+  const showError = (msg) => {
+    setErrorMessage(msg);
+    setSnackbarOpen(true);
+  };
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  // Загрузка данных заключённых
   useEffect(() => {
     fetch(API_URL)
       .then((res) => res.json())
       .then(setPrisoners)
-      .catch((err) => console.error('Ошибка получения данных заключённых:', err));
+      .catch(() => showError('Ошибка получения данных заключённых'));
   }, []);
 
+  // Загрузка данных книг
   useEffect(() => {
     fetch(BORROWED_API_URL)
       .then((res) => res.json())
       .then(setBorrowedData)
-      .catch((err) => console.error('Ошибка получения данных книг:', err));
+      .catch(() => showError('Ошибка получения данных о книгах'));
   }, []);
 
+  // Загрузка данных сертификатов
   useEffect(() => {
     fetch(CERTIFICATES_API_URL)
       .then((res) => res.json())
       .then(setCertificateData)
-      .catch((err) => console.error('Ошибка получения сертификатов:', err));
+      .catch(() => showError('Ошибка получения данных сертификатов'));
   }, []);
 
   const handleChange = (e) => {
@@ -102,7 +120,7 @@ const Prisoners = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newData = {
+    const payload = {
       prisonerId: Number(formData.prisonerId),
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -117,36 +135,38 @@ const Prisoners = () => {
     };
 
     try {
+      let response;
       if (editingId !== null) {
-        const response = await fetch(`${API_URL}/${editingId}`, {
+        response = await fetch(`${API_URL}/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newData),
+          body: JSON.stringify(payload),
         });
-        if (response.ok) {
+      } else {
+        response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (response.ok) {
+        const saved = await response.json();
+        if (editingId !== null) {
           setPrisoners((prev) =>
-            prev.map((p) => (p.prisonerId === editingId ? newData : p))
+            prev.map((p) => (p.prisonerId === editingId ? saved : p))
           );
           setEditingId(null);
         } else {
-          console.error('Ошибка обновления заключённого');
+          setPrisoners((prev) => [...prev, saved]);
         }
+        clearForm();
       } else {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newData),
-        });
-        if (response.ok) {
-          const savedPrisoner = await response.json();
-          setPrisoners((prev) => [...prev, savedPrisoner]);
-        } else {
-          console.error('Ошибка добавления заключённого');
-        }
+        const err = await response.json();
+        showError(err.message || 'Неизвестная ошибка сервера');
       }
-      clearForm();
-    } catch (error) {
-      console.error('Ошибка при отправке данных:', error);
+    } catch {
+      showError('Ошибка при отправке данных');
     }
   };
 
@@ -168,13 +188,12 @@ const Prisoners = () => {
   };
 
   const handleDelete = async (id) => {
-    // Проверяем, есть ли у заключённого связанные книги
     const prisoner = prisoners.find((p) => p.prisonerId === id);
-    const prisonerBooks = borrowedData.filter(
-      (item) => item.prisoner?.prisonerId === prisoner.prisonerId
+    const hasBooks = borrowedData.some(
+      (item) => item.prisoner?.prisonerId === id
     );
-    if (prisonerBooks.length > 0) {
-      alert(`Невозможно удалить заключённого с id ${id}, так как у него имеются книги.`);
+    if (hasBooks) {
+      showError(`Невозможно удалить заключённого с id ${id}: есть выданные книги.`);
       return;
     }
     try {
@@ -186,49 +205,126 @@ const Prisoners = () => {
           clearForm();
         }
       } else {
-        console.error('Ошибка удаления заключённого');
+        const err = await response.json();
+        showError(err.message || 'Ошибка удаления заключённого');
       }
-    } catch (error) {
-      console.error('Ошибка при удалении:', error);
+    } catch {
+      showError('Ошибка при удалении');
     }
   };
-
-  const filteredPrisoners = prisoners.filter((p) =>
-    Object.values(p)
-      .flatMap((v) =>
-        typeof v === 'object' && v !== null ? Object.values(v) : v
-      )
-      .join(' ')
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
 
   const openCellDialog = async () => {
     try {
       const res = await fetch(CELLS_API_URL);
       if (res.ok) {
-        const data = await res.json();
-        setCells(data);
+        setCells(await res.json());
       } else {
-        console.error('Ошибка получения камер');
+        showError('Ошибка получения списка камер');
       }
-    } catch (err) {
-      console.error('Ошибка получения камер:', err);
+    } catch {
+      showError('Ошибка при запросе списка камер');
     }
     setCellDialogOpen(true);
   };
 
-  // Теперь функция handleIssueCertificate удаляет сертификат
+  const handleCreateCell = async () => {
+    const num = Number(newCellNum);
+    if (cells.some((c) => c.cellNum === num)) {
+      showError('Камера с таким номером уже существует.');
+      return;
+    }
+    try {
+      const res = await fetch(CELLS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cellNum: num }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setCells((prev) => [...prev, created]);
+        setNewCellNum('');
+      } else {
+        showError('Ошибка при создании новой камеры');
+      }
+    } catch {
+      showError('Ошибка при запросе создания камеры');
+    }
+  };
+
+  const openSecurityLevelDialog = async () => {
+    try {
+      const res = await fetch(SECURITY_LEVELS_API_URL);
+      if (res.ok) {
+        setSecurityLevels(await res.json());
+      } else {
+        showError('Ошибка получения уровней защиты');
+      }
+    } catch {
+      showError('Ошибка при запросе уровней защиты');
+    }
+    setSecurityLevelDialogOpen(true);
+  };
+
+  const handleCreateSecurityLevel = async () => {
+    const lvl = Number(newSecurityLevel);
+    if (securityLevels.some((l) => l.securityLevelNo === lvl)) {
+      showError('Уровень защиты с таким номером уже существует.');
+      return;
+    }
+    try {
+      const res = await fetch(SECURITY_LEVELS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ securityLevelNo: lvl }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setSecurityLevels((prev) => [...prev, created]);
+        setNewSecurityLevel('');
+      } else {
+        showError('Ошибка при создании уровня защиты');
+      }
+    } catch {
+      showError('Ошибка при запросе создания уровня защиты');
+    }
+  };
+
+  const handleSelectCell = (cellNum) => {
+    setFormData((prev) => ({ ...prev, cellNum }));
+    setCellDialogOpen(false);
+  };
+
+  const handleSelectSecurityLevel = (securityLevelNo) => {
+    setFormData((prev) => ({ ...prev, securityLevelId: securityLevelNo }));
+    setSecurityLevelDialogOpen(false);
+  };
+
+  const openBooksDialogHandler = (prisoner) => {
+    setSelectedBooks(
+      borrowedData.filter((b) => b.prisoner?.prisonerId === prisoner.prisonerId)
+    );
+    setBooksDialogOpen(true);
+  };
+
+  const openCertificatesDialogHandler = (prisoner) => {
+    setSelectedCertificates(
+      certificateData.filter(
+        (c) => c.prisoner?.prisonerId === prisoner.prisonerId
+      )
+    );
+    setCertificatesDialogOpen(true);
+  };
+
   const handleIssueCertificate = async (cert) => {
     try {
       const { prisoner, id } = cert;
-      const response = await fetch(
+      const res = await fetch(
         `${CERTIFICATES_API_URL}/${prisoner.prisonerId}/${id.courseId}`,
         { method: 'DELETE' }
       );
-      if (response.ok) {
-        alert('Сертификат удалён успешно');
-        // Обновляем состояние, удаляя удалённый сертификат из списка
+      if (res.ok) {
+        alert('Сертификат выдан (удалён из списка ожидания)');
+        // Обновляем списки
         setCertificateData((prev) =>
           prev.filter(
             (c) =>
@@ -248,107 +344,25 @@ const Prisoners = () => {
           )
         );
       } else {
-        alert('Ошибка при удалении сертификата');
+        const err = await res.json();
+        showError(err.message || 'Ошибка при выдаче сертификата');
       }
-    } catch (error) {
-      console.error('Ошибка при удалении сертификата:', error);
+    } catch {
+      showError('Ошибка при запросе выдачи сертификата');
     }
   };
 
-  const handleCreateCell = async () => {
-    const cellNumber = Number(newCellNum);
-    if (cells.find((cell) => cell.cellNum === cellNumber)) {
-      alert('Камера с таким номером уже существует.');
-      return;
-    }
-    try {
-      const res = await fetch(CELLS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cellNum: cellNumber }),
-      });
-      if (res.ok) {
-        const createdCell = await res.json();
-        setCells((prev) => [...prev, createdCell]);
-        setNewCellNum('');
-      } else {
-        console.error('Ошибка создания камеры');
-      }
-    } catch (err) {
-      console.error('Ошибка создания камеры:', err);
-    }
-  };
-
-  const openSecurityLevelDialog = async () => {
-    try {
-      const res = await fetch(SECURITY_LEVELS_API_URL);
-      if (res.ok) {
-        const data = await res.json();
-        setSecurityLevels(data);
-      } else {
-        console.error('Ошибка получения уровней защиты');
-      }
-    } catch (err) {
-      console.error('Ошибка получения уровней защиты:', err);
-    }
-    setSecurityLevelDialogOpen(true);
-  };
-
-  const handleCreateSecurityLevel = async () => {
-    const levelNumber = Number(newSecurityLevel);
-    if (
-      securityLevels.find(
-        (level) => level.securityLevelNo === levelNumber
+  const filteredPrisoners = prisoners.filter((p) =>
+    Object.values(p)
+      .flatMap((v) =>
+        v && typeof v === 'object' ? Object.values(v) : [v]
       )
-    ) {
-      alert('Уровень защиты с таким номером уже существует.');
-      return;
-    }
-    try {
-      const res = await fetch(SECURITY_LEVELS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ securityLevelNo: levelNumber }),
-      });
-      if (res.ok) {
-        const createdLevel = await res.json();
-        setSecurityLevels((prev) => [...prev, createdLevel]);
-        setNewSecurityLevel('');
-      } else {
-        console.error('Ошибка создания уровня защиты');
-      }
-    } catch (err) {
-      console.error('Ошибка создания уровня защиты:', err);
-    }
-  };
+      .join(' ')
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
 
-  const handleSelectCell = (cellNum) => {
-    setFormData((prev) => ({ ...prev, cellNum }));
-    setCellDialogOpen(false);
-  };
-
-  const handleSelectSecurityLevel = (securityLevelNo) => {
-    setFormData((prev) => ({ ...prev, securityLevelId: securityLevelNo }));
-    setSecurityLevelDialogOpen(false);
-  };
-
-  const openBooksDialogHandler = (prisoner) => {
-    const booksForPrisoner = borrowedData.filter(
-      (item) => item.prisoner?.prisonerId === prisoner.prisonerId
-    );
-    setSelectedBooks(booksForPrisoner);
-    setBooksDialogOpen(true);
-  };
-
-  const openCertificatesDialogHandler = (prisoner) => {
-    const certsForPrisoner = certificateData.filter(
-      (item) => item.prisoner?.prisonerId === prisoner.prisonerId
-    );
-    setSelectedCertificates(certsForPrisoner);
-    setCertificatesDialogOpen(true);
-  };
-
-  // Рендер диалога для выбора камеры
+  // Диалог выбора камер
   const renderCellDialog = () => (
     <Dialog open={cellDialogOpen} onClose={() => setCellDialogOpen(false)} fullWidth maxWidth="sm">
       <DialogTitle>Список камер</DialogTitle>
@@ -361,7 +375,12 @@ const Prisoners = () => {
           </TableHead>
           <TableBody>
             {cells.map((cell) => (
-              <TableRow key={cell.cellNum} hover sx={{ cursor: 'pointer' }} onClick={() => handleSelectCell(cell.cellNum)}>
+              <TableRow
+                key={cell.cellNum}
+                hover
+                sx={{ cursor: 'pointer' }}
+                onClick={() => handleSelectCell(cell.cellNum)}
+              >
                 <TableCell>{cell.cellNum}</TableCell>
               </TableRow>
             ))}
@@ -378,14 +397,14 @@ const Prisoners = () => {
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setCellDialogOpen(false)}>Закрыть</Button>
-        <Button onClick={handleCreateCell} variant="contained" color="primary">
+        <Button onClick={handleCreateCell} variant="contained">
           Создать
         </Button>
       </DialogActions>
     </Dialog>
   );
 
-  // Рендер диалога для выбора уровня защиты
+  // Диалог выбора уровня защиты
   const renderSecurityLevelDialog = () => (
     <Dialog open={securityLevelDialogOpen} onClose={() => setSecurityLevelDialogOpen(false)} fullWidth maxWidth="sm">
       <DialogTitle>Список уровней защиты</DialogTitle>
@@ -397,9 +416,14 @@ const Prisoners = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {securityLevels.map((level) => (
-              <TableRow key={level.securityLevelNo} hover sx={{ cursor: 'pointer' }} onClick={() => handleSelectSecurityLevel(level.securityLevelNo)}>
-                <TableCell>{level.securityLevelNo}</TableCell>
+            {securityLevels.map((lvl) => (
+              <TableRow
+                key={lvl.securityLevelNo}
+                hover
+                sx={{ cursor: 'pointer' }}
+                onClick={() => handleSelectSecurityLevel(lvl.securityLevelNo)}
+              >
+                <TableCell>{lvl.securityLevelNo}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -415,84 +439,88 @@ const Prisoners = () => {
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setSecurityLevelDialogOpen(false)}>Закрыть</Button>
-        <Button onClick={handleCreateSecurityLevel} variant="contained" color="primary">
+        <Button onClick={handleCreateSecurityLevel} variant="contained">
           Создать
         </Button>
       </DialogActions>
     </Dialog>
   );
 
-  // Рендер диалога с книгами заключённого
+  // Диалог книг
   const renderBooksDialog = () => (
     <Dialog open={booksDialogOpen} onClose={() => setBooksDialogOpen(false)} fullWidth maxWidth="sm">
       <DialogTitle>Книги заключённого</DialogTitle>
       <DialogContent>
         {selectedBooks.length > 0 ? (
           <Box component="ul" sx={{ pl: 2 }}>
-            {selectedBooks.map((book, index) => (
-              <li key={index}>
-                <Typography variant="body1">
-                  ISBN: {book.id?.isbn} {book.library && book.library.title ? `- ${book.library.title}` : ''}
-                </Typography>
+            {selectedBooks.map((b, i) => (
+              <li key={i}>
+                ISBN: {b.id?.isbn} {b.library?.title ? `– ${b.library.title}` : ''}
               </li>
             ))}
           </Box>
         ) : (
-          <Typography variant="body1">Нет книг</Typography>
+          <Typography>Нет книг</Typography>
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={() => setBooksDialogOpen(false)} variant="outlined">
-          Закрыть
-        </Button>
+        <Button onClick={() => setBooksDialogOpen(false)}>Закрыть</Button>
       </DialogActions>
     </Dialog>
   );
 
-  // Рендер диалога с сертификатами – возможность редактирования убрана, осталась только кнопка "Выдать"
+  // Диалог сертификатов
   const renderCertificatesDialog = () => (
     <Dialog open={certificatesDialogOpen} onClose={() => setCertificatesDialogOpen(false)} fullWidth maxWidth="sm">
       <DialogTitle>Сертификаты заключённого</DialogTitle>
       <DialogContent>
         {selectedCertificates.length > 0 ? (
           <Box component="ul" sx={{ pl: 2 }}>
-            {selectedCertificates.map((cert, index) => (
-              <Box key={index} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body1">
-                  Курс: {cert.course?.courseName || `ID курса ${cert.id?.courseId}`}
+            {selectedCertificates.map((c, i) => (
+              <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography>
+                  Курс: {c.course?.courseName || `ID курса ${c.id.courseId}`}
                 </Typography>
-                <Box>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    startIcon={<CertificateIcon />}
-                    onClick={() => handleIssueCertificate(cert)}
-                    sx={{ mr: 1 }}
-                  >
-                    Выдать
-                  </Button>
-                </Box>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<CertificateIcon />}
+                  onClick={() => handleIssueCertificate(c)}
+                >
+                  Забрать
+                </Button>
               </Box>
             ))}
           </Box>
         ) : (
-          <Typography variant="body1">Нет сертификатов</Typography>
+          <Typography>Нет сертификатов</Typography>
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={() => setCertificatesDialogOpen(false)} variant="outlined">
-          Закрыть
-        </Button>
+        <Button onClick={() => setCertificatesDialogOpen(false)}>Закрыть</Button>
       </DialogActions>
     </Dialog>
   );
 
   return (
-    <Paper sx={{ padding: 4, maxWidth: 1400, margin: 'auto', borderRadius: 2, boxShadow: 3, backgroundColor: '#f9f9f9' }}>
+    <Paper sx={{ p: 4, maxWidth: 1400, m: 'auto', borderRadius: 2, boxShadow: 3, bgcolor: '#f9f9f9' }}>
+      {/* Уведомление об ошибке */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity="error" sx={{ width: '100%' }}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
       <Typography variant="h4" align="center" gutterBottom sx={{ mb: 3 }}>
         Управление заключёнными
       </Typography>
+
+      {/* Форма добавления/редактирования */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" gutterBottom>
           {editingId ? 'Редактировать заключённого' : 'Добавить заключённого'}
@@ -512,18 +540,38 @@ const Prisoners = () => {
               />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Имя" type="text" name="firstName" value={formData.firstName} onChange={handleChange} required />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Фамилия" type="text" name="lastName" value={formData.lastName} onChange={handleChange} required />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Место Рождения" type="text" name="birthPlace" value={formData.birthPlace} onChange={handleChange} />
+              <TextField
+                fullWidth
+                label="Имя"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                required
+              />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Дата Рождения"
+                label="Фамилия"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Место рождения"
+                name="birthPlace"
+                value={formData.birthPlace}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Дата рождения"
                 type="date"
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
@@ -533,10 +581,22 @@ const Prisoners = () => {
               />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Профессия" type="text" name="occupation" value={formData.occupation} onChange={handleChange} />
+              <TextField
+                fullWidth
+                label="Профессия"
+                name="occupation"
+                value={formData.occupation}
+                onChange={handleChange}
+              />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Обвинение" type="text" name="indictment" value={formData.indictment} onChange={handleChange} />
+              <TextField
+                fullWidth
+                label="Обвинение"
+                name="indictment"
+                value={formData.indictment}
+                onChange={handleChange}
+              />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
@@ -564,33 +624,27 @@ const Prisoners = () => {
               <TextField
                 fullWidth
                 label="Номер камеры"
-                type="number"
                 name="cellNum"
                 value={formData.cellNum}
-                onChange={handleChange}
-                helperText="Кликните, чтобы выбрать камеру"
                 onClick={openCellDialog}
-                sx={{ cursor: 'pointer' }}
-                InputProps={{ inputProps: { style: { MozAppearance: 'textfield', WebkitAppearance: 'none' } } }}
+                helperText="Нажмите, чтобы выбрать камеру"
+                InputProps={{ readOnly: true }}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Уровень защиты"
-                type="number"
                 name="securityLevelId"
                 value={formData.securityLevelId}
-                onChange={handleChange}
-                helperText="Кликните, чтобы выбрать уровень защиты"
                 onClick={openSecurityLevelDialog}
-                sx={{ cursor: 'pointer' }}
-                InputProps={{ inputProps: { style: { MozAppearance: 'textfield', WebkitAppearance: 'none' } } }}
+                helperText="Нажмите, чтобы выбрать уровень защиты"
+                InputProps={{ readOnly: true }}
               />
             </Grid>
             <Grid item xs={12} sm={4} sx={{ display: 'flex', alignItems: 'center' }}>
-              <Button variant="contained" color="primary" type="submit" fullWidth>
-                {editingId ? 'Сохранить изменения' : 'Добавить'}
+              <Button variant="contained" type="submit" fullWidth>
+                {editingId ? 'Сохранить' : 'Добавить'}
               </Button>
             </Grid>
             {editingId && (
@@ -611,35 +665,38 @@ const Prisoners = () => {
           </Grid>
         </form>
       </Box>
+
+      {/* Поиск */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h6" gutterBottom>
           Поиск заключённого
         </Typography>
         <TextField
           fullWidth
-          label="Введите текст для поиска"
-          variant="outlined"
+          placeholder="Введите текст для поиска"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </Box>
+
+      {/* Таблица */}
       <Paper sx={{ mb: 4, overflowX: 'auto', boxShadow: 2, borderRadius: 2 }}>
-        <Typography variant="h5" align="center" sx={{ py: 2, backgroundColor: '#1976d2', color: '#fff' }}>
+        <Typography variant="h5" align="center" sx={{ py: 2, bgcolor: '#1976d2', color: '#fff' }}>
           Список заключённых
         </Typography>
         <Table>
-          <TableHead sx={{ backgroundColor: '#e3f2fd' }}>
+          <TableHead sx={{ bgcolor: '#e3f2fd' }}>
             <TableRow>
               <TableCell>ID</TableCell>
               <TableCell>Имя</TableCell>
               <TableCell>Фамилия</TableCell>
-              <TableCell>Место Рождения</TableCell>
-              <TableCell>Дата Рождения</TableCell>
+              <TableCell>Место рождения</TableCell>
+              <TableCell>Дата рождения</TableCell>
               <TableCell>Профессия</TableCell>
               <TableCell>Обвинение</TableCell>
               <TableCell>Начало наказания</TableCell>
               <TableCell>Конец наказания</TableCell>
-              <TableCell>Номер камеры</TableCell>
+              <TableCell>Камера</TableCell>
               <TableCell>Уровень защиты</TableCell>
               <TableCell>Книги</TableCell>
               <TableCell>Сертификаты</TableCell>
@@ -647,65 +704,64 @@ const Prisoners = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredPrisoners.map((prisoner) => (
-              <TableRow key={prisoner.prisonerId} hover>
-                <TableCell>{prisoner.prisonerId}</TableCell>
-                <TableCell>{prisoner.firstName}</TableCell>
-                <TableCell>{prisoner.lastName}</TableCell>
-                <TableCell>{prisoner.birthPlace}</TableCell>
-                <TableCell>{prisoner.dateOfBirth}</TableCell>
-                <TableCell>{prisoner.occupation}</TableCell>
-                <TableCell>{prisoner.indictment}</TableCell>
-                <TableCell>{prisoner.intakeDate}</TableCell>
-                <TableCell>{prisoner.sentenceEndDate}</TableCell>
-                <TableCell 
-                  onClick={openCellDialog} 
+            {filteredPrisoners.map((p) => (
+              <TableRow key={p.prisonerId} hover>
+                <TableCell>{p.prisonerId}</TableCell>
+                <TableCell>{p.firstName}</TableCell>
+                <TableCell>{p.lastName}</TableCell>
+                <TableCell>{p.birthPlace}</TableCell>
+                <TableCell>{p.dateOfBirth}</TableCell>
+                <TableCell>{p.occupation}</TableCell>
+                <TableCell>{p.indictment}</TableCell>
+                <TableCell>{p.intakeDate}</TableCell>
+                <TableCell>{p.sentenceEndDate}</TableCell>
+                <TableCell
+                  onClick={openCellDialog}
                   sx={{ cursor: 'pointer', color: '#1976d2', textDecoration: 'underline' }}
                 >
-                  {prisoner.cell?.cellNum}
+                  {p.cell?.cellNum}
                 </TableCell>
-                <TableCell 
-                  onClick={openSecurityLevelDialog} 
+                <TableCell
+                  onClick={openSecurityLevelDialog}
                   sx={{ cursor: 'pointer', color: '#1976d2', textDecoration: 'underline' }}
                 >
-                  {prisoner.securityLevel?.securityLevelNo}
+                  {p.securityLevel?.securityLevelNo}
                 </TableCell>
                 <TableCell>
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
-                    startIcon={<BookIcon />} 
-                    onClick={() => openBooksDialogHandler(prisoner)}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<BookIcon />}
+                    onClick={() => openBooksDialogHandler(p)}
                   >
                     Книги
                   </Button>
                 </TableCell>
                 <TableCell>
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
-                    startIcon={<CertificateIcon />} 
-                    onClick={() => openCertificatesDialogHandler(prisoner)}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<CertificateIcon />}
+                    onClick={() => openCertificatesDialogHandler(p)}
                   >
                     Сертификаты
                   </Button>
                 </TableCell>
                 <TableCell align="center">
-                  <Button 
-                    onClick={() => handleEdit(prisoner)} 
-                    variant="contained" 
-                    color="primary" 
-                    size="small" 
-                    startIcon={<EditIcon />} 
+                  <Button
+                    onClick={() => handleEdit(p)}
+                    variant="contained"
+                    size="small"
+                    startIcon={<EditIcon />}
                     sx={{ mr: 1 }}
                   >
                     Ред.
                   </Button>
-                  <Button 
-                    onClick={() => handleDelete(prisoner.prisonerId)} 
-                    variant="outlined" 
-                    color="error" 
-                    size="small" 
+                  <Button
+                    onClick={() => handleDelete(p.prisonerId)}
+                    variant="outlined"
+                    color="error"
+                    size="small"
                     startIcon={<DeleteIcon />}
                   >
                     Удалить
@@ -716,6 +772,7 @@ const Prisoners = () => {
           </TableBody>
         </Table>
       </Paper>
+
       {renderCellDialog()}
       {renderSecurityLevelDialog()}
       {renderBooksDialog()}
