@@ -5,9 +5,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface VisitorService {
-    List<Visitor> getAllVisitor();
-    Optional<Visitor> getById(Long id);
-    Visitor createVisitor(Visitor infirmary);
-    Optional<Visitor> updateVisitor(Long id, Visitor infirmary);
-    void deleteVisitor(Long id);
+
+    List<Visitor> findAll();
+
+    Visitor findById(Integer id);
+
+    Visitor create(Visitor visitor);
+
+    Visitor update(Integer id, Visitor visitor);
+
+    void delete(Integer id);
 }

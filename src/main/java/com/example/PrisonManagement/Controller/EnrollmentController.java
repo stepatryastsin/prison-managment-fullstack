@@ -3,6 +3,8 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Model.EnrolledIn;
 import com.example.PrisonManagement.Model.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.EnrollmentCertificateServiceInterface;
+import com.example.PrisonManagement.impl.EnrollmentCertificateService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,79 +15,48 @@ import java.util.List;
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://localhost:3000")
-
 public class EnrollmentController {
 
-    private final EnrollmentCertificateServiceInterface service;
+    private final EnrollmentCertificateService service;
+
     @Autowired
-    public EnrollmentController(EnrollmentCertificateServiceInterface service) {
+    public EnrollmentController(EnrollmentCertificateService service) {
         this.service = service;
     }
 
-    @PostMapping("/enrollments")
-    public ResponseEntity<EnrolledIn> enrollPrisoner(@RequestBody EnrollmentRequest request) {
-        EnrolledIn enrollment =
-                service.enrollPrisoner(request.getPrisonerId(), request.getCourseId());
-        return ResponseEntity.ok(enrollment);
-    }
-
-    @PostMapping("/certificates")
-    public ResponseEntity<OwnCertificateFrom> issueCertificate(@RequestBody EnrollmentRequest request) {
-        OwnCertificateFrom certificate =
-                service.issueCertificate(request.getPrisonerId(), request.getCourseId());
-        return ResponseEntity.ok(certificate);
-    }
-
     @GetMapping("/enrollments")
-    public ResponseEntity<List<EnrolledIn>> getEnrollments() {
-        List<EnrolledIn> enrollments =
-                service.getAllEnrollments();
-        return ResponseEntity.ok(enrollments);
+    public List<EnrolledIn> getAllEnrollments() {
+        return service.findAllEnrollments();
     }
 
-    @GetMapping("/certificates")
-    public ResponseEntity<List<OwnCertificateFrom>> getCertificates() {
-        List<OwnCertificateFrom> certificates = service.getAllCertificates();
-        return ResponseEntity.ok(certificates);
+    @PostMapping("/enrollments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EnrolledIn enroll(@RequestBody @Valid EnrolledIn enrollment) {
+        return service.enrollPrisoner(enrollment);
     }
 
     @DeleteMapping("/enrollments/{prisonerId}/{courseId}")
-    public ResponseEntity<Void> deleteEnrollment(@PathVariable Integer prisonerId,
-                                                 @PathVariable Integer courseId) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteEnrollment(@PathVariable Integer prisonerId,
+                                 @PathVariable Integer courseId) {
         service.deleteEnrollment(prisonerId, courseId);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping("/certificates")
+    public List<OwnCertificateFrom> getAllCertificates() {
+        return service.findAllCertificates();
+    }
+
+    @PostMapping("/certificates")
+    @ResponseStatus(HttpStatus.CREATED)
+    public OwnCertificateFrom issue(@RequestBody @Valid OwnCertificateFrom certificate) {
+        return service.issueCertificate(certificate);
     }
 
     @DeleteMapping("/certificates/{prisonerId}/{courseId}")
-    public ResponseEntity<Void> deleteCertificate(@PathVariable Integer prisonerId,
-                                                  @PathVariable Integer courseId) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteCertificate(@PathVariable Integer prisonerId,
+                                  @PathVariable Integer courseId) {
         service.deleteCertificate(prisonerId, courseId);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-    }
-
-    public static class EnrollmentRequest {
-        private Integer prisonerId;
-        private Integer courseId;
-
-        public EnrollmentRequest(Integer prisonerId, Integer courseId) {
-            this.prisonerId = prisonerId;
-            this.courseId = courseId;
-        }
-
-        public Integer getPrisonerId() {
-            return prisonerId;
-        }
-
-        public void setPrisonerId(Integer prisonerId) {
-            this.prisonerId = prisonerId;
-        }
-
-        public Integer getCourseId() {
-            return courseId;
-        }
-
-        public void setCourseId(Integer courseId) {
-            this.courseId = courseId;
-        }
     }
 }

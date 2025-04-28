@@ -19,8 +19,8 @@ public class OwnCertificateFrom {
     @JoinColumn(name = "course_id", nullable = false)
     private ProgramsAndCourses course;
 
-    public OwnCertificateFrom(OwnCertificateFromKey id, Prisoner prisoner, ProgramsAndCourses course) {
-        this.id = id;
+    public OwnCertificateFrom(Prisoner prisoner, ProgramsAndCourses course) {
+        this.id = new OwnCertificateFromKey(prisoner.getPrisonerId(),course.getCourseId());
         this.prisoner = prisoner;
         this.course = course;
     }

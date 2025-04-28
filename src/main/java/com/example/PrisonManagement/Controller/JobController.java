@@ -4,8 +4,10 @@ import com.example.PrisonManagement.Model.Job;
 
 import com.example.PrisonManagement.Service.JobService;
 
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,67 +22,46 @@ import java.util.Map;
 @RequestMapping("/api/job")
 @CrossOrigin(origins = "http://localhost:3000")
 public class JobController {
-    private final Logger logger = LoggerFactory.getLogger(JobController.class);
-    private final JobService jobService;
-    public JobController(JobService jobService) {
-        this.jobService = jobService;
+
+    private final JobService service;
+
+    @Autowired
+    public JobController(JobService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public ResponseEntity<List<Job>> getAllJobs() {
-        List<Job> jobs = jobService.getAllJobs();
-        logger.info("Получено {} работ", jobs.size());
-        return ResponseEntity.ok(jobs);
+    public List<Job> getAll() {
+        return service.findAll();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Job> getJobById(@PathVariable Integer id) {
-        return jobService.getJobById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> {
-                    logger.warn("Работа с id {} не найдена", id);
-                    return ResponseEntity.notFound().build();
-                });
+    public Job getOne(@PathVariable Integer id) {
+        return service.findById(id);
     }
 
     @PostMapping
-    public ResponseEntity<Job> createJob(@RequestBody Job job) {
-        Job createdJob = jobService.createJob(job);
-        logger.info("Создана новая работа: {}", createdJob);
-        return new ResponseEntity<>(createdJob, HttpStatus.CREATED);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Job create(@RequestBody @Valid Job job) {
+        return service.create(job);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Job> updateJob(@PathVariable Integer id, @RequestBody Job job) {
-        return jobService.updateJob(id, job)
-                .map(updatedJob -> {
-                    logger.info("Работа с id {} успешно обновлена", id);
-                    return ResponseEntity.ok(updatedJob);
-                })
-                .orElseGet(() -> {
-                    logger.warn("Не удалось обновить работу с id {} - запись не найдена", id);
-                    return ResponseEntity.notFound().build();
-                });
+    public Job update(@PathVariable Integer id, @RequestBody @Valid Job job) {
+        return service.update(id, job);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteJob(@PathVariable Integer id) {
-        try {
-            jobService.deleteJob(id);
-            logger.info("Работа с id {} успешно удалена", id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalStateException e) {
-            logger.warn("Невозможно удалить работу с id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        }
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer id) {
+        service.delete(id);
     }
 
-    @GetMapping(value = "/{id}/usage", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Integer>> getJobUsage(@PathVariable Integer id) {
-        int usageCount = jobService.getUsageCount(id);
+    @GetMapping("/{id}/usage")
+    public Map<String, Integer> getUsage(@PathVariable Integer id) {
+        int usage = service.getUsageCount(id);
         Map<String, Integer> result = new HashMap<>();
-        result.put("usageCount", usageCount);
-        logger.info("Работа с id {} используется {} раз", id, usageCount);
-        return ResponseEntity.ok(result);
+        result.put("usageCount", usage);
+        return result;
     }
 }

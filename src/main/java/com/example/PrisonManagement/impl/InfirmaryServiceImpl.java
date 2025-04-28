@@ -31,7 +31,8 @@ public class InfirmaryServiceImpl implements InfirmaryService {
         return repo.findById(prescriptionNum)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Запись с prescriptionNum=" + prescriptionNum + " не найдена"));
+                        "Запись prescriptionNum=" + prescriptionNum + " не найдена"
+                ));
     }
 
     @Override
@@ -39,18 +40,22 @@ public class InfirmaryServiceImpl implements InfirmaryService {
         return repo.findByPrisoner_PrisonerId(prisonerId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Запись для prisonerId=" + prisonerId + " не найдена"));
+                        "Запись для prisonerId=" + prisonerId + " не найдена"
+                ));
     }
 
     @Override
-    public Infirmary create(Infirmary infirmary) {
+    public Infirmary createOrUpdate(Infirmary infirmary) {
         Integer pid = infirmary.getPrisoner().getPrisonerId();
-        if (repo.existsByPrisoner_PrisonerId(pid)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "У заключённого с id=" + pid + " уже есть запись");
-        }
-        return repo.save(infirmary);
+        return repo.findByPrisoner_PrisonerId(pid)
+                .map(existing -> {
+                    existing.setRelatedDoctor(infirmary.getRelatedDoctor());
+                    existing.setDrugName(infirmary.getDrugName());
+                    existing.setDrugUsageDay(infirmary.getDrugUsageDay());
+                    existing.setDiseaseType(infirmary.getDiseaseType());
+                    return repo.save(existing);
+                })
+                .orElseGet(() -> repo.save(infirmary));
     }
 
     @Override
@@ -64,12 +69,24 @@ public class InfirmaryServiceImpl implements InfirmaryService {
     }
 
     @Override
-    public void delete(Integer prescriptionNum) {
+    public void deleteByPrescriptionNum(Integer prescriptionNum) {
         if (!repo.existsById(prescriptionNum)) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    "Запись с prescriptionNum=" + prescriptionNum + " не найдена");
+                    "Запись prescriptionNum=" + prescriptionNum + " не найдена"
+            );
         }
         repo.deleteById(prescriptionNum);
+    }
+
+    @Override
+    public void deleteByPrisonerId(Integer prisonerId) {
+        if (!repo.existsByPrisoner_PrisonerId(prisonerId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Запись для prisonerId=" + prisonerId + " не найдена"
+            );
+        }
+        repo.deleteByPrisoner_PrisonerId(prisonerId);
     }
 }

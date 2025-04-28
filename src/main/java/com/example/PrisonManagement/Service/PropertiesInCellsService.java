@@ -8,6 +8,7 @@ import java.util.List;
 public interface PropertiesInCellsService {
     List<PropertiesInCells> findAll();
     PropertiesInCells findById(PropertiesInCellsKey id);
-    PropertiesInCells save(PropertiesInCells properties);
+    PropertiesInCells create(PropertiesInCells properties);
+    PropertiesInCells update(PropertiesInCellsKey id, PropertiesInCells properties);
     void delete(PropertiesInCellsKey id);
 }

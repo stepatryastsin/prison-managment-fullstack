@@ -2,8 +2,10 @@ package com.example.PrisonManagement.Controller;
 
 import com.example.PrisonManagement.Model.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.OwnCertificateFromService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,53 +15,43 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ownCertificateFrom")
 @CrossOrigin(origins = "http://localhost:3000")
-
-
 public class OwnCertificateFromController {
 
-    private final OwnCertificateFromService ownCertificateFromService;
-    private final Logger logger = LoggerFactory.getLogger(OwnCertificateFromController.class);
-    public OwnCertificateFromController(OwnCertificateFromService ownCertificateFromService) {
-        this.ownCertificateFromService = ownCertificateFromService;
+    private final OwnCertificateFromService service;
+
+    @Autowired
+    public OwnCertificateFromController(OwnCertificateFromService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public ResponseEntity<List<OwnCertificateFrom>> getAll() {
-        List<OwnCertificateFrom> list = ownCertificateFromService.getAll();
-        logger.info("Получено {} сертификатов", list.size());
-        return ResponseEntity.ok(list);
+    public List<OwnCertificateFrom> getAll() {
+        return service.findAll();
     }
 
     @GetMapping("/{prisonerId}/{courseId}")
-    public ResponseEntity<OwnCertificateFrom> getById(@PathVariable Integer prisonerId,
-                                                      @PathVariable Integer courseId) {
-        OwnCertificateFrom certificate = ownCertificateFromService.getById(prisonerId, courseId);
-        logger.info("Найден сертификат с ключом ({}, {})", prisonerId, courseId);
-        return ResponseEntity.ok(certificate);
+    public OwnCertificateFrom getOne(@PathVariable Integer prisonerId,
+                                     @PathVariable Integer courseId) {
+        return service.findById(prisonerId, courseId);
     }
 
     @PostMapping
-    public ResponseEntity<OwnCertificateFrom> create(@RequestBody OwnCertificateFrom ownCertificateFrom) {
-        OwnCertificateFrom created = ownCertificateFromService.create(ownCertificateFrom);
-        logger.info("Создан сертификат с ключом ({}, {})",
-                created.getId().getPrisonerId(), created.getId().getCourseId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @ResponseStatus(HttpStatus.CREATED)
+    public OwnCertificateFrom create(@RequestBody @Valid OwnCertificateFrom ownCertificate) {
+        return service.create(ownCertificate);
     }
 
     @PutMapping("/{prisonerId}/{courseId}")
-    public ResponseEntity<OwnCertificateFrom> update(@PathVariable Integer prisonerId,
-                                                     @PathVariable Integer courseId,
-                                                     @RequestBody OwnCertificateFrom ownCertificateFrom) {
-        OwnCertificateFrom updated = ownCertificateFromService.update(prisonerId, courseId, ownCertificateFrom);
-        logger.info("Обновлён сертификат с ключом ({}, {})", prisonerId, courseId);
-        return ResponseEntity.ok(updated);
+    public OwnCertificateFrom update(@PathVariable Integer prisonerId,
+                                     @PathVariable Integer courseId,
+                                     @RequestBody @Valid OwnCertificateFrom ownCertificate) {
+        return service.update(prisonerId, courseId, ownCertificate);
     }
 
     @DeleteMapping("/{prisonerId}/{courseId}")
-    public ResponseEntity<OwnCertificateFrom> delete(@PathVariable Integer prisonerId,
-                                                     @PathVariable Integer courseId) {
-        OwnCertificateFrom deleted = ownCertificateFromService.delete(prisonerId, courseId);
-        logger.info("Удалён сертификат с ключом ({}, {})", prisonerId, courseId);
-        return ResponseEntity.ok(deleted);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer prisonerId,
+                       @PathVariable Integer courseId) {
+        service.delete(prisonerId, courseId);
     }
 }

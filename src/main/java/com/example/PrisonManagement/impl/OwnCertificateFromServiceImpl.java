@@ -9,76 +9,68 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @Service
-
+@Transactional
 public class OwnCertificateFromServiceImpl implements OwnCertificateFromService {
 
-    private final OwnCertificateFromRepository repository;
-    private final Logger logger
-            = LoggerFactory.getLogger(OwnCertificateFromServiceImpl.class);
+    private final OwnCertificateFromRepository repo;
+
     @Autowired
-    public OwnCertificateFromServiceImpl(OwnCertificateFromRepository repository) {
-        this.repository = repository;
+    public OwnCertificateFromServiceImpl(OwnCertificateFromRepository repo) {
+        this.repo = repo;
     }
 
     @Override
-    public List<OwnCertificateFrom> getAll() {
-        logger.info("Получение всех сертификатов");
-        return repository.findAll();
+    public List<OwnCertificateFrom> findAll() {
+        return repo.findAll();
     }
 
     @Override
-    public OwnCertificateFrom getById(Integer prisonerId, Integer courseId) {
+    public OwnCertificateFrom findById(Integer prisonerId, Integer courseId) {
         OwnCertificateFromKey key = new OwnCertificateFromKey(prisonerId, courseId);
-        logger.info("Поиск сертификата с ключом ({}, {})", prisonerId, courseId);
-        return repository.findById(key)
-                .orElseThrow(() -> {
-                    logger.error("Сертификат с ключом ({}, {}) не найден", prisonerId, courseId);
-                    return new EntityNotFoundException("Сертификат с ключом (" + prisonerId + ", " + courseId + ") не найден");
-                });
+        return repo.findById(key)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Certificate " + key + " not found"));
     }
 
     @Override
-    public OwnCertificateFrom create(OwnCertificateFrom ownCertificateFrom) {
-        logger.info("Создание нового сертификата: {}", ownCertificateFrom);
-        return repository.save(ownCertificateFrom);
+    public OwnCertificateFrom create(OwnCertificateFrom ownCertificate) {
+        OwnCertificateFromKey key = ownCertificate.getId();
+        if (repo.existsById(key)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Certificate " + key + " already exists");
+        }
+        return repo.save(ownCertificate);
     }
 
     @Override
-    @Transactional
-    public OwnCertificateFrom update(Integer prisonerId, Integer courseId, OwnCertificateFrom ownCertificateFrom) {
+    public OwnCertificateFrom update(Integer prisonerId, Integer courseId, OwnCertificateFrom ownCertificate) {
         OwnCertificateFromKey key = new OwnCertificateFromKey(prisonerId, courseId);
-        logger.info("Обновление сертификата с ключом ({}, {})", prisonerId, courseId);
-        return repository.findById(key)
-                .map(existing -> {
-                    // Обновляем данные. Если требуется обновлять только определённые поля, можно явно указать их.
-                    ownCertificateFrom.setId(key);  // Гарантируем, что ключ остается прежним
-                    OwnCertificateFrom updated = repository.save(ownCertificateFrom);
-                    logger.info("Сертификат с ключом ({}, {}) успешно обновлён", prisonerId, courseId);
-                    return updated;
-                })
-                .orElseThrow(() -> {
-                    logger.error("Сертификат с ключом ({}, {}) не найден для обновления", prisonerId, courseId);
-                    return new EntityNotFoundException("Сертификат с ключом (" + prisonerId + ", " + courseId + ") не найден");
-                });
+        if (!repo.existsById(key)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Certificate " + key + " not found");
+        }
+        // preserve key
+        ownCertificate.setId(key);
+        return repo.save(ownCertificate);
     }
 
     @Override
-    @Transactional
-    public OwnCertificateFrom delete(Integer prisonerId, Integer courseId) {
-        OwnCertificateFromKey key = new OwnCertificateFromKey(prisonerId, courseId);
-        logger.info("Удаление сертификата с ключом ({}, {})", prisonerId, courseId);
-        OwnCertificateFrom entity = repository.findById(key)
-                .orElseThrow(() -> {
-                    logger.error("Сертификат с ключом ({}, {}) не найден для удаления", prisonerId, courseId);
-                    return new EntityNotFoundException("Сертификат с ключом (" + prisonerId + ", " + courseId + ") не найден");
-                });
-        repository.delete(entity);
-        logger.info("Сертификат с ключом ({}, {}) успешно удалён", prisonerId, courseId);
-        return entity;
+    public void delete(Integer prisonerId, Integer courseId) {
+        int deleted = repo.deleteByPrisonerIdAndCourseId(prisonerId, courseId);
+        if (deleted == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Certificate (" + prisonerId + "," + courseId + ") not found");
+        }
     }
 }

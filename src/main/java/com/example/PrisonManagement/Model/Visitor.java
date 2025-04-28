@@ -2,10 +2,8 @@ package com.example.PrisonManagement.Model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+
 import java.time.LocalDate;
 
 @Entity
@@ -19,12 +17,12 @@ public class Visitor {
     private Integer visitorId;
 
     @NotBlank(message = "First Name is required")
-    @Size(min = 2,max = 20)
+    @Size(min = 2,max = 20, message = "Должно быть больше чем 2 меньше чем 20 символов")
     @Column(name = "first_name", length = 20,nullable = false)
     private String firstName;
 
     @NotBlank(message = "Last Name is required")
-    @Size(min = 2,max = 20)
+    @Size(min = 2,max = 20, message = "Должно быть больше чем 2 меньше чем 20 символов")
     @Column(name = "last_name", length = 20,nullable = false)
     private String lastName;
 
@@ -34,11 +32,11 @@ public class Visitor {
     private String phoneNumber;
 
     @NotBlank(message = "Relation is required")
-    @Size(max = 20)
+    @Size(max = 20, message = "Должно быть меньше чем 20 символов")
     @Column(name = "relation_to_prisoner", length = 20, nullable = false)
     private String relationToPrisoner;
 
-    @PastOrPresent
+    @Future
     @Column(name = "visit_date")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate visitDate;

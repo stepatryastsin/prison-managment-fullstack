@@ -1,6 +1,7 @@
 package com.example.PrisonManagement.impl;
 
 import com.example.PrisonManagement.Model.Library;
+import com.example.PrisonManagement.Repository.BorrowedRepository;
 import com.example.PrisonManagement.Repository.LibraryRepository;
 import com.example.PrisonManagement.Service.LibraryService;
 
@@ -17,32 +18,40 @@ import java.util.List;
 @Transactional
 public class LibraryServiceImpl implements LibraryService {
 
-    private final LibraryRepository repo;
+    private final LibraryRepository libRepo;
+    private final BorrowedRepository borrowedRepo;
 
     @Autowired
-    public LibraryServiceImpl(LibraryRepository repo) {
-        this.repo = repo;
+    public LibraryServiceImpl(LibraryRepository libRepo,
+                              BorrowedRepository borrowedRepo) {
+        this.libRepo      = libRepo;
+        this.borrowedRepo = borrowedRepo;
     }
 
     @Override
     public List<Library> findAll() {
-        return repo.findAll();
+        return libRepo.findAll();
     }
 
     @Override
     public Library findByIsbn(String isbn) {
-        return repo.findByIsbn(isbn)
+        return libRepo.findByIsbn(isbn)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Книга с ISBN " + isbn + " не найдена"));
+                        HttpStatus.NOT_FOUND,
+                        "Книга c ISBN=" + isbn + " не найдена"
+                ));
     }
 
     @Override
     public Library create(Library library) {
-        if (repo.existsByIsbn(library.getIsbn())) {
+        String isbn = library.getIsbn();
+        if (libRepo.existsByIsbn(isbn)) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Книга с таким ISBN уже существует");
+                    HttpStatus.CONFLICT,
+                    "Книга с ISBN=" + isbn + " уже существует"
+            );
         }
-        return repo.save(library);
+        return libRepo.save(library);
     }
 
     @Override
@@ -50,15 +59,23 @@ public class LibraryServiceImpl implements LibraryService {
         Library existing = findByIsbn(isbn);
         existing.setBookName(library.getBookName());
         existing.setGenre(library.getGenre());
-        return repo.save(existing);
+        return libRepo.save(existing);
     }
 
     @Override
     public void delete(String isbn) {
-        if (!repo.existsByIsbn(isbn)) {
+        if (borrowedRepo.existsByIsbn(isbn)) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Книга с ISBN " + isbn + " не найдена");
+                    HttpStatus.CONFLICT,
+                    "Нельзя удалить книгу ISBN=" + isbn + " — она сейчас заимствована"
+            );
         }
-        repo.deleteByIsbn(isbn);
+        if (!libRepo.existsByIsbn(isbn)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Книга с ISBN=" + isbn + " не найдена"
+            );
+        }
+        libRepo.deleteByIsbn(isbn);
     }
 }

@@ -1,11 +1,12 @@
 package com.example.PrisonManagement.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 
 @Entity
 @Table(name = "enrolled_in")
-// ready
+@JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 public class EnrolledIn {
 
     @EmbeddedId

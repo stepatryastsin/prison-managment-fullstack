@@ -17,7 +17,7 @@ public class Infirmary {
     private Integer prescriptionNum;
 
     @NotNull(message = "Необходим заключенный")
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 

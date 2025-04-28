@@ -1,28 +1,23 @@
 package com.example.PrisonManagement.Service;
 
-import com.example.PrisonManagement.Model.Borrowed;
-import com.example.PrisonManagement.Model.BorrowedKey;
-import com.example.PrisonManagement.Model.Library;
-import com.example.PrisonManagement.Model.Prisoner;
+import com.example.PrisonManagement.Model.*;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface BorrowedService {
-    List<Borrowed> getAllBorrowed();
 
-    Optional<Borrowed> getBorrowedById(BorrowedKey id);
+    List<Borrowed> findAll();
 
+    Borrowed findById(BorrowedKey id);
 
-    Borrowed createBorrowed(Borrowed borrowed);
+    Prisoner findPrisonerByPrisonerId(Integer prisonerId);
 
-    Borrowed updateBorrowed(BorrowedKey id, Borrowed updatedBorrowed);
+    Library findLibraryByIsbn(String isbn);
 
-    void deleteBorrowed(BorrowedKey id);
+    Borrowed create(Borrowed borrowed);
 
-    boolean existsByIsbn(String isbn);
+    Borrowed update(BorrowedKey id, Borrowed borrowed);
 
-    Prisoner getPrisonerByIdFromBorrowed(Integer id);
-
-    Library  getLibraryByIdFromBorrowed(String isbn);
+    void delete(BorrowedKey id);
 }

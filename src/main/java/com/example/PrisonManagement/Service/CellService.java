@@ -6,10 +6,17 @@ import java.util.Optional;
 
 
 public interface CellService {
-    List<Cell> getAllCells();
-    Optional<Cell> getCellById(Integer id);
-    Cell createCell(Cell cell);
-    Cell updateCell(Integer id, Cell cell);
-    void deleteCell(Integer id);
+
+    List<Cell> findAll();
+
+    Cell findById(Integer id);
+
+    Cell create(Cell cell);
+
+    Cell update(Integer id, Cell cell);
+
+    void delete(Integer id);
+
     boolean hasPrisoners(Integer id);
+
 }

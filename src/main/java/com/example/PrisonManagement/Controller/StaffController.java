@@ -2,6 +2,7 @@ package com.example.PrisonManagement.Controller;
 
 import com.example.PrisonManagement.Model.Staff;
 import com.example.PrisonManagement.Service.StaffService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,50 +17,43 @@ import java.util.Optional;
 @CrossOrigin(origins = "http://localhost:3000")
 public class StaffController {
 
-    private final StaffService staffService;
+    private final StaffService service;
 
     @Autowired
-    public StaffController(StaffService staffService) {
-        this.staffService = staffService;
+    public StaffController(StaffService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public ResponseEntity<List<Staff>> getAllStaff() {
-        List<Staff> staffList = staffService.getAllStaff();
-        return new ResponseEntity<>(staffList, HttpStatus.OK);
+    public List<Staff> getAll() {
+        return service.findAll();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Optional<Staff>> getStaffById(@PathVariable Integer id) {
-        Optional<Staff> staff = staffService.getById(id);
-        return ResponseEntity.ok(staff);
+    public Staff getOne(@PathVariable Integer id) {
+        return service.findById(id);
     }
 
     @PostMapping
-    public ResponseEntity<Staff> createStaff(@RequestBody Staff staff) {
-        Staff createdStaff = staffService.createStaff(staff);
-        return new ResponseEntity<>(createdStaff, HttpStatus.CREATED);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Staff create(@RequestBody @Valid Staff staff) {
+        return service.create(staff);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Optional<Staff>> updateStaff(@PathVariable Integer id, @RequestBody Staff staff) {
-        Optional<Staff> updatedStaff = staffService.updateStaff(id, staff);
-        return ResponseEntity.ok(updatedStaff);
+    public Staff update(@PathVariable Integer id,
+                        @RequestBody @Valid Staff staff) {
+        return service.update(id, staff);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteStaff(@PathVariable BigDecimal id) {
-        staffService.deleteStaff(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer id) {
+        service.delete(id);
     }
 
-    @GetMapping("/{id}/job")
-    public ResponseEntity<Integer> getJobById(@PathVariable Integer id) {
-        Optional<Staff> courseOpt = staffService.getById(id);
-        if (courseOpt.isPresent() && courseOpt.get().getJob()!= null) {
-            Integer staffId = courseOpt.get().getJob().getJobId();
-            return ResponseEntity.ok(staffId);
-        }
-        return ResponseEntity.notFound().build();
+    @GetMapping("/job/{jobId}/usage")
+    public int getUsage(@PathVariable Integer jobId) {
+        return service.getUsageCount(jobId);
     }
 }

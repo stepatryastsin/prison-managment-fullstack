@@ -3,6 +3,9 @@ package com.example.PrisonManagement.Controller;
 
 import com.example.PrisonManagement.Model.Visitor;
 import com.example.PrisonManagement.Service.VisitorService;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,34 +17,38 @@ import java.util.Optional;
 @CrossOrigin(origins = "http://localhost:3000")
 public class VisitorController {
 
-    private final VisitorService visitorService;
+    private final VisitorService service;
 
-    public VisitorController(VisitorService visitorService) {
-        this.visitorService = visitorService;
+    @Autowired
+    public VisitorController(VisitorService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public List<Visitor> getAllVisitors() {
-        return visitorService.getAllVisitor();
+    public List<Visitor> getAll() {
+        return service.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public Visitor getOne(@PathVariable Integer id) {
+        return service.findById(id);
     }
 
     @PostMapping
-    public ResponseEntity<Visitor> createVisitor(@RequestBody Visitor visitor) {
-        Visitor savedVisitor = visitorService.createVisitor(visitor);
-        return ResponseEntity.ok(savedVisitor);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Visitor create(@RequestBody @Valid Visitor visitor) {
+        return service.create(visitor);
     }
-    @GetMapping("/{id}")
-    public ResponseEntity<Optional<Visitor>> getPrisonerById(@PathVariable Long id) {
-        Optional<Visitor> prisoner = visitorService.getById(id);
-        return ResponseEntity.ok(prisoner);
-    }
+
     @PutMapping("/{id}")
-    public Optional<Visitor> updateVisitor(@PathVariable Long id, @RequestBody Visitor visitor) {
-        return visitorService.updateVisitor(id, visitor);
+    public Visitor update(@PathVariable Integer id,
+                          @RequestBody @Valid Visitor visitor) {
+        return service.update(id, visitor);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteVisitor(@PathVariable Long id) {
-        visitorService.deleteVisitor(id);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer id) {
+        service.delete(id);
     }
 }

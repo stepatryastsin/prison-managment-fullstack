@@ -18,7 +18,6 @@ import java.util.List;
 public class InfirmaryController {
 
     private final InfirmaryService service;
-    private final Logger logger = LoggerFactory.getLogger(InfirmaryController.class);
 
     @Autowired
     public InfirmaryController(InfirmaryService service) {
@@ -26,45 +25,41 @@ public class InfirmaryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Infirmary>> getAll() {
-        List<Infirmary> list = service.findAll();
-        logger.info("Найдено {} записей", list.size());
-        return ResponseEntity.ok(list);
+    public List<Infirmary> getAll() {
+        return service.findAll();
     }
 
     @GetMapping("/{prescriptionNum}")
-    public ResponseEntity<Infirmary> getById(@PathVariable Integer prescriptionNum) {
-        Infirmary inf = service.findById(prescriptionNum);
-        return ResponseEntity.ok(inf);
+    public Infirmary getById(@PathVariable Integer prescriptionNum) {
+        return service.findById(prescriptionNum);
     }
 
     @GetMapping("/prisoner/{prisonerId}")
-    public ResponseEntity<Prisoner> getPrisoner(@PathVariable Integer prisonerId) {
-        Infirmary inf = service.findByPrisonerId(prisonerId);
-        return ResponseEntity.ok(inf.getPrisoner());
+    public Prisoner getPrisoner(@PathVariable Integer prisonerId) {
+        return service.findByPrisonerId(prisonerId).getPrisoner();
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Infirmary create(@RequestBody @Valid Infirmary infirmary) {
-        Infirmary created = service.create(infirmary);
-        logger.info("Создана запись prescriptionNum={}", created.getPrescriptionNum());
-        return created;
+    @ResponseStatus(HttpStatus.OK)
+    public Infirmary createOrUpdate(@RequestBody @Valid Infirmary infirmary) {
+        return service.createOrUpdate(infirmary);
     }
 
     @PutMapping("/{prescriptionNum}")
-    public Infirmary update(
-            @PathVariable Integer prescriptionNum,
-            @RequestBody @Valid Infirmary infirmary) {
-        Infirmary updated = service.update(prescriptionNum, infirmary);
-        logger.info("Обновлена запись prescriptionNum={}", prescriptionNum);
-        return updated;
+    public Infirmary update(@PathVariable Integer prescriptionNum,
+                            @RequestBody @Valid Infirmary infirmary) {
+        return service.update(prescriptionNum, infirmary);
     }
 
     @DeleteMapping("/{prescriptionNum}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Integer prescriptionNum) {
-        service.delete(prescriptionNum);
-        logger.info("Удалена запись prescriptionNum={}", prescriptionNum);
+    public void deleteByPrescriptionNum(@PathVariable Integer prescriptionNum) {
+        service.deleteByPrescriptionNum(prescriptionNum);
+    }
+
+    @DeleteMapping("/prisoner/{prisonerId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteByPrisoner(@PathVariable Integer prisonerId) {
+        service.deleteByPrisonerId(prisonerId);
     }
 }

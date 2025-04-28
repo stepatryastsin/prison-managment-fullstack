@@ -5,9 +5,15 @@ import java.util.List;
 
 
 public interface OwnCertificateFromService {
-    List<OwnCertificateFrom> getAll();
-    OwnCertificateFrom getById(Integer prisonerId, Integer courseId);
-    OwnCertificateFrom create(OwnCertificateFrom ownCertificateFrom);
-    OwnCertificateFrom update(Integer prisonerId, Integer courseId, OwnCertificateFrom ownCertificateFrom);
-    OwnCertificateFrom delete(Integer prisonerId, Integer courseId);
+
+    List<OwnCertificateFrom> findAll();
+
+    OwnCertificateFrom findById(Integer prisonerId, Integer courseId);
+
+    OwnCertificateFrom create(OwnCertificateFrom ownCertificate);
+
+    OwnCertificateFrom update(Integer prisonerId, Integer courseId, OwnCertificateFrom ownCertificate);
+
+    void delete(Integer prisonerId, Integer courseId);
+
 }

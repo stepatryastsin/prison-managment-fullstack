@@ -21,8 +21,8 @@ public class PropertiesInCells {
     @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
-    public PropertiesInCells(String propertyName, String description, Prisoner prisoner) {
-        this.id = new PropertiesInCellsKey(propertyName, prisoner.getPrisonerId());
+    public PropertiesInCells(String description, Prisoner prisoner) {
+        this.id = new PropertiesInCellsKey(prisoner.getPrisonerId());
         this.description = description;
         this.prisoner = prisoner;
     }

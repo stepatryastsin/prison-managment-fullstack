@@ -18,4 +18,5 @@ public interface InfirmaryRepository extends JpaRepository<Infirmary, Integer> {
     @Modifying
     @Transactional
     void deleteByPrisoner_PrisonerId(Integer prisonerId);
+
 }

@@ -5,63 +5,68 @@ import com.example.PrisonManagement.Model.Staff;
 import com.example.PrisonManagement.Repository.JobRepository;
 import com.example.PrisonManagement.Repository.StaffRepository;
 import com.example.PrisonManagement.Service.StaffService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@Transactional
 public class StaffServiceImpl implements StaffService {
 
-    private final StaffRepository staffRepository;
-    private final JobRepository jobRepository;
+    private final StaffRepository repo;
 
     @Autowired
-    public StaffServiceImpl(StaffRepository staffRepository, JobRepository jobRepository) {
-        this.staffRepository = staffRepository;
-        this.jobRepository = jobRepository;
+    public StaffServiceImpl(StaffRepository repo) {
+        this.repo = repo;
     }
 
     @Override
-    public List<Staff> getAllStaff() {
-        return staffRepository.findAll();
+    public List<Staff> findAll() {
+        return repo.findAll();
     }
 
     @Override
-    public Optional<Staff> getById(Integer id) {
-        return staffRepository.findById(id);
+    public Staff findById(Integer id) {
+        return repo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Staff with id=" + id + " not found"));
     }
 
     @Override
-    public Staff createStaff(Staff staff) {
-        if (staff.getJob() != null) {
-            staff.setJob(getManagedJob(staff.getJob()));
+    public Staff create(Staff staff) {
+        // cascade PERSIST/MERGE on Job will handle new or existing Job
+        return repo.save(staff);
+    }
+
+    @Override
+    public Staff update(Integer id, Staff staff) {
+        Staff existing = findById(id);
+        existing.setFirstName(staff.getFirstName());
+        existing.setLastName(staff.getLastName());
+        existing.setSalary(staff.getSalary());
+        existing.setJob(staff.getJob());
+        return repo.save(existing);
+    }
+
+    @Override
+    public void delete(Integer id) {
+        if (!repo.existsById(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Staff with id=" + id + " not found");
         }
-        return staffRepository.save(staff);
+        repo.deleteById(id);
     }
 
     @Override
-    public Optional<Staff> updateStaff(Integer id, Staff staff) {
-        return staffRepository.findById(id)
-                .map(existingStaff -> {
-                    existingStaff.setFirstName(staff.getFirstName());
-                    existingStaff.setLastName(staff.getLastName());
-                    existingStaff.setSalary(staff.getSalary());
-                    if (staff.getJob() != null) {
-                        existingStaff.setJob(getManagedJob(staff.getJob()));
-                    }
-                    return staffRepository.save(existingStaff);
-                });
+    public int getUsageCount(Integer jobId) {
+        return (int) repo.countByJob_JobId(jobId);
     }
-
-    @Override
-    public void deleteStaff(BigDecimal id) {
-        staffRepository.deleteById(id.intValue());
-    }
-
-    private Job getManagedJob(Job job) {
-      return null;
-    }
-}// @todo  переделать !!!!
+}

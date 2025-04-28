@@ -10,82 +10,70 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
 
 
 @Service
+@Transactional
 public class CellServiceImpl implements CellService {
 
-    private final Logger logger =
-            LoggerFactory.getLogger(CellServiceImpl.class);
-
-    private final CellRepository cellRepository;
-    private final PrisonerRepository prisonerRepository;
+    private final CellRepository repo;
+    private final PrisonerRepository prisonerRepo;
 
     @Autowired
-    public CellServiceImpl(CellRepository cellRepository,PrisonerRepository prisonerRepository) {
-        this.cellRepository = cellRepository;
-        this.prisonerRepository = prisonerRepository;
+    public CellServiceImpl(CellRepository repo, PrisonerRepository prisonerRepo) {
+        this.repo = repo;
+        this.prisonerRepo = prisonerRepo;
     }
 
     @Override
-    public List<Cell> getAllCells() {
-        logger.info("Получение списка всех камер");
-        return cellRepository.findAll();
+    public List<Cell> findAll() {
+        return repo.findAll();
     }
 
     @Override
-    public Optional<Cell> getCellById(Integer id) {
-        logger.info("Получение камеры с id {}", id);
-        return cellRepository.findById(id)
-                .map(cell -> {
-                    logger.info("Найдено: {}", cell);
-                    return cell;
-                });
+    public Cell findById(Integer id) {
+        return repo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Камера с id=" + id + " не найдена"));
     }
 
     @Override
-    @Transactional
-    public Cell createCell(Cell cell) {
-        logger.info("Создание новой камеры: {}", cell);
-        return cellRepository.save(cell);
-    }
-
-    @Override
-    @Transactional
-    public Cell updateCell(Integer id, Cell cell) {
-        logger.info("Обновление камеры с id {}", id);
-        return cellRepository.findById(id)
-                .map(existingCell -> {
-                    existingCell.setLastShakedownDate(cell.getLastShakedownDate());
-                    Cell updated = cellRepository.save(existingCell);
-                    logger.info("Камера с id {} успешно обновлена", id);
-                    return updated;
-                })
-                .orElseThrow(() -> {
-                    logger.error("Камера с id {} не найдена для обновления", id);
-                    return new EntityNotFoundException("Камера с id " + id + " не найдена");
-                });
-    }
-
-    @Override
-    @Transactional
-    public void deleteCell(Integer id) {
-        logger.info("Удаление камеры с id {}", id);
-        if (!cellRepository.existsById(id)) {
-            logger.error("Камера с id {} не найдена для удаления", id);
-            throw new EntityNotFoundException("Камера с id " + id + " не найдена");
+    public Cell create(Cell cell) {
+        Integer id = cell.getCellNum();
+        if (repo.existsById(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Камера с id=" + id + " уже существует");
         }
-        cellRepository.deleteById(id);
-        logger.info("Камера с id {} успешно удалена", id);
+        return repo.save(cell);
+    }
+
+    @Override
+    public Cell update(Integer id, Cell cell) {
+        Cell existing = findById(id);
+        existing.setLastShakedownDate(cell.getLastShakedownDate());
+        return repo.save(existing);
+    }
+
+    @Override
+    public void delete(Integer id) {
+        if (!repo.existsById(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Камера с id=" + id + " не найдена");
+        }
+        repo.deleteById(id);
     }
 
     @Override
     public boolean hasPrisoners(Integer id) {
-        return prisonerRepository.existsByCell_CellNum(id);
+        return prisonerRepo.existsByCell_CellNum(id);
     }
-
 }

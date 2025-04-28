@@ -1,5 +1,6 @@
 package com.example.PrisonManagement.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
@@ -7,6 +8,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "prisoner")
+@JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 //ready
 public class Prisoner {
 

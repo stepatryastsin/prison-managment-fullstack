@@ -5,58 +5,74 @@ import com.example.PrisonManagement.Model.PropertiesInCellsKey;
 import com.example.PrisonManagement.Repository.PropertiesInCellsRepository;
 import com.example.PrisonManagement.Service.PropertiesInCellsService;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @Service
-
+@Transactional
 public class PropertiesInCellsServiceImpl implements PropertiesInCellsService {
 
     private final PropertiesInCellsRepository repository;
-    private final Logger logger
-            = LoggerFactory.getLogger(PropertiesInCellsServiceImpl.class);
+
+    @Autowired
     public PropertiesInCellsServiceImpl(PropertiesInCellsRepository repository) {
         this.repository = repository;
     }
 
     @Override
     public List<PropertiesInCells> findAll() {
-        logger.info("Получение списка всех записей properties_in_cells");
-        List<PropertiesInCells> propertiesList = repository.findAll();
-        logger.info("Найдено {} записей", propertiesList.size());
-        return propertiesList;
+        return repository.findAll();
     }
 
     @Override
     public PropertiesInCells findById(PropertiesInCellsKey id) {
-        logger.info("Поиск записи properties_in_cells по ключу: {}", id);
         return repository.findById(id)
-                .orElseThrow(() -> {
-                    logger.error("Запись properties_in_cells не найдена по ключу: {}", id);
-                    return new EntityNotFoundException("Запись не найдена для ключа: " + id);
-                });
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Property not found for key: " + id
+                ));
     }
 
     @Override
-    public PropertiesInCells save(PropertiesInCells properties) {
-        logger.info("Сохранение записи properties_in_cells с ключом: {}", properties.getId());
-        PropertiesInCells saved = repository.save(properties);
-        logger.info("Запись успешно сохранена с ключом: {}", saved.getId());
-        return saved;
+    public PropertiesInCells create(PropertiesInCells properties) {
+        PropertiesInCellsKey key = properties.getId();
+        if (repository.existsById(key)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Property already exists for key: " + key
+            );
+        }
+        return repository.save(properties);
+    }
+
+    @Override
+    public PropertiesInCells update(PropertiesInCellsKey id, PropertiesInCells properties) {
+        if (!repository.existsById(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Cannot update non-existent property with key: " + id
+            );
+        }
+        // ensure the key on the incoming object matches the path variables
+        properties.setId(id);
+        return repository.save(properties);
     }
 
     @Override
     public void delete(PropertiesInCellsKey id) {
-        logger.info("Удаление записи properties_in_cells по ключу: {}", id);
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            logger.info("Запись с ключом {} успешно удалена", id);
-        } else {
-            logger.error("Попытка удалить несуществующую запись с ключом: {}", id);
-            throw new EntityNotFoundException("Запись не найдена для удаления с ключом: " + id);
+        if (!repository.existsById(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Cannot delete non-existent property with key: " + id
+            );
         }
+        repository.deleteById(id);
     }
 }

@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 
 
@@ -18,63 +20,44 @@ import java.util.List;
 @RequestMapping("/api/cells")
 @CrossOrigin(origins = "http://localhost:3000")
 public class CellController {
-    private final CellService cellService;
-    private final Logger logger = LoggerFactory.getLogger(CellController.class);
+
+    private final CellService service;
+
     @Autowired
-    public CellController(CellService cellService) {
-        this.cellService = cellService;
+    public CellController(CellService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public ResponseEntity<List<Cell>> getAllCells() {
-        List<Cell> cells = cellService.getAllCells();
-        logger.info("Получено {} камер", cells.size());
-        return ResponseEntity.ok(cells);
+    public List<Cell> getAll() {
+        return service.findAll();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Cell> getCellById(@PathVariable Integer id) {
-        return cellService.getCellById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> {
-                    logger.warn("Не найдена камера с id {}", id);
-                    return ResponseEntity.notFound().build();
-                });
+    public Cell getOne(@PathVariable Integer id) {
+        return service.findById(id);
     }
 
     @PostMapping
-    public ResponseEntity<Cell> createCell(
-            @Valid @RequestBody Cell cell) {
-       final Cell created = cellService.createCell(cell);
-        logger.info("Камера {} была зарегистрирована", created);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Cell create(@RequestBody @Valid Cell cell) {
+        return service.create(cell);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Cell> updateCell(
-            @PathVariable Integer id,
-            @Valid @RequestBody Cell cell
-    ) {
-        return cellService.getCellById(id)
-                .map(existing -> {
-                    Cell updated = cellService.updateCell(id, cell);
-                    logger.info("Данные камеры с id {} были изменены на {}", id, updated);
-                    return ResponseEntity.ok(updated);
-                })
-                .orElseGet(() -> {
-                    logger.warn("Не найдена камера с id {}", id);
-                    return ResponseEntity.notFound().build();
-                });
+    public Cell update(@PathVariable Integer id,
+                       @RequestBody @Valid Cell cell) {
+        return service.update(id, cell);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCell(@PathVariable Integer id) {
-        if (cellService.hasPrisoners(id)) {
-            logger.warn("Попытка удалить камеру с id {}: в камере есть заключённые", id);
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer id) {
+        if (service.hasPrisoners(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "В камере с id=" + id + " ещё есть заключённые");
         }
-        cellService.deleteCell(id);
-        logger.info("Камера с id {} успешно удалена", id);
-        return ResponseEntity.noContent().build();
+        service.delete(id);
     }
 }

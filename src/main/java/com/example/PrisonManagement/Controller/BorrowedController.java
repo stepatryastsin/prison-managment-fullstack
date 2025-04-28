@@ -5,12 +5,9 @@ import com.example.PrisonManagement.Model.BorrowedKey;
 import com.example.PrisonManagement.Model.Library;
 import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Service.BorrowedService;
-import com.example.PrisonManagement.Service.PrisonerService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,84 +17,51 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:3000")
 public class BorrowedController {
 
-    private final Logger logger = LoggerFactory.getLogger(BorrowedController.class);
-    private final BorrowedService borrowedService;
-
+    private final BorrowedService service;
 
     @Autowired
-    public BorrowedController(BorrowedService borrowedService,PrisonerService prisonerService) {
-        this.borrowedService = borrowedService;
+    public BorrowedController(BorrowedService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public ResponseEntity<List<Borrowed>> getAllBorrowed() {
-        final List<Borrowed> getAll = borrowedService.getAllBorrowed();
-
-        logger.info("Получено {} книг заключенным ",getAll.size());
-
-        return  ResponseEntity.ok(getAll);
+    public List<Borrowed> getAll() {
+        return service.findAll();
     }
 
     @GetMapping("/{prisonerId}/{isbn}")
-    public ResponseEntity<Borrowed> getBorrowedById(@PathVariable Integer prisonerId,
-                                                    @PathVariable String isbn) {
-        BorrowedKey key = new BorrowedKey(prisonerId, isbn);
+    public Borrowed getById(@PathVariable Integer prisonerId,
+                            @PathVariable String isbn) {
+        return service.findById(new BorrowedKey(prisonerId, isbn));
+    }
 
-        return borrowedService
-                .getBorrowedById(key)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> {
-                    logger.warn("Книга с ISBN {} у Заключенного с  id {} не найдена", isbn,prisonerId);
-                    return ResponseEntity.notFound().build();
-                });
+    @GetMapping("/prisoner/{prisonerId}")
+    public Prisoner getPrisoner(@PathVariable Integer prisonerId) {
+        return service.findPrisonerByPrisonerId(prisonerId);
+    }
 
+    @GetMapping("/library/{isbn}")
+    public Library getLibrary(@PathVariable String isbn) {
+        return service.findLibraryByIsbn(isbn);
     }
 
     @PostMapping
-    public ResponseEntity<Borrowed> createBorrowed(@RequestBody Borrowed borrowed) {
-        final Borrowed tempBorrowed =  borrowedService.createBorrowed(borrowed);
-        final Prisoner prevPrisoner = borrowedService.getPrisonerByIdFromBorrowed(tempBorrowed.getPrisoner().getPrisonerId());
-        final Library prevLibrary  = borrowedService.getLibraryByIdFromBorrowed(tempBorrowed.getLibrary().getIsbn());
-        logger.info("Книга c ISBN {} была взята заключенным с id {}",
-                prevLibrary, prevPrisoner);
-
-        return new ResponseEntity<>(tempBorrowed,
-                             HttpStatus.CREATED);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Borrowed create(@RequestBody @Valid Borrowed borrowed) {
+        return service.create(borrowed);
     }
 
     @PutMapping("/{prisonerId}/{isbn}")
-    public ResponseEntity<Borrowed> updateBorrowed(@PathVariable Integer prisonerId,
-                                                   @PathVariable String isbn,
-                                                   @RequestBody Borrowed borrowed) {
-        BorrowedKey key = new BorrowedKey(prisonerId, isbn);
-
-        final Prisoner prevPrisoner = borrowedService.getPrisonerByIdFromBorrowed(prisonerId);
-        final Library prevLibrary  = borrowedService.getLibraryByIdFromBorrowed(isbn);
-
-        Borrowed updated = borrowedService.updateBorrowed(key, borrowed);
-
-        logger.info("Книга c ISBN {} у заключенного с id {} изменилась на ISBN {} и id {} ",
-                     prevLibrary,
-                     prevPrisoner,
-                     updated.getLibrary().getIsbn(),
-                     updated.getPrisoner().getPrisonerId());
-
-        return ResponseEntity.ok(updated);
+    public Borrowed update(@PathVariable Integer prisonerId,
+                           @PathVariable String isbn,
+                           @RequestBody @Valid Borrowed borrowed) {
+        return service.update(new BorrowedKey(prisonerId, isbn), borrowed);
     }
 
     @DeleteMapping("/{prisonerId}/{isbn}")
-    public ResponseEntity<Void> deleteBorrowed(@PathVariable Integer prisonerId,
-                                               @PathVariable String isbn) {
-        BorrowedKey key = new BorrowedKey(prisonerId, isbn);
-
-        final Prisoner prevPrisoner = borrowedService.getPrisonerByIdFromBorrowed(prisonerId);
-        final Library prevLibrary  = borrowedService.getLibraryByIdFromBorrowed(isbn);
-
-        borrowedService.deleteBorrowed(key);
-
-        logger.info("Книга c {} у заключенного {} была удалена",
-                prevPrisoner, prevLibrary);
-
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer prisonerId,
+                       @PathVariable String isbn) {
+        service.delete(new BorrowedKey(prisonerId, isbn));
     }
 }

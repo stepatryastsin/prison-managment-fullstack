@@ -1,5 +1,6 @@
 package com.example.PrisonManagement.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -25,7 +26,7 @@ public class Staff {
     private String lastName;
 
     @NotNull(message = "Job is required")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @ManyToOne
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 

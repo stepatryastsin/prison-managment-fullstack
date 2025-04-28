@@ -5,14 +5,11 @@ import com.example.PrisonManagement.Repository.EnrolledInRepository;
 import com.example.PrisonManagement.Repository.OwnCertificateFromRepository;
 import com.example.PrisonManagement.Repository.PrisonerRepository;
 import com.example.PrisonManagement.Repository.ProgramsAndCoursesRepository;
-import com.example.PrisonManagement.Service.EnrollmentCertificateServiceInterface;
-import jakarta.persistence.EntityNotFoundException;
-
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -20,82 +17,103 @@ import java.util.List;
 
 @Service
 @Transactional
-public class EnrollmentCertificateService implements EnrollmentCertificateServiceInterface {
-    private final Logger logger = LoggerFactory.getLogger(EnrollmentCertificateService.class);
-    private final EnrolledInRepository enrolledInRepository;
-    private final OwnCertificateFromRepository ownCertificateFromRepository;
-    private final PrisonerRepository prisonerRepository;
-    private final ProgramsAndCoursesRepository programsAndCoursesRepository;
+public class EnrollmentCertificateService {
+
+    private final EnrolledInRepository      enrollRepo;
+    private final OwnCertificateFromRepository certRepo;
+    private final PrisonerRepository        prisonerRepo;
+    private final ProgramsAndCoursesRepository courseRepo;
 
     @Autowired
-    public EnrollmentCertificateService(EnrolledInRepository enrolledInRepository,
-                                        OwnCertificateFromRepository ownCertificateFromRepository,
-                                        PrisonerRepository prisonerRepository,
-                                        ProgramsAndCoursesRepository programsAndCoursesRepository) {
-        this.enrolledInRepository = enrolledInRepository;
-        this.ownCertificateFromRepository = ownCertificateFromRepository;
-        this.prisonerRepository = prisonerRepository;
-        this.programsAndCoursesRepository = programsAndCoursesRepository;
+    public EnrollmentCertificateService(
+            EnrolledInRepository enrollRepo,
+            OwnCertificateFromRepository certRepo,
+            PrisonerRepository prisonerRepo,
+            ProgramsAndCoursesRepository courseRepo) {
+        this.enrollRepo   = enrollRepo;
+        this.certRepo     = certRepo;
+        this.prisonerRepo = prisonerRepo;
+        this.courseRepo   = courseRepo;
     }
 
-    @Override
-    public EnrolledIn enrollPrisoner(Integer prisonerId, Integer courseId) {
-        logger.info("Регистрация заключенного с id {} на курс с id {}", prisonerId, courseId);
-        Prisoner prisoner = prisonerRepository.findById(prisonerId)
-                .orElseThrow(() -> new EntityNotFoundException("Заключённый с id " + prisonerId + " не найден"));
-        ProgramsAndCourses course = programsAndCoursesRepository.findById(courseId)
-                .orElseThrow(() -> new EntityNotFoundException("Курс с id " + courseId + " не найден"));
+    // ========== ENROLLMENTS ==========
 
-        EnrolledIn enrollment = new EnrolledIn(prisoner, course);
-        return enrolledInRepository.save(enrollment);
+    public List<EnrolledIn> findAllEnrollments() {
+        return enrollRepo.findAll();
     }
 
-    @Override
-    public OwnCertificateFrom issueCertificate(Integer prisonerId, Integer courseId) {
-        logger.info("Выдача сертификата заключенному с id {} по курсу с id {}", prisonerId, courseId);
-        Prisoner prisoner = prisonerRepository.findById(prisonerId)
-                .orElseThrow(() -> new EntityNotFoundException("Заключённый с id " + prisonerId + " не найден"));
-        ProgramsAndCourses course = programsAndCoursesRepository.findById(courseId)
-                .orElseThrow(() -> new EntityNotFoundException("Курс с id " + courseId + " не найден"));
-
-        OwnCertificateFromKey key = new OwnCertificateFromKey(prisonerId, courseId);
-        OwnCertificateFrom certificate = new OwnCertificateFrom(key, prisoner, course);
-        return ownCertificateFromRepository.save(certificate);
-    }
-
-    @Override
-    public List<EnrolledIn> getAllEnrollments() {
-        logger.info("Получение списка всех регистраций");
-        return enrolledInRepository.findAll();
-    }
-
-    @Override
-    public List<OwnCertificateFrom> getAllCertificates() {
-        logger.info("Получение списка всех сертификатов");
-        return ownCertificateFromRepository.findAll();
-    }
-
-    @Override
-    public void deleteEnrollment(Integer prisonerId, Integer courseId) {
-        logger.info("Удаление регистрации для заключенного с id {} и курса с id {}", prisonerId, courseId);
+    public EnrolledIn findEnrollment(Integer prisonerId, Integer courseId) {
         EnrolledInKey key = new EnrolledInKey(prisonerId, courseId);
-        if (enrolledInRepository.existsById(key)) {
-            enrolledInRepository.deleteById(key);
-        } else {
-            logger.error("Регистрация с ключом ({}, {}) не найдена", prisonerId, courseId);
-            throw new EntityNotFoundException("Регистрация с ключом (" + prisonerId + ", " + courseId + ") не найдена");
+        return enrollRepo.findById(key)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Enrollment " + key + " not found"));
+    }
+
+    public EnrolledIn enrollPrisoner(EnrolledIn enrollmentDto) {
+        // Из JSON читаем только ключ
+        EnrolledInKey key = enrollmentDto.getId();
+
+        // Ленивая загрузка proxy-объектов из PersistenceContext
+        Prisoner prisoner = prisonerRepo.getReferenceById(key.getPrisonerId());
+        ProgramsAndCourses course = courseRepo.getReferenceById(key.getCourseId());
+
+        // Создаём новую связь, Hibernate не будет мерджить «пустые» объекты
+        EnrolledIn enrollment = new EnrolledIn(prisoner, course);
+
+        if (enrollRepo.existsById(enrollment.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Enrollment " + enrollment.getId() + " already exists");
+        }
+        return enrollRepo.save(enrollment);
+    }
+
+    public void deleteEnrollment(Integer prisonerId, Integer courseId) {
+        int deleted = enrollRepo.deleteByPrisonerIdAndCourseId(prisonerId, courseId);
+        if (deleted == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Enrollment (" + prisonerId + "," + courseId + ") not found");
         }
     }
 
-    @Override
-    public void deleteCertificate(Integer prisonerId, Integer courseId) {
-        logger.info("Удаление сертификата для заключенного с id {} и курса с id {}", prisonerId, courseId);
+    // ========== CERTIFICATES ==========
+
+    public List<OwnCertificateFrom> findAllCertificates() {
+        return certRepo.findAll();
+    }
+
+    public OwnCertificateFrom findCertificate(Integer prisonerId, Integer courseId) {
         OwnCertificateFromKey key = new OwnCertificateFromKey(prisonerId, courseId);
-        if (ownCertificateFromRepository.existsById(key)) {
-            ownCertificateFromRepository.deleteById(key);
-        } else {
-            logger.error("Сертификат с ключом ({}, {}) не найден", prisonerId, courseId);
-            throw new EntityNotFoundException("Сертификат с ключом (" + prisonerId + ", " + courseId + ") не найден");
+        return certRepo.findById(key)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Certificate " + key + " not found"));
+    }
+
+    public OwnCertificateFrom issueCertificate(OwnCertificateFrom certificateDto) {
+        OwnCertificateFromKey key = certificateDto.getId();
+
+        Prisoner prisoner = prisonerRepo.getReferenceById(key.getPrisonerId());
+        ProgramsAndCourses course = courseRepo.getReferenceById(key.getCourseId());
+
+        OwnCertificateFrom certificate = new OwnCertificateFrom(prisoner, course);
+
+        if (certRepo.existsById(certificate.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Certificate " + certificate.getId() + " already exists");
+        }
+        return certRepo.save(certificate);
+    }
+
+    public void deleteCertificate(Integer prisonerId, Integer courseId) {
+        int deleted = certRepo.deleteByPrisonerIdAndCourseId(prisonerId, courseId);
+        if (deleted == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Certificate (" + prisonerId + "," + courseId + ") not found");
         }
     }
 }

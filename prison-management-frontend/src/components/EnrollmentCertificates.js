@@ -38,9 +38,7 @@ const COURSES_API_URL = 'http://localhost:8080/api/courses';
 const EnrollmentCertificates = () => {
   // ----------------- ТАБЫ -----------------
   const [activeTab, setActiveTab] = useState(0);
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
+  const handleTabChange = (e, newValue) => setActiveTab(newValue);
 
   // ================= Регистрации =================
   const [enrollments, setEnrollments] = useState([]);
@@ -73,9 +71,7 @@ const EnrollmentCertificates = () => {
   });
   const [searchCertEnrollment, setSearchCertEnrollment] = useState('');
   const [certEnrollmentDialogOpen, setCertEnrollmentDialogOpen] = useState(false);
-  const openCertEnrollmentDialog = () => {
-    setCertEnrollmentDialogOpen(true);
-  };
+  const openCertEnrollmentDialog = () => setCertEnrollmentDialogOpen(true);
 
   // Список выданных сертификатов
   const [certificates, setCertificates] = useState([]);
@@ -84,23 +80,19 @@ const EnrollmentCertificates = () => {
 
   // ----------------- Уведомления (Snackbar) -----------------
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const openSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
-  };
-  const closeSnackbar = () => setSnackbar({ ...snackbar, open: false });
+  const openSnackbar = (message, severity = 'success') => setSnackbar({ open: true, message, severity });
+  const closeSnackbar = () => setSnackbar(s => ({ ...s, open: false }));
 
   // ================= Загрузка данных =================
   const fetchEnrollments = async () => {
     setLoadingEnrollments(true);
     try {
-      const response = await fetch(ENROLLMENTS_API_URL);
-      if (!response.ok) throw new Error('Сетевая ошибка при загрузке регистраций');
-      const data = await response.json();
-      setEnrollments(data);
-    } catch (error) {
-      console.error('Ошибка загрузки регистраций:', error);
-      setEnrollmentError(error);
-      openSnackbar(error.message, 'error');
+      const res = await fetch(ENROLLMENTS_API_URL);
+      if (!res.ok) throw new Error('Ошибка загрузки регистраций');
+      setEnrollments(await res.json());
+    } catch (err) {
+      setEnrollmentError(err);
+      openSnackbar(err.message, 'error');
     } finally {
       setLoadingEnrollments(false);
     }
@@ -109,14 +101,12 @@ const EnrollmentCertificates = () => {
   const fetchCertificates = async () => {
     setLoadingCertificates(true);
     try {
-      const response = await fetch(CERTIFICATES_API_URL);
-      if (!response.ok) throw new Error('Ошибка загрузки сертификатов');
-      const data = await response.json();
-      setCertificates(data);
-    } catch (error) {
-      console.error('Ошибка загрузки сертификатов:', error);
-      setCertificateError(error);
-      openSnackbar(error.message, 'error');
+      const res = await fetch(CERTIFICATES_API_URL);
+      if (!res.ok) throw new Error('Ошибка загрузки сертификатов');
+      setCertificates(await res.json());
+    } catch (err) {
+      setCertificateError(err);
+      openSnackbar(err.message, 'error');
     } finally {
       setLoadingCertificates(false);
     }
@@ -131,14 +121,12 @@ const EnrollmentCertificates = () => {
   const openPrisonerDialog = async () => {
     setLoadingPrisoners(true);
     try {
-      const response = await fetch(PRISONERS_API_URL);
-      if (!response.ok) throw new Error('Ошибка загрузки заключённых');
-      const data = await response.json();
-      setPrisonersList(data);
-    } catch (error) {
-      console.error('Ошибка загрузки заключённых:', error);
-      setErrorPrisoners(error);
-      openSnackbar(error.message, 'error');
+      const res = await fetch(PRISONERS_API_URL);
+      if (!res.ok) throw new Error('Ошибка загрузки заключённых');
+      setPrisonersList(await res.json());
+    } catch (err) {
+      setErrorPrisoners(err);
+      openSnackbar(err.message, 'error');
     } finally {
       setLoadingPrisoners(false);
       setPrisonerDialogOpen(true);
@@ -148,214 +136,152 @@ const EnrollmentCertificates = () => {
   const openCourseDialog = async () => {
     setLoadingCourses(true);
     try {
-      const response = await fetch(COURSES_API_URL);
-      if (!response.ok) throw new Error('Ошибка загрузки курсов');
-      const data = await response.json();
-      setCoursesList(data);
-    } catch (error) {
-      console.error('Ошибка загрузки курсов:', error);
-      setErrorCourses(error);
-      openSnackbar(error.message, 'error');
+      const res = await fetch(COURSES_API_URL);
+      if (!res.ok) throw new Error('Ошибка загрузки курсов');
+      setCoursesList(await res.json());
+    } catch (err) {
+      setErrorCourses(err);
+      openSnackbar(err.message, 'error');
     } finally {
       setLoadingCourses(false);
       setCourseDialogOpen(true);
     }
   };
 
-  const closePrisonerDialog = () => setPrisonerDialogOpen(false);
-  const closeCourseDialog = () => setCourseDialogOpen(false);
-
-  // Выбор заключённого
-  const handleSelectPrisoner = (prisoner) => {
-    setEnrollRequest((prev) => ({
-      ...prev,
-      prisonerId: String(prisoner.prisonerId),
-      prisonerInfo: prisoner,
-    }));
-    closePrisonerDialog();
+  const handleSelectPrisoner = p => {
+    setEnrollRequest(r => ({ ...r, prisonerId: String(p.prisonerId), prisonerInfo: p }));
+    setPrisonerDialogOpen(false);
   };
-
-  // Выбор курса с проверкой активности
-  const handleSelectCourse = (course) => {
-    if (course.deleted) {
-      openSnackbar('Выбранный курс неактивен', 'warning');
+  const handleSelectCourse = c => {
+    if (c.deleted) {
+      openSnackbar('Курс неактивен', 'warning');
       return;
     }
-    setEnrollRequest((prev) => ({
-      ...prev,
-      courseId: String(course.courseId),
-      courseInfo: course,
-    }));
-    closeCourseDialog();
+    setEnrollRequest(r => ({ ...r, courseId: String(c.courseId), courseInfo: c }));
+    setCourseDialogOpen(false);
   };
 
-  const handleEnrollSubmit = async (e) => {
+  // ---------------- Добавление регистрации ----------------
+  const handleEnrollSubmit = async e => {
     e.preventDefault();
     if (!enrollRequest.courseInfo || enrollRequest.courseInfo.deleted) {
-      openSnackbar('Нельзя регистрироваться на неактивный курс', 'warning');
+      openSnackbar('Нельзя на неактивный курс', 'warning');
       return;
     }
     try {
-      const response = await fetch(ENROLLMENTS_API_URL, {
+      const res = await fetch(ENROLLMENTS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prisonerId: Number(enrollRequest.prisonerId),
-          courseId: Number(enrollRequest.courseId),
+          id: {
+            prisonerId: Number(enrollRequest.prisonerId),
+            courseId:   Number(enrollRequest.courseId),
+          }
         }),
       });
-      if (!response.ok) throw new Error('Ошибка регистрации на курс');
-      openSnackbar('Регистрация успешно добавлена', 'success');
+      if (!res.ok) throw new Error('Ошибка регистрации');
+      openSnackbar('Регистрация добавлена', 'success');
       setEnrollRequest({ prisonerId: '', prisonerInfo: null, courseId: '', courseInfo: null });
       fetchEnrollments();
-    } catch (error) {
-      console.error('Ошибка регистрации:', error);
-      openSnackbar('Ошибка регистрации на курс', 'error');
+    } catch (err) {
+      openSnackbar(err.message, 'error');
     }
   };
 
   const filteredEnrollments = useMemo(() => {
     if (!searchEnrollment.trim()) return enrollments;
-    return enrollments.filter((enroll) =>
-      String(enroll.id?.prisonerId).includes(searchEnrollment) ||
-      String(enroll.id?.courseId).includes(searchEnrollment)
+    return enrollments.filter(e =>
+      String(e.id?.prisonerId).includes(searchEnrollment) ||
+      String(e.id?.courseId).includes(searchEnrollment)
     );
   }, [enrollments, searchEnrollment]);
 
-  // ---------------- Функции удаления ----------------
-
-  // Удаление регистрации (enrollment) по составному ключу
-  const handleDeleteEnrollment = (enroll) => {
-    if (
-      window.confirm(
-        `Удалить регистрацию для заключённого ID: ${enroll.id.prisonerId} и курса ID: ${enroll.id.courseId}?`
-      )
-    ) {
-      fetch(`${ENROLLMENTS_API_URL}/${enroll.id.prisonerId}/${enroll.id.courseId}`, {
-        method: 'DELETE',
+  // ---------------- Удаление регистрации ----------------
+  const handleDeleteEnrollment = e => {
+    if (!window.confirm(`Удалить регистрацию ${e.id.prisonerId}/${e.id.courseId}?`)) return;
+    fetch(`${ENROLLMENTS_API_URL}/${e.id.prisonerId}/${e.id.courseId}`, { method: 'DELETE' })
+      .then(r => {
+        if (r.ok) {
+          openSnackbar('Регистрация удалена', 'success');
+          fetchEnrollments();
+        } else openSnackbar('Ошибка удаления', 'error');
       })
-        .then((res) => {
-          if (res.ok) {
-            openSnackbar('Регистрация удалена', 'success');
-            fetchEnrollments();
-          } else {
-            openSnackbar('Ошибка удаления регистрации', 'error');
-          }
-        })
-        .catch((error) => {
-          console.error('Ошибка удаления регистрации:', error);
-          openSnackbar('Ошибка удаления регистрации', 'error');
-        });
-    }
+      .catch(() => openSnackbar('Ошибка удаления', 'error'));
   };
 
-  // Удаление сертификата по составному ключу
-  const handleDeleteCertificate = (cert) => {
-    if (
-      window.confirm(
-        `Удалить сертификат для заключённого ID: ${cert.id.prisonerId} и курса ID: ${cert.id.courseId}?`
-      )
-    ) {
-      fetch(`${CERTIFICATES_API_URL}/${cert.id.prisonerId}/${cert.id.courseId}`, {
-        method: 'DELETE',
-      })
-        .then((res) => {
-          if (res.ok) {
-            openSnackbar('Сертификат удалён', 'success');
-            fetchCertificates();
-          } else {
-            openSnackbar('Ошибка удаления сертификата', 'error');
-          }
-        })
-        .catch((error) => {
-          console.error('Ошибка удаления сертификата:', error);
-          openSnackbar('Ошибка удаления сертификата', 'error');
-        });
-    }
-  };
-
-  // ---------------- Обработка выдачи сертификата ----------------
-  // При выборе записи для сертификата проверяем: не выдан ли уже сертификат и активность курса
-  const handleSelectCertEnrollment = (enrollment) => {
+  // ---------------- Выдача сертификата ----------------
+  const handleSelectCertEnrollment = e => {
     const exists = certificates.some(
-      (cert) =>
-        Number(cert.id.prisonerId) === Number(enrollment.id.prisonerId) &&
-        Number(cert.id.courseId) === Number(enrollment.id.courseId)
+      c => Number(c.id.prisonerId) === e.id.prisonerId && Number(c.id.courseId) === e.id.courseId
     );
     if (exists) {
-      openSnackbar('Сертификат для данной регистрации уже выдан', 'warning');
+      openSnackbar('Сертификат уже выдан', 'warning');
       return;
     }
-    if (enrollment.course.deleted) {
-      openSnackbar('Нельзя выдавать сертификат для неактивного курса', 'warning');
+    if (e.course.deleted) {
+      openSnackbar('Курс неактивен', 'warning');
       return;
     }
     setCertRequest({
-      prisonerId: String(enrollment.id.prisonerId),
-      prisonerInfo: enrollment.prisoner,
-      courseId: String(enrollment.id.courseId),
-      courseInfo: enrollment.course,
+      prisonerId: String(e.id.prisonerId),
+      prisonerInfo: e.prisoner,
+      courseId: String(e.id.courseId),
+      courseInfo: e.course,
     });
     setCertEnrollmentDialogOpen(false);
   };
 
-  // Проверка существования сертификата
   const certificateExists = useMemo(() => {
     if (!certRequest.prisonerId || !certRequest.courseId) return false;
     return certificates.some(
-      (cert) =>
-        Number(cert.id.prisonerId) === Number(certRequest.prisonerId) &&
-        Number(cert.id.courseId) === Number(certRequest.courseId)
+      c => Number(c.id.prisonerId) === Number(certRequest.prisonerId) &&
+           Number(c.id.courseId) === Number(certRequest.courseId)
     );
   }, [certRequest, certificates]);
 
-  // Фильтрация регистраций для таблицы выдачи сертификатов
   const allCertEnrollmentsFiltered = useMemo(() => {
     if (!searchCertEnrollment.trim()) return enrollments;
-    return enrollments.filter((enroll) =>
-      String(enroll.id?.prisonerId).includes(searchCertEnrollment) ||
-      String(enroll.id?.courseId).includes(searchCertEnrollment)
+    return enrollments.filter(e =>
+      String(e.id?.prisonerId).includes(searchCertEnrollment) ||
+      String(e.id?.courseId).includes(searchCertEnrollment)
     );
   }, [enrollments, searchCertEnrollment]);
 
-  // Получение статуса сертификата с учётом активности курса
-  const getCertificateStatus = (enroll) => {
-    const exists = certificates.some(
-      (cert) =>
-        Number(cert.id.prisonerId) === Number(enroll.id?.prisonerId) &&
-        Number(cert.id.courseId) === Number(enroll.id?.courseId)
+  const getCertificateStatus = e => {
+    const given = certificates.some(
+      c => Number(c.id.prisonerId) === e.id.prisonerId && Number(c.id.courseId) === e.id.courseId
     );
-    const status = exists ? 'Выдан' : 'Не выдан';
-    return enroll.course.deleted ? `${status} (Не активен)` : status;
+    const status = given ? 'Выдан' : 'Не выдан';
+    return e.course.deleted ? `${status} (Не активен)` : status;
   };
 
-  const handleCertSubmit = async (e) => {
+  const handleCertSubmit = async e => {
     e.preventDefault();
     if (!certRequest.prisonerId || !certRequest.courseId) {
-      openSnackbar('Выберите регистрацию для выдачи сертификата', 'warning');
+      openSnackbar('Выберите регистрацию', 'warning');
       return;
     }
     if (certificateExists) {
-      openSnackbar('Сертификат для данной регистрации уже выдан', 'warning');
+      openSnackbar('Сертификат уже выдан', 'warning');
       return;
     }
     try {
-      const response = await fetch(CERTIFICATES_API_URL, {
+      const res = await fetch(CERTIFICATES_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Отправляем EnrollmentRequest с prisonerId и courseId
         body: JSON.stringify({
-          prisonerId: Number(certRequest.prisonerId),
-          courseId: Number(certRequest.courseId),
+          id: {
+            prisonerId: Number(certRequest.prisonerId),
+            courseId:   Number(certRequest.courseId),
+          }
         }),
       });
-      if (!response.ok) throw new Error('Ошибка выдачи сертификата');
-      openSnackbar('Сертификат успешно выдан', 'success');
+      if (!res.ok) throw new Error('Ошибка выдачи сертификата');
+      openSnackbar('Сертификат выдан', 'success');
       setCertRequest({ prisonerId: '', prisonerInfo: null, courseId: '', courseInfo: null });
       fetchCertificates();
-    } catch (error) {
-      console.error('Ошибка выдачи сертификата:', error);
-      openSnackbar('Ошибка выдачи сертификата', 'error');
+    } catch (err) {
+      openSnackbar(err.message, 'error');
     }
   };
 
@@ -373,9 +299,7 @@ const EnrollmentCertificates = () => {
         <Box>
           {/* Форма регистрации */}
           <Box component="form" onSubmit={handleEnrollSubmit} sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Добавить регистрацию
-            </Typography>
+            <Typography variant="h6">Добавить регистрацию</Typography>
             <Stack direction="row" spacing={2} alignItems="center">
               <TextField
                 label="ID заключённого"
@@ -387,7 +311,8 @@ const EnrollmentCertificates = () => {
               />
               {enrollRequest.prisonerInfo && (
                 <Typography variant="body2">
-                  {enrollRequest.prisonerInfo.firstName} {enrollRequest.prisonerInfo.lastName}
+                  {enrollRequest.prisonerInfo.firstName}{' '}
+                  {enrollRequest.prisonerInfo.lastName}
                 </Typography>
               )}
               <TextField
@@ -403,27 +328,27 @@ const EnrollmentCertificates = () => {
                   variant="body2"
                   sx={{ opacity: enrollRequest.courseInfo.deleted ? 0.5 : 1 }}
                 >
-                  {enrollRequest.courseInfo.courseName} {enrollRequest.courseInfo.deleted && '(Не активен)'}
+                  {enrollRequest.courseInfo.courseName}{' '}
+                  {enrollRequest.courseInfo.deleted && '(Не активен)'}
                 </Typography>
               )}
-              <Button type="submit" variant="contained" color="primary">
+              <Button type="submit" variant="contained">
                 Добавить
               </Button>
             </Stack>
           </Box>
 
-          {/* Поиск регистраций */}
+          {/* Поиск */}
           <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
             <TextField
-              label="Поиск по ID заключённого или курса"
-              variant="outlined"
+              label="Поиск"
               size="small"
               value={searchEnrollment}
-              onChange={(e) => setSearchEnrollment(e.target.value)}
+              onChange={e => setSearchEnrollment(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon color="action" />
+                    <SearchIcon />
                   </InputAdornment>
                 ),
               }}
@@ -444,30 +369,30 @@ const EnrollmentCertificates = () => {
             </Box>
           ) : (
             <Table>
-              <TableHead sx={{ backgroundColor: '#f0f0f0' }}>
+              <TableHead>
                 <TableRow>
-                  <TableCell><strong>ID заключённого</strong></TableCell>
-                  <TableCell><strong>ID курса</strong></TableCell>
-                  <TableCell align="center"><strong>Действия</strong></TableCell>
+                  <TableCell>ID заключённого</TableCell>
+                  <TableCell>ID курса</TableCell>
+                  <TableCell align="center">Действия</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredEnrollments.map((enroll, index) => (
-                  <TableRow key={index} hover>
-                    <TableCell>{enroll.id?.prisonerId}</TableCell>
-                    <TableCell>{enroll.id?.courseId}</TableCell>
+                {filteredEnrollments.map((enr, idx) => (
+                  <TableRow key={idx} hover>
+                    <TableCell>{enr.id.prisonerId}</TableCell>
+                    <TableCell>{enr.id.courseId}</TableCell>
                     <TableCell align="center">
                       <Button
                         variant="outlined"
                         color="error"
-                        onClick={() => handleDeleteEnrollment(enroll)}
+                        onClick={() => handleDeleteEnrollment(enr)}
                       >
                         Удалить
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredEnrollments.length === 0 && (
+                {!filteredEnrollments.length && (
                   <TableRow>
                     <TableCell colSpan={3} align="center">
                       Нет данных
@@ -478,31 +403,24 @@ const EnrollmentCertificates = () => {
             </Table>
           )}
 
-          {/* Диалог выбора заключённого */}
-          <Dialog
-            open={prisonerDialogOpen}
-            onClose={() => setPrisonerDialogOpen(false)}
-            fullWidth
-            maxWidth="sm"
-            TransitionComponent={Slide}
-            TransitionProps={{ direction: 'up' }}
-          >
+          {/* Диалоги выбора */}
+          <Dialog open={prisonerDialogOpen} onClose={() => setPrisonerDialogOpen(false)} fullWidth>
             <DialogTitle>Выберите заключённого</DialogTitle>
             <DialogContent dividers>
               {loadingPrisoners ? (
                 <CircularProgress />
               ) : errorPrisoners ? (
                 <Typography color="error">{errorPrisoners.message}</Typography>
-              ) : prisonersList.length > 0 ? (
-                prisonersList.map((prisoner) => (
-                  <MUIBox key={prisoner.prisonerId} sx={{ mb: 1 }}>
-                    <Button variant="outlined" fullWidth onClick={() => handleSelectPrisoner(prisoner)}>
-                      ID: {prisoner.prisonerId} — {prisoner.firstName} {prisoner.lastName}
+              ) : prisonersList.length ? (
+                prisonersList.map(p => (
+                  <MUIBox key={p.prisonerId} sx={{ mb: 1 }}>
+                    <Button fullWidth onClick={() => handleSelectPrisoner(p)}>
+                      ID: {p.prisonerId} — {p.firstName} {p.lastName}
                     </Button>
                   </MUIBox>
                 ))
               ) : (
-                <Typography>Нет доступных заключённых</Typography>
+                <Typography>Нет доступных</Typography>
               )}
             </DialogContent>
             <DialogActions>
@@ -510,43 +428,28 @@ const EnrollmentCertificates = () => {
             </DialogActions>
           </Dialog>
 
-          {/* Диалог выбора курса */}
-          <Dialog
-            open={courseDialogOpen}
-            onClose={() => setCourseDialogOpen(false)}
-            fullWidth
-            maxWidth="sm"
-            TransitionComponent={Slide}
-            TransitionProps={{ direction: 'up' }}
-          >
+          <Dialog open={courseDialogOpen} onClose={() => setCourseDialogOpen(false)} fullWidth>
             <DialogTitle>Выберите курс</DialogTitle>
             <DialogContent dividers>
               {loadingCourses ? (
                 <CircularProgress />
               ) : errorCourses ? (
                 <Typography color="error">{errorCourses.message}</Typography>
-              ) : coursesList.length > 0 ? (
-                coursesList.map((course) => (
-                  <MUIBox key={course.courseId} sx={{ mb: 1 }}>
+              ) : coursesList.length ? (
+                coursesList.map(c => (
+                  <MUIBox key={c.courseId} sx={{ mb: 1 }}>
                     <Button
-                      variant="outlined"
                       fullWidth
-                      onClick={() => handleSelectCourse(course)}
-                      disabled={course.deleted}
-                      sx={{ opacity: course.deleted ? 0.5 : 1 }}
+                      disabled={c.deleted}
+                      onClick={() => handleSelectCourse(c)}
                     >
-                      ID: {course.courseId} — {course.courseName}
-                      {course.teacher && (
-                        <span>
-                          {' '}— Преподаватель: {course.teacher.firstName} {course.teacher.lastName}
-                        </span>
-                      )}
-                      {course.deleted && ' (Не активен)'}
+                      ID: {c.courseId} — {c.courseName}
+                      {c.deleted && ' (Не активен)'}
                     </Button>
                   </MUIBox>
                 ))
               ) : (
-                <Typography>Нет доступных курсов</Typography>
+                <Typography>Нет доступных</Typography>
               )}
             </DialogContent>
             <DialogActions>
@@ -558,11 +461,9 @@ const EnrollmentCertificates = () => {
 
       {activeTab === 1 && (
         <Box>
-          {/* Форма выдачи сертификата */}
+          {/* Форма выдачи сертификата */}  
           <Box component="form" onSubmit={handleCertSubmit} sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Выдать сертификат
-            </Typography>
+            <Typography variant="h6">Выдать сертификат</Typography>
             <Stack direction="row" spacing={2} alignItems="center">
               <TextField
                 label="Выбранная регистрация"
@@ -571,29 +472,28 @@ const EnrollmentCertificates = () => {
                     ? `ID: ${certRequest.prisonerId} — ${certRequest.prisonerInfo.firstName} ${certRequest.prisonerInfo.lastName} | Курс: ${certRequest.courseId} — ${certRequest.courseInfo.courseName}`
                     : ''
                 }
-                placeholder="Выберите регистрацию"
+                placeholder="Нажмите для выбора"
                 InputProps={{ readOnly: true }}
                 sx={{ cursor: 'pointer', width: '100%' }}
                 onClick={openCertEnrollmentDialog}
               />
-              <Button type="submit" variant="contained" color="primary">
+              <Button type="submit" variant="contained">
                 Выдать
               </Button>
             </Stack>
           </Box>
 
-          {/* Поиск регистраций для выдачи сертификата */}
+          {/* Поиск сертификатов */}
           <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
             <TextField
-              label="Поиск по регистрации"
-              variant="outlined"
+              label="Поиск"
               size="small"
               value={searchCertEnrollment}
-              onChange={(e) => setSearchCertEnrollment(e.target.value)}
+              onChange={e => setSearchCertEnrollment(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon color="action" />
+                    <SearchIcon />
                   </InputAdornment>
                 ),
               }}
@@ -608,57 +508,50 @@ const EnrollmentCertificates = () => {
             </Box>
           ) : (
             <Table>
-              <TableHead sx={{ backgroundColor: '#f0f0f0' }}>
+              <TableHead>
                 <TableRow>
-                  <TableCell><strong>ID заключённого</strong></TableCell>
-                  <TableCell><strong>ID курса</strong></TableCell>
-                  <TableCell><strong>Статус</strong></TableCell>
-                  <TableCell align="center"><strong>Действия</strong></TableCell>
+                  <TableCell>ID заключённого</TableCell>
+                  <TableCell>ID курса</TableCell>
+                  <TableCell>Статус</TableCell>
+                  <TableCell align="center">Действия</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {allCertEnrollmentsFiltered.map((enroll, index) => (
+                {allCertEnrollmentsFiltered.map((enr, idx) => (
                   <TableRow
-                    key={index}
+                    key={idx}
                     hover
+                    onClick={() => handleSelectCertEnrollment(enr)}
                     sx={{ cursor: 'pointer' }}
-                    onClick={() => handleSelectCertEnrollment(enroll)}
                   >
-                    <TableCell>{enroll.id?.prisonerId}</TableCell>
-                    <TableCell>{enroll.id?.courseId}</TableCell>
-                    <TableCell>{getCertificateStatus(enroll)}</TableCell>
+                    <TableCell>{enr.id.prisonerId}</TableCell>
+                    <TableCell>{enr.id.courseId}</TableCell>
+                    <TableCell>{getCertificateStatus(enr)}</TableCell>
                     <TableCell align="center">
-                      <Stack direction="row" spacing={1} justifyContent="center">
-                        {/* Кнопка для полного удаления сертификата */}
-                        <Tooltip title="Удалить сертификат">
-                          <IconButton
-                            color="error"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Найдем сертификат, соответствующий регистрации, и вызовем удаление
-                              const cert = certificates.find(
-                                (c) =>
-                                  Number(c.id.prisonerId) === Number(enroll.id.prisonerId) &&
-                                  Number(c.id.courseId) === Number(enroll.id.courseId)
-                              );
-                              if (cert) {
-                                handleDeleteCertificate(cert);
-                              } else {
-                                openSnackbar('Сертификат не найден', 'warning');
-                              }
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+                      <Tooltip title="Удалить сертификат">
+                        <IconButton
+                          color="error"
+                          onClick={e => {
+                            e.stopPropagation();
+                            const cert = certificates.find(
+                              c =>
+                                Number(c.id.prisonerId) === enr.id.prisonerId &&
+                                Number(c.id.courseId) === enr.id.courseId
+                            );
+                            if (cert) handleDeleteCertificate(cert);
+                            else openSnackbar('Не найден', 'warning');
+                          }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
-                {allCertEnrollmentsFiltered.length === 0 && (
+                {!allCertEnrollmentsFiltered.length && (
                   <TableRow>
                     <TableCell colSpan={4} align="center">
-                      Нет доступных регистраций
+                      Нет доступных
                     </TableCell>
                   </TableRow>
                 )}
@@ -666,33 +559,28 @@ const EnrollmentCertificates = () => {
             </Table>
           )}
 
-          {/* Диалог выбора регистрации для выдачи сертификата */}
+          {/* Диалог выдачи сертификата */}
           <Dialog
             open={certEnrollmentDialogOpen}
             onClose={() => setCertEnrollmentDialogOpen(false)}
             fullWidth
-            maxWidth="sm"
-            TransitionComponent={Slide}
-            TransitionProps={{ direction: 'up' }}
           >
-            <DialogTitle>Выберите регистрацию для выдачи сертификата</DialogTitle>
+            <DialogTitle>Выберите регистрацию</DialogTitle>
             <DialogContent dividers>
               {loadingEnrollments ? (
                 <CircularProgress />
-              ) : allCertEnrollmentsFiltered.length > 0 ? (
-                allCertEnrollmentsFiltered.map((enroll) => (
-                  <MUIBox key={enroll.id.prisonerId + '-' + enroll.id.courseId} sx={{ mb: 1 }}>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      onClick={() => handleSelectCertEnrollment(enroll)}
-                    >
-                      ID: {enroll.id.prisonerId} — {enroll.prisoner?.firstName} {enroll.prisoner?.lastName} | Курс: {enroll.id.courseId} — {enroll.course?.courseName} (<strong>{getCertificateStatus(enroll)}</strong>)
+              ) : allCertEnrollmentsFiltered.length ? (
+                allCertEnrollmentsFiltered.map(enr => (
+                  <MUIBox key={`${enr.id.prisonerId}-${enr.id.courseId}`} sx={{ mb: 1 }}>
+                    <Button fullWidth onClick={() => handleSelectCertEnrollment(enr)}>
+                      ID: {enr.id.prisonerId} — {enr.prisoner.firstName}{' '}
+                      {enr.prisoner.lastName} | Курс: {enr.id.courseId} — {enr.course.courseName} (
+                      {getCertificateStatus(enr)})
                     </Button>
                   </MUIBox>
                 ))
               ) : (
-                <Typography>Нет доступных регистраций</Typography>
+                <Typography>Нет доступных</Typography>
               )}
             </DialogContent>
             <DialogActions>
@@ -709,7 +597,7 @@ const EnrollmentCertificates = () => {
         TransitionComponent={Slide}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar.severity} onClose={closeSnackbar} sx={{ width: '100%' }}>
+        <Alert severity={snackbar.severity} onClose={closeSnackbar}>
           {snackbar.message}
         </Alert>
       </Snackbar>
