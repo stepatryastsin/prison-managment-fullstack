@@ -16,76 +16,115 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional
 public class OwnCertificateFromServiceImpl implements OwnCertificateFromService {
 
+    private static final Logger logger = LoggerFactory.getLogger(OwnCertificateFromServiceImpl.class);
     private final OwnCertificateFromRepository certRepo;
     private final EnrolledInRepository enrollRepo;
 
     @Autowired
     public OwnCertificateFromServiceImpl(OwnCertificateFromRepository certRepo,
                                          EnrolledInRepository enrollRepo) {
-        this.certRepo   = certRepo;
-        this.enrollRepo = enrollRepo;
+        this.certRepo = Objects.requireNonNull(certRepo, "OwnCertificateFromRepository must not be null");
+        this.enrollRepo = Objects.requireNonNull(enrollRepo, "EnrolledInRepository must not be null");
+        logger.info("Initialized OwnCertificateFromServiceImpl with certRepo: {} and enrollRepo: {}",
+                certRepo.getClass().getSimpleName(), enrollRepo.getClass().getSimpleName());
     }
 
     @Override
+    @Transactional
     public List<OwnCertificateFrom> findAll() {
-        return certRepo.findAll();
+        logger.debug("Fetching all certificates");
+        List<OwnCertificateFrom> all = certRepo.findAll();
+        logger.info("Fetched {} certificates", all.size());
+        return all;
     }
 
     @Override
+    @Transactional
     public OwnCertificateFrom findById(Integer prisonerId, Integer courseId) {
+        validateIds(prisonerId, courseId);
         OwnCertificateFromKey key = new OwnCertificateFromKey(prisonerId, courseId);
+        logger.debug("Finding certificate with key={}", key);
         return certRepo.findById(key)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Certificate " + key + " not found"
-                ));
+                .orElseThrow(() -> {
+                    logger.warn("Certificate with key={} not found", key);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Certificate " + key + " not found");
+                });
     }
 
     @Override
     public OwnCertificateFrom create(OwnCertificateFrom ownCertificate) {
+        Objects.requireNonNull(ownCertificate, "OwnCertificateFrom must not be null");
         OwnCertificateFromKey key = ownCertificate.getId();
+        validateKey(key);
+        logger.debug("Creating certificate with key={}", key);
         if (certRepo.existsById(key)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Certificate " + key + " already exists"
-            );
+            logger.warn("Conflict: certificate with key={} already exists", key);
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Certificate " + key + " already exists");
         }
-        return certRepo.save(ownCertificate);
+        OwnCertificateFrom saved = certRepo.save(ownCertificate);
+        logger.info("Created certificate with key={}", key);
+        return saved;
     }
 
     @Override
     public OwnCertificateFrom update(Integer prisonerId, Integer courseId, OwnCertificateFrom ownCertificate) {
+        validateIds(prisonerId, courseId);
+        Objects.requireNonNull(ownCertificate, "OwnCertificateFrom must not be null");
         OwnCertificateFromKey key = new OwnCertificateFromKey(prisonerId, courseId);
+        logger.debug("Updating certificate with key={}", key);
         if (!certRepo.existsById(key)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Certificate " + key + " not found"
-            );
+            logger.warn("Certificate with key={} not found for update", key);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Certificate " + key + " not found");
         }
-        // Preserve the key so update doesn’t create a new one
         ownCertificate.setId(key);
-        return certRepo.save(ownCertificate);
+        OwnCertificateFrom updated = certRepo.save(ownCertificate);
+        logger.info("Updated certificate with key={}", key);
+        return updated;
     }
 
     @Override
     public void delete(Integer prisonerId, Integer courseId) {
-        // 1) Delete the certificate itself
+        validateIds(prisonerId, courseId);
         OwnCertificateFromKey certKey = new OwnCertificateFromKey(prisonerId, courseId);
+        logger.debug("Deleting certificate with key={}", certKey);
         OwnCertificateFrom cert = certRepo.findById(certKey)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Certificate " + certKey + " not found"
-                ));
+                .orElseThrow(() -> {
+                    logger.warn("Certificate with key={} not found for deletion", certKey);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Certificate " + certKey + " not found");
+                });
         certRepo.delete(cert);
+        logger.info("Deleted certificate with key={}", certKey);
 
-        // 2) Also remove any leftover enrollment for this prisoner-course pair
+        // Also remove any leftover enrollment
         EnrolledInKey enrollKey = new EnrolledInKey(prisonerId, courseId);
-        enrollRepo.findById(enrollKey)
-                .ifPresent(enrollRepo::delete);
+        logger.debug("Checking for leftover enrollment with key={}", enrollKey);
+        enrollRepo.findById(enrollKey).ifPresent(enrollment -> {
+            enrollRepo.delete(enrollment);
+            logger.info("Deleted leftover enrollment with key={}", enrollKey);
+        });
+    }
+
+    private void validateIds(Integer prisonerId, Integer courseId) {
+        if (prisonerId == null || courseId == null) {
+            logger.error("Invalid IDs provided: prisonerId={}, courseId={}", prisonerId, courseId);
+            throw new IllegalArgumentException("prisonerId and courseId must not be null");
+        }
+    }
+
+    private void validateKey(OwnCertificateFromKey key) {
+        if (key == null || key.getPrisonerId() == null || key.getCourseId() == null) {
+            logger.error("Invalid certificate key provided: {}", key);
+            throw new IllegalArgumentException("OwnCertificateFromKey and its fields must not be null");
+        }
     }
 }

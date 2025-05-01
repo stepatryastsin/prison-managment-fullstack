@@ -22,6 +22,7 @@ import java.util.Optional;
 @Transactional
 public class CellServiceImpl implements CellService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CellServiceImpl.class);
     private final CellRepository repo;
     private final PrisonerRepository prisonerRepo;
 
@@ -29,51 +30,76 @@ public class CellServiceImpl implements CellService {
     public CellServiceImpl(CellRepository repo, PrisonerRepository prisonerRepo) {
         this.repo = repo;
         this.prisonerRepo = prisonerRepo;
+        logger.info("CellServiceImpl инициализирован");
     }
 
     @Override
     public List<Cell> findAll() {
-        return repo.findAll();
+        logger.info("Запрошен список всех камер");
+        List<Cell> cells = repo.findAll();
+        logger.info("Найдено {} камер", cells.size());
+        return cells;
     }
 
     @Override
     public Cell findById(Integer id) {
+        logger.info("Запрошена камера с id={}", id);
         return repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Камера с id=" + id + " не найдена"));
+                .map(cell -> {
+                    logger.info("Камера с id={} найдена", id);
+                    return cell;
+                })
+                .orElseThrow(() -> {
+                    logger.warn("Камера с id={} не найдена", id);
+                    return new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Камера с id=" + id + " не найдена");
+                });
     }
 
     @Override
     public Cell create(Cell cell) {
         Integer id = cell.getCellNum();
+        logger.info("Попытка создать камеру с id={}", id);
         if (repo.existsById(id)) {
+            logger.warn("Не удалось создать: камера с id={} уже существует", id);
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Камера с id=" + id + " уже существует");
         }
-        return repo.save(cell);
+        Cell saved = repo.save(cell);
+        logger.info("Камера с id={} успешно создана", saved.getCellNum());
+        return saved;
     }
 
     @Override
     public Cell update(Integer id, Cell cell) {
+        logger.info("Попытка обновить камеру с id={}", id);
         Cell existing = findById(id);
         existing.setLastShakedownDate(cell.getLastShakedownDate());
-        return repo.save(existing);
+        Cell updated = repo.save(existing);
+        logger.info("Камера с id={} успешно обновлена", id);
+        return updated;
     }
 
     @Override
     public void delete(Integer id) {
+        logger.info("Попытка удалить камеру с id={}", id);
         if (!repo.existsById(id)) {
+            logger.warn("Не удалось удалить: камера с id={} не найдена", id);
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Камера с id=" + id + " не найдена");
         }
         repo.deleteById(id);
+        logger.info("Камера с id={} успешно удалена", id);
     }
 
     @Override
     public boolean hasPrisoners(Integer id) {
-        return prisonerRepo.existsByCell_CellNum(id);
+        logger.info("Проверка наличия заключённых в камере id={}", id);
+        boolean result = prisonerRepo.existsByCell_CellNum(id);
+        logger.info("В камере id={} {} заключённых", id, result ? "есть" : "нет");
+        return result;
     }
 }

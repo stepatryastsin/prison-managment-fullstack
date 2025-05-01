@@ -11,4 +11,5 @@ public interface PropertiesInCellsService {
     PropertiesInCells create(PropertiesInCells properties);
     PropertiesInCells update(PropertiesInCellsKey id, PropertiesInCells properties);
     void delete(PropertiesInCellsKey id);
+    boolean existsById(PropertiesInCellsKey id);
 }

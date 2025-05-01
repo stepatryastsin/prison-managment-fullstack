@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 @Repository
-public interface ProgramsAndCoursesRepository
-       extends JpaRepository<ProgramsAndCourses, Integer> {
+public interface ProgramsAndCoursesRepository extends JpaRepository<ProgramsAndCourses, Integer> {
+
     List<ProgramsAndCourses> findAllByDeletedFalse();
 }

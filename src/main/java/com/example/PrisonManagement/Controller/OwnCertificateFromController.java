@@ -3,6 +3,8 @@ package com.example.PrisonManagement.Controller;
 import com.example.PrisonManagement.Model.OwnCertificateFrom;
 import com.example.PrisonManagement.Service.OwnCertificateFromService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -14,41 +16,61 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:3000")
 public class OwnCertificateFromController {
 
+    private static final Logger logger = LoggerFactory.getLogger(OwnCertificateFromController.class);
     private final OwnCertificateFromService service;
 
     @Autowired
     public OwnCertificateFromController(OwnCertificateFromService service) {
         this.service = service;
+        logger.info("OwnCertificateFromController инициализирован");
     }
 
     @GetMapping
     public List<OwnCertificateFrom> getAll() {
-        return service.findAll();
+        logger.info("Получен запрос GET /api/ownCertificateFrom - получить все записи сертификатов");
+        List<OwnCertificateFrom> list = service.findAll();
+        logger.info("Найдено {} записей сертификатов", list.size());
+        return list;
     }
 
     @GetMapping("/{prisonerId}/{courseId}")
     public OwnCertificateFrom getOne(@PathVariable Integer prisonerId,
                                      @PathVariable Integer courseId) {
-        return service.findById(prisonerId, courseId);
+        logger.info("Получен запрос GET /api/ownCertificateFrom/{}/{} - получить запись сертификата", prisonerId, courseId);
+        OwnCertificateFrom cert = service.findById(prisonerId, courseId);
+        if (cert != null) {
+            logger.info("Запись сертификата для PrisonerId={} и CourseId={} найдена", prisonerId, courseId);
+        } else {
+            logger.warn("Запись сертификата для PrisonerId={} и CourseId={} не найдена", prisonerId, courseId);
+        }
+        return cert;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OwnCertificateFrom create(@RequestBody @Valid OwnCertificateFrom ownCertificate) {
-        return service.create(ownCertificate);
+        logger.info("Получен запрос POST /api/ownCertificateFrom - создать новую запись сертификата: {}", ownCertificate);
+        OwnCertificateFrom created = service.create(ownCertificate);
+        logger.info("Запись сертификата создана для PrisonerId={} и CourseId={}", created.getPrisoner().getPrisonerId(), created.getCourse().getCourseId());
+        return created;
     }
 
     @PutMapping("/{prisonerId}/{courseId}")
     public OwnCertificateFrom update(@PathVariable Integer prisonerId,
                                      @PathVariable Integer courseId,
                                      @RequestBody @Valid OwnCertificateFrom ownCertificate) {
-        return service.update(prisonerId, courseId, ownCertificate);
+        logger.info("Получен запрос PUT /api/ownCertificateFrom/{}/{} - обновить запись сертификата", prisonerId, courseId);
+        OwnCertificateFrom updated = service.update(prisonerId, courseId, ownCertificate);
+        logger.info("Запись сертификата для PrisonerId={} и CourseId={} обновлена", prisonerId, courseId);
+        return updated;
     }
 
     @DeleteMapping("/{prisonerId}/{courseId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Integer prisonerId,
                        @PathVariable Integer courseId) {
+        logger.info("Получен запрос DELETE /api/ownCertificateFrom/{}/{} - удалить запись сертификата", prisonerId, courseId);
         service.delete(prisonerId, courseId);
+        logger.info("Запись сертификата для PrisonerId={} и CourseId={} удалена", prisonerId, courseId);
     }
 }

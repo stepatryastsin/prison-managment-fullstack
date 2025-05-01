@@ -6,8 +6,11 @@ import com.example.PrisonManagement.Model.Library;
 import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Service.BorrowedService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +21,7 @@ import java.util.List;
 public class BorrowedController {
 
     private final BorrowedService service;
+    private final Logger logger = LoggerFactory.getLogger(BorrowedController.class);
 
     @Autowired
     public BorrowedController(BorrowedService service) {
@@ -25,29 +29,49 @@ public class BorrowedController {
     }
 
     @GetMapping
-    public List<Borrowed> getAll() {
-        return service.findAll();
+    public ResponseEntity<List<Borrowed>> getAll() {
+        List<Borrowed> borrowedList = service.findAll();
+        logger.info("Получен список всех заимствованных книг. Количество записей: {}", borrowedList.size());
+        return ResponseEntity.ok(borrowedList);
     }
 
     @GetMapping("/{prisonerId}/{isbn}")
-    public Borrowed getById(@PathVariable Integer prisonerId,
-                            @PathVariable String isbn) {
-        return service.findById(new BorrowedKey(prisonerId, isbn));
+    public ResponseEntity<Borrowed> getById(@PathVariable Integer prisonerId,
+                                            @PathVariable String isbn) {
+        BorrowedKey key = new BorrowedKey(prisonerId, isbn);
+        Borrowed borrowed = service.findById(key);
+        logger.info("Найдена запись: заключённый ID={} взял книгу ISBN={}", prisonerId, isbn);
+        return ResponseEntity.ok(borrowed);
     }
 
     @GetMapping("/prisoner/{prisonerId}")
     public Prisoner getPrisoner(@PathVariable Integer prisonerId) {
-        return service.findPrisonerByPrisonerId(prisonerId);
+        Prisoner prisoner = service.findPrisonerByPrisonerId(prisonerId);
+        if (prisoner != null) {
+            logger.info("Найден заключённый с ID={}", prisoner.getPrisonerId());
+        } else {
+            logger.warn("Заключённый с ID={} не найден", prisonerId);
+        }
+        return prisoner;
     }
 
     @GetMapping("/library/{isbn}")
     public Library getLibrary(@PathVariable String isbn) {
-        return service.findLibraryByIsbn(isbn);
+        Library library = service.findLibraryByIsbn(isbn);
+        if (library != null) {
+            logger.info("Найдена книга с ISBN={}", library.getIsbn());
+        } else {
+            logger.warn("Книга с ISBN={} не найдена", isbn);
+        }
+        return library;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Borrowed create(@RequestBody @Valid Borrowed borrowed) {
+        Integer prisonerId = borrowed.getPrisoner().getPrisonerId();
+        String isbn = borrowed.getLibrary().getIsbn();
+        logger.info("Создана запись: заключённый ID={} взял книгу ISBN={}", prisonerId, isbn);
         return service.create(borrowed);
     }
 
@@ -55,6 +79,7 @@ public class BorrowedController {
     public Borrowed update(@PathVariable Integer prisonerId,
                            @PathVariable String isbn,
                            @RequestBody @Valid Borrowed borrowed) {
+        logger.info("Обновление записи: заключённый ID={} и книга ISBN={}", prisonerId, isbn);
         return service.update(new BorrowedKey(prisonerId, isbn), borrowed);
     }
 
@@ -62,6 +87,7 @@ public class BorrowedController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Integer prisonerId,
                        @PathVariable String isbn) {
+        logger.info("Удаление записи: заключённый ID={} вернул книгу ISBN={}", prisonerId, isbn);
         service.delete(new BorrowedKey(prisonerId, isbn));
     }
 }

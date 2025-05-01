@@ -1,10 +1,9 @@
 package com.example.PrisonManagement.impl;
 
-import com.example.PrisonManagement.Model.Cell;
+
 import com.example.PrisonManagement.Model.SecurityLevel;
 import com.example.PrisonManagement.Repository.SecurityLevelRepository;
 import com.example.PrisonManagement.Service.SecurityLevelService;
-import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -12,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
+
 @Service
 
 public class SecurityLevelServiceImpl implements SecurityLevelService {
