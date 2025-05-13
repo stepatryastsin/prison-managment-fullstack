@@ -84,20 +84,16 @@ public class LibraryServiceImpl implements LibraryService {
 
     @Override
     public void delete(String isbn) {
-        logger.info("Попытка удалить книгу с ISBN={}", isbn);
-        if (borrowedRepo.existsByIsbn(isbn)) {
-            logger.warn("Невозможно удалить книгу с ISBN={}: она сейчас заимствована", isbn);
+        Library library = findByIsbn(isbn);
+        Long libId = library.getInternalId();
+
+        if (borrowedRepo.existsByLibraryId(libId)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Нельзя удалить книгу ISBN=" + isbn + " — она сейчас заимствована");
+                    "Нельзя удалить книгу ISBN=" + isbn + " — она сейчас заимствована"
+            );
         }
-        if (!libRepo.existsByIsbn(isbn)) {
-            logger.warn("Невозможно удалить: книга с ISBN={} не найдена", isbn);
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Книга с ISBN=" + isbn + " не найдена");
-        }
+
         libRepo.deleteByIsbn(isbn);
-        logger.info("Книга с ISBN={} успешно удалена", isbn);
     }
 }

@@ -6,6 +6,8 @@ import com.example.PrisonManagement.Model.Library;
 import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Repository.BorrowedRepository;
 import com.example.PrisonManagement.Service.BorrowedService;
+import com.example.PrisonManagement.Service.LibraryService;
+import com.example.PrisonManagement.Service.PrisonerService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,106 +25,72 @@ import java.util.List;
 public class BorrowedServiceImpl implements BorrowedService {
 
     private static final Logger logger = LoggerFactory.getLogger(BorrowedServiceImpl.class);
+
     private final BorrowedRepository repo;
+    private final PrisonerService prisonerService;
+    private final LibraryService libraryService;
 
     @Autowired
-    public BorrowedServiceImpl(BorrowedRepository repo) {
+    public BorrowedServiceImpl(
+            BorrowedRepository repo,
+            PrisonerService prisonerService,
+            LibraryService libraryService
+    ) {
         this.repo = repo;
-        logger.info("BorrowedServiceImpl инициализирован");
+        this.prisonerService = prisonerService;
+        this.libraryService = libraryService;
+        logger.info("BorrowedServiceImpl initialized");
     }
 
     @Override
     public List<Borrowed> findAll() {
-        logger.info("Запрошен список всех записей Borrowed");
-        List<Borrowed> list = repo.findAll();
-        logger.info("Найдено {} записей Borrowed", list.size());
-        return list;
+        logger.info("Fetching all Borrowed records");
+        return repo.findAll();
     }
 
     @Override
     public Borrowed findById(BorrowedKey id) {
-        logger.info("Запрошена запись Borrowed с ключом={}", id);
-        return repo.findById(id)
-                .map(b -> {
-                    logger.info("Запись Borrowed с ключом={} найдена", id);
-                    return b;
-                })
-                .orElseThrow(() -> {
-                    logger.warn("Запись Borrowed с ключом={} не найдена", id);
-                    return new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Запись Borrowed с ключом=" + id + " не найдена");
-                });
+        return repo.findById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found"));
     }
 
     @Override
-    public Prisoner findPrisonerByPrisonerId(Integer prisonerId) {
-        logger.info("Запрошен Prisoner с id={}", prisonerId);
-        return repo.findPrisonerByPrisonerId(prisonerId)
-                .map(p -> {
-                    logger.info("Prisoner с id={} найден", prisonerId);
-                    return p;
-                })
-                .orElseThrow(() -> {
-                    logger.warn("Prisoner с id={} не найден", prisonerId);
-                    return new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Prisoner с id=" + prisonerId + " не найден");
-                });
-    }
+    public Borrowed create(Integer prisonerId, String isbn) {
+        Prisoner prisoner = prisonerService.findById(prisonerId);
+        if (prisoner == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Prisoner not found");
 
-    @Override
-    public Library findLibraryByIsbn(String isbn) {
-        logger.info("Запрошена Library с ISBN={}", isbn);
-        return repo.findLibraryByIsbn(isbn)
-                .map(l -> {
-                    logger.info("Library с ISBN={} найдена", isbn);
-                    return l;
-                })
-                .orElseThrow(() -> {
-                    logger.warn("Library с ISBN={} не найдена", isbn);
-                    return new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Library с ISBN=" + isbn + " не найдена");
-                });
-    }
+        Library library = libraryService.findByIsbn(isbn);
+        if (library == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Library not found");
 
-    @Override
-    public Borrowed create(Borrowed borrowed) {
-        BorrowedKey id = borrowed.getId();
-        logger.info("Попытка создать запись Borrowed с ключом={}", id);
-        if (repo.existsById(id)) {
-            logger.warn("Невозможно создать: запись Borrowed с ключом={} уже существует", id);
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Запись Borrowed с ключом=" + id + " уже существует");
+        BorrowedKey key = new BorrowedKey(library.getInternalId(), prisoner.getPrisonerId());
+        if (repo.existsById(key)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Already exists");
         }
-        Borrowed saved = repo.save(borrowed);
-        logger.info("Запись Borrowed с ключом={} успешно создана", saved.getId());
-        return saved;
+
+        Borrowed borrowed = new Borrowed(prisoner, library);
+        return repo.save(borrowed);
     }
 
+
     @Override
-    public Borrowed update(BorrowedKey id, Borrowed borrowed) {
-        logger.info("Попытка обновить запись Borrowed с ключом={}", id);
+    public Borrowed update(BorrowedKey id, Integer prisonerId, String isbn) {
         Borrowed existing = findById(id);
-        existing.setPrisoner(borrowed.getPrisoner());
-        existing.setLibrary(borrowed.getLibrary());
-        Borrowed updated = repo.save(existing);
-        logger.info("Запись Borrowed с ключом={} успешно обновлена", id);
-        return updated;
+        Prisoner prisoner = prisonerService.findById(prisonerId);
+        Library library = libraryService.findByIsbn(isbn);
+
+        if (prisoner == null || library == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid prisoner or library");
+
+        existing.setPrisoner(prisoner);
+        existing.setLibrary(library);
+        return repo.save(existing);
     }
 
     @Override
     public void delete(BorrowedKey id) {
-        logger.info("Попытка удалить запись Borrowed с ключом={}", id);
         if (!repo.existsById(id)) {
-            logger.warn("Невозможно удалить: запись Borrowed с ключом={} не найдена", id);
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Запись Borrowed с ключом=" + id + " не найдена");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found");
         }
         repo.deleteById(id);
-        logger.info("Запись Borrowed с ключом={} успешно удалена", id);
     }
 }

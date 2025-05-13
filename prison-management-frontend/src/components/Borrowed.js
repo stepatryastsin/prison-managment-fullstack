@@ -1,445 +1,281 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box,
+  Paper,
   Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
+  Box,
+  Stack,
+  TextField,
   Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  TextField,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Card,
+  CardContent,
+  Grid
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import CheckIcon from '@mui/icons-material/Check';
-import { useNavigate } from 'react-router-dom';
 
-const API_URL = 'http://localhost:8080/api/borrowed';
-const PRISONERS_URL = 'http://localhost:8080/api/prisoners';
-const BOOKS_URL = 'http://localhost:8080/api/libraries';
+const API_BASE = 'http://localhost:8080/api/borrowed';
+const PRISONERS_API = 'http://localhost:8080/api/prisoners';
+const BOOKS_API = 'http://localhost:8080/api/libraries';
 
-const BorrowedFrontend = () => {
+export default function Borrowed() {
   const [borrowedList, setBorrowedList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [prisoners, setPrisoners] = useState([]);
+  const [books, setBooks] = useState([]);
 
-  const [integratedDialogOpen, setIntegratedDialogOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState({ id: { prisonerId: '', isbn: '' } });
-
-  const [prisonersList, setPrisonersList] = useState([]);
-  const [booksList, setBooksList] = useState([]);
-  const [loadingPrisoners, setLoadingPrisoners] = useState(false);
-  const [loadingBooks, setLoadingBooks] = useState(false);
-  const [errorPrisoners, setErrorPrisoners] = useState(null);
-  const [errorBooks, setErrorBooks] = useState(null);
-
-  const [openPrisonerDetailDialog, setOpenPrisonerDetailDialog] = useState(false);
-  const [prisonerDetail, setPrisonerDetail] = useState(null);
-  const [openBookDetailDialog, setOpenBookDetailDialog] = useState(false);
-  const [bookDetail, setBookDetail] = useState(null);
-
-  const navigate = useNavigate();
-
-  const fetchBorrowed = () => {
-    fetch(API_URL)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Ошибка при загрузке записей Borrowed');
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setBorrowedList(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err);
-        setLoading(false);
-      });
-  };
+  const [openPrisonerDialog, setOpenPrisonerDialog] = useState(false);
+  const [openBookDialog, setOpenBookDialog] = useState(false);
+  const [searchPrisoner, setSearchPrisoner] = useState('');
+  const [searchBook, setSearchBook] = useState('');
+  const [selectedPrisoner, setSelectedPrisoner] = useState(null);
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [createErrors, setCreateErrors] = useState({});
 
   useEffect(() => {
-    fetchBorrowed();
+    fetchAll();
   }, []);
 
-  const handleDelete = (record) => {
-    fetch(`${API_URL}/${record.id.prisonerId}/${record.id.isbn}`, {
-      method: 'DELETE',
-    }).then((response) => {
-      if (response.ok) {
-        fetchBorrowed();
-      }
-    });
-  };
+  async function fetchAll() {
+    try {
+      const [bRes, pRes, lRes] = await Promise.all([
+        fetch(API_BASE),
+        fetch(PRISONERS_API),
+        fetch(BOOKS_API)
+      ]);
+      if (!bRes.ok || !pRes.ok || !lRes.ok) throw new Error();
+      setBorrowedList(await bRes.json());
+      setPrisoners(await pRes.json());
+      setBooks(await lRes.json());
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
-  const handleOpenIntegratedDialogForCreate = () => {
-    setIsEditing(false);
-    setCurrentRecord({ id: { prisonerId: '', isbn: '' } });
-    openIntegratedDialog();
-  };
-
-  const handleOpenIntegratedDialogForEdit = (record) => {
-    setIsEditing(true);
-    setCurrentRecord(record);
-    openIntegratedDialog();
-  };
-
-  const openIntegratedDialog = () => {
-    // Загрузка заключённых
-    setLoadingPrisoners(true);
-    fetch(PRISONERS_URL)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Ошибка при загрузке данных заключённых');
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setPrisonersList(data);
-        setLoadingPrisoners(false);
-      })
-      .catch((err) => {
-        setErrorPrisoners(err);
-        setLoadingPrisoners(false);
-      });
-
-    setLoadingBooks(true);
-    fetch(BOOKS_URL)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Ошибка при загрузке данных книг');
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setBooksList(data);
-        setLoadingBooks(false);
-      })
-      .catch((err) => {
-        setErrorBooks(err);
-        setLoadingBooks(false);
-      });
-
-    setIntegratedDialogOpen(true);
-  };
-
-  const handleCloseIntegratedDialog = () => setIntegratedDialogOpen(false);
-
-  const handleSelectPrisoner = (prisoner) => {
-    setCurrentRecord((prev) => ({
-      ...prev,
-      id: { ...prev.id, prisonerId: prisoner.prisonerId },
-    }));
-  };
-
-  const handleSelectBook = (book) => {
-    setCurrentRecord((prev) => ({
-      ...prev,
-      id: { ...prev.id, isbn: book.isbn },
-    }));
-  };
-
-  const handleCreatePrisoner = () => {
-    setIntegratedDialogOpen(false);
-    navigate('/prisoners');
-  };
-  const handleCreateBook = () => {
-    setIntegratedDialogOpen(false);
-    navigate('/library');
-  };
-
-  const handleConfirmSelection = () => {
+  async function handleCreate() {
+    if (!selectedPrisoner || !selectedBook) {
+      alert('Выберите заключённого и книгу');
+      return;
+    }
     const payload = {
-      id: {
-        prisonerId: currentRecord.id.prisonerId,
-        isbn: currentRecord.id.isbn,
-      },
-      prisoner: { prisonerId: currentRecord.id.prisonerId },
-      library: { isbn: currentRecord.id.isbn },
+      prisonerId: selectedPrisoner.prisonerId,
+      isbn: selectedBook.isbn
     };
-
-    if (isEditing) {
-      fetch(`${API_URL}/${currentRecord.id.prisonerId}/${currentRecord.id.isbn}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).then((response) => {
-        if (response.ok) {
-          fetchBorrowed();
-          handleCloseIntegratedDialog();
-        }
-      });
-    } else {
-      fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).then((response) => {
-        if (response.ok) {
-          fetchBorrowed();
-          handleCloseIntegratedDialog();
-        }
-      });
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      setCreateErrors(err.errors || {});
+      return;
     }
-  };
+    setCreateErrors({});
+    setSelectedPrisoner(null);
+    setSelectedBook(null);
+    fetchAll();
+  }
 
-  const handleShowPrisonerDetails = (prisonerId) => {
-    fetch(`${PRISONERS_URL}/${prisonerId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setPrisonerDetail(data);
-        setOpenPrisonerDetailDialog(true);
-      });
-  };
-  const handleClosePrisonerDetailDialog = () => {
-    setOpenPrisonerDetailDialog(false);
-    setPrisonerDetail(null);
-  };
+  async function handleDelete(prisonerId, isbn) {
+    if (!window.confirm(`Удалить запись: ${prisonerId} ↔ ${isbn}?`)) return;
+    const res = await fetch(`${API_BASE}/${prisonerId}/${isbn}`, { method: 'DELETE' });
+    if (res.ok) fetchAll();
+  }
 
-  const handleShowBookDetails = (isbn) => {
-    fetch(`${BOOKS_URL}/${isbn}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setBookDetail(data);
-        setOpenBookDetailDialog(true);
-      });
-  };
-  const handleCloseBookDetailDialog = () => {
-    setOpenBookDetailDialog(false);
-    setBookDetail(null);
-  };
-
-  const groupedBorrowed = borrowedList.reduce((acc, record) => {
-    const prisonerId = record.prisoner?.prisonerId || record.id?.prisonerId;
-    if (prisonerId) {
-      if (!acc[prisonerId]) {
-        acc[prisonerId] = [];
-      }
-      acc[prisonerId].push(record);
-    }
+  // Группируем по заключённому
+  const grouped = borrowedList.reduce((acc, rec) => {
+    const pid = rec.prisoner.prisonerId;
+    if (!acc[pid]) acc[pid] = { prisoner: rec.prisoner, books: [] };
+    acc[pid].books.push(rec.library);
     return acc;
   }, {});
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" align="center" gutterBottom sx={{ mb: 3 }}>
-        Записи о заимствовании книг
+    <Paper sx={{ p: 4, maxWidth: 1200, mx: 'auto', mt: 4 }}>
+      <Typography variant="h4" align="center" gutterBottom>
+        Управление заимствованиями
       </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-        <Button variant="contained" color="primary" onClick={handleOpenIntegratedDialogForCreate}>
-          Добавить запись
-        </Button>
-      </Box>
-      {loading ? (
-        <Typography align="center">Загрузка...</Typography>
-      ) : error ? (
-        <Typography align="center" color="error">
-          Ошибка: {error.message}
+
+      {/* Новая запись */}
+      <Box sx={{ mb: 4, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+        <Typography variant="h6" gutterBottom>
+          Новая запись
         </Typography>
-      ) : (
-        Object.keys(groupedBorrowed).length > 0 &&
-        Object.keys(groupedBorrowed).map((prisonerId) => (
-          <Accordion key={prisonerId} defaultExpanded sx={{ mb: 2 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                <Typography variant="subtitle1">
-                  Заключённый ID: {prisonerId}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => handleShowPrisonerDetails(prisonerId)}
-                >
-                  Подробнее о заключённом
-                </Typography>
-              </Box>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>ISBN</TableCell>
-                    <TableCell>Название книги</TableCell>
-                    <TableCell>Жанр</TableCell>
-                    <TableCell align="center">Действия</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {groupedBorrowed[prisonerId].map((record, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <Button
-                          variant="text"
-                          onClick={() =>
-                            handleShowBookDetails(record.library?.ISBN || record.id?.isbn)
-                          }
-                        >
-                          {record.library?.ISBN || record.id?.isbn || 'не найдено'}
-                        </Button>
-                      </TableCell>
-                      <TableCell>{record.library?.bookName || '---'}</TableCell>
-                      <TableCell>{record.library?.genre || '---'}</TableCell>
-                      <TableCell align="center">
-                        <Button
-                          variant="outlined"
-                          color="secondary"
-                          onClick={() => handleDelete(record)}
-                        >
-                          Удалить
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </AccordionDetails>
-          </Accordion>
-        ))
-      )}
-
-      <Dialog
-        open={integratedDialogOpen}
-        onClose={handleCloseIntegratedDialog}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>
-          {isEditing ? 'Редактировать запись' : 'Добавить запись'}
-        </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="subtitle1" sx={{ mt: 1, mb: 1 }}>
-            Заключённые:
-          </Typography>
-          {loadingPrisoners ? (
-            <Typography>Загрузка заключённых...</Typography>
-          ) : errorPrisoners ? (
-            <Typography color="error">{errorPrisoners.message}</Typography>
-          ) : prisonersList.length > 0 ? (
-            <List sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #ccc', mb: 2 }}>
-              {prisonersList.map((prisoner) => (
-                <ListItem key={prisoner.prisonerId} disablePadding>
-                  <ListItemButton onClick={() => handleSelectPrisoner(prisoner)}>
-                    {currentRecord.id.prisonerId === prisoner.prisonerId && (
-                      <CheckIcon color="primary" sx={{ mr: 1 }} />
-                    )}
-                    <ListItemText
-                      primary={`ID: ${prisoner.prisonerId} - ${prisoner.firstName} ${prisoner.lastName}`}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Typography>Нет заключённых</Typography>
-              <Button onClick={handleCreatePrisoner} color="primary">
-                Создать нового
-              </Button>
-            </Box>
-          )}
-
-          <Typography variant="subtitle1" sx={{ mt: 1, mb: 1 }}>
-            Книги:
-          </Typography>
-          {loadingBooks ? (
-            <Typography>Загрузка книг...</Typography>
-          ) : errorBooks ? (
-            <Typography color="error">{errorBooks.message}</Typography>
-          ) : booksList.length > 0 ? (
-            <List sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #ccc' }}>
-              {booksList.map((book) => (
-                <ListItem key={book.isbn} disablePadding>
-                  <ListItemButton onClick={() => handleSelectBook(book)}>
-                    {currentRecord.id.isbn === book.isbn && (
-                      <CheckIcon color="primary" sx={{ mr: 1 }} />
-                    )}
-                    <ListItemText primary={`ISBN: ${book.isbn} - ${book.bookName}`} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography>Нет книг</Typography>
-              <Button onClick={handleCreateBook} color="primary">
-                Создать новую
-              </Button>
-            </Box>
-          )}
-
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body1">
-              Выбранный ID заключённого:{' '}
-              <strong>{currentRecord.id.prisonerId || 'не выбран'}</strong>
-            </Typography>
-            <Typography variant="body1">
-              Выбранный ISBN книги:{' '}
-              <strong>{currentRecord.id.isbn || 'не выбран'}</strong>
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseIntegratedDialog}>Отмена</Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <Button
-            onClick={handleConfirmSelection}
-            color="primary"
-            disabled={!currentRecord.id.prisonerId || !currentRecord.id.isbn}
+            variant="outlined"
+            fullWidth
+            onClick={() => setOpenPrisonerDialog(true)}
           >
-            Подтвердить
+            {selectedPrisoner
+              ? `Закл.: ${selectedPrisoner.name} (ID ${selectedPrisoner.prisonerId})`
+              : 'Выбрать заключённого'}
           </Button>
+
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={() => setOpenBookDialog(true)}
+          >
+            {selectedBook
+              ? `Книга: ${selectedBook.bookName} (${selectedBook.isbn})`
+              : 'Выбрать книгу'}
+          </Button>
+
+          <Button variant="contained" onClick={handleCreate}>
+            Создать
+          </Button>
+        </Stack>
+        {createErrors.prisonerId && (
+          <Typography color="error">{createErrors.prisonerId}</Typography>
+        )}
+        {createErrors.isbn && (
+          <Typography color="error">{createErrors.isbn}</Typography>
+        )}
+      </Box>
+
+      {/* Существующие заимствования */}
+      <Typography variant="h5" gutterBottom>
+        Текущие заимствования
+      </Typography>
+      <Grid container spacing={2}>
+        {Object.values(grouped).map(({ prisoner, books }) => (
+          <Grid key={prisoner.prisonerId} item xs={12} md={6} lg={4}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6">
+                  👤 {prisoner.name} (ID {prisoner.prisonerId})
+                </Typography>
+                <ul>
+                  {books.map((b) => (
+                    <li key={b.isbn}>
+                      {b.bookName} (<em>{b.isbn}</em>){' '}
+                      <Button
+                        size="small"
+                        onClick={() => handleDelete(prisoner.prisonerId, b.isbn)}
+                      >
+                        ×
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Диалог выбора заключённого */}
+      <Dialog
+        open={openPrisonerDialog}
+        onClose={() => setOpenPrisonerDialog(false)}
+        fullWidth
+      >
+        <DialogTitle>Выберите заключённого</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            placeholder="Поиск по имени или ID"
+            value={searchPrisoner}
+            onChange={(e) => setSearchPrisoner(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Имя</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {prisoners
+                .filter((p) => {
+                  const name = p.name ?? '';
+                  return (
+                    name.toLowerCase().includes(searchPrisoner.toLowerCase()) ||
+                    p.prisonerId.toString().includes(searchPrisoner)
+                  );
+                })
+                .map((p) => (
+                  <TableRow
+                    key={p.prisonerId}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      setSelectedPrisoner(p);
+                      setOpenPrisonerDialog(false);
+                    }}
+                  >
+                    <TableCell>{p.prisonerId}</TableCell>
+                    <TableCell>{p.name}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPrisonerDialog(false)}>Отмена</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openPrisonerDetailDialog} onClose={handleClosePrisonerDetailDialog}>
-        <DialogTitle>Детальная информация о заключённом</DialogTitle>
+      {/* Диалог выбора книги */}
+      <Dialog
+        open={openBookDialog}
+        onClose={() => setOpenBookDialog(false)}
+        fullWidth
+      >
+        <DialogTitle>Выберите книгу</DialogTitle>
         <DialogContent>
-          {prisonerDetail ? (
-            <Box>
-              <Typography>ID: {prisonerDetail.prisonerId}</Typography>
-              <Typography>Имя: {prisonerDetail.firstName}</Typography>
-              <Typography>Фамилия: {prisonerDetail.lastName}</Typography>
-            </Box>
-          ) : (
-            <Typography>Загрузка...</Typography>
-          )}
+          <TextField
+            fullWidth
+            placeholder="Поиск по названию или ISBN"
+            value={searchBook}
+            onChange={(e) => setSearchBook(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>ISBN</TableCell>
+                <TableCell>Название</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {books
+                .filter((b) => {
+                  const name = b.bookName ?? '';
+                  return (
+                    name.toLowerCase().includes(searchBook.toLowerCase()) ||
+                    b.isbn.includes(searchBook)
+                  );
+                })
+                .map((b) => (
+                  <TableRow
+                    key={b.isbn}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      setSelectedBook(b);
+                      setOpenBookDialog(false);
+                    }}
+                  >
+                    <TableCell>{b.isbn}</TableCell>
+                    <TableCell>{b.bookName}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClosePrisonerDetailDialog}>Закрыть</Button>
+          <Button onClick={() => setOpenBookDialog(false)}>Отмена</Button>
         </DialogActions>
       </Dialog>
-
-      <Dialog open={openBookDetailDialog} onClose={handleCloseBookDetailDialog}>
-        <DialogTitle>Детальная информация о книге</DialogTitle>
-        <DialogContent>
-          {bookDetail ? (
-            <Box>
-              <Typography>ISBN: {bookDetail.isbn}</Typography>
-              <Typography>Название: {bookDetail.bookName}</Typography>
-              <Typography>Жанр: {bookDetail.genre}</Typography>
-            </Box>
-          ) : (
-            <Typography>Загрузка...</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseBookDetailDialog}>Закрыть</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+    </Paper>
   );
-};
-
-export default BorrowedFrontend;
+}

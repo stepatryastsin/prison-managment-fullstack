@@ -1,17 +1,19 @@
 package com.example.PrisonManagement.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.NaturalId;
-
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Entity
 @Table(name = "library")
 public class Library {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "internal_id")
     private Long internalId;
 
     @NaturalId
@@ -20,16 +22,16 @@ public class Library {
             regexp = "^(?:97[89])?\\d{9}[\\dX]$",
             message = "Неверный формат ISBN: допустимы только ISBN-10 или ISBN-13"
     )
-    @Column(name = "ISBN", length = 13, nullable = false, unique = true)
+    @Column(name = "isbn", length = 13, nullable = false, unique = true)
     private String isbn;
 
     @NotBlank(message = "Нужно название книги")
-    @Size(max = 30, message = "Длинна книги не может привышать 30 символов")
+    @Size(max = 30, message = "Длина названия не может превышать 30 символов")
     @Column(name = "book_name", length = 30, nullable = false)
     private String bookName;
 
     @NotBlank(message = "Нужен жанр книги")
-    @Size(max = 15, message = "Жанр не может привышать 15 символов")
+    @Size(max = 15, message = "Жанр не может превышать 15 символов")
     @Column(name = "genre", length = 15, nullable = false)
     private String genre;
 

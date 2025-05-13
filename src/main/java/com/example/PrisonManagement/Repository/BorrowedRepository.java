@@ -10,37 +10,25 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface BorrowedRepository extends JpaRepository<Borrowed, BorrowedKey> {
 
+    // Проверяет, заимствована ли книга с данным internalId
     @Query("""
         SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
           FROM Borrowed b
-         WHERE b.prisoner.prisonerId = :prisonerId
+         WHERE b.id.libraryId = :libraryId
     """)
-    boolean existsByPrisonerId(@Param("prisonerId") Integer prisonerId);
+    boolean existsByLibraryId(@Param("libraryId") Long libraryId);
 
-    @Query("""
-        SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
-          FROM Borrowed b
-         WHERE b.id.isbn = :isbn
-    """)
-    boolean existsByIsbn(@Param("isbn") String isbn);
-
+    // При желании, найти всех заключённых, удерживающих данную книгу:
     @Query("""
         SELECT b.prisoner
           FROM Borrowed b
-         WHERE b.prisoner.prisonerId = :prisonerId
+         WHERE b.id.libraryId = :libraryId
     """)
-    Optional<Prisoner> findPrisonerByPrisonerId(@Param("prisonerId") Integer prisonerId);
-
-    @Query("""
-        SELECT b.library
-          FROM Borrowed b
-         WHERE b.id.isbn = :isbn
-    """)
-    Optional<Library> findLibraryByIsbn(@Param("isbn") String isbn);
-
+    List<Prisoner> findPrisonersByLibraryId(@Param("libraryId") Long libraryId);
 }

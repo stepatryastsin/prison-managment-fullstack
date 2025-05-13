@@ -1,38 +1,35 @@
 package com.example.PrisonManagement.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.Objects;
 
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Entity
 @Table(name = "borrowed")
-// ready
 public class Borrowed {
-    @NotNull(message = "BorrowedKey is required")
+
     @EmbeddedId
     private BorrowedKey id;
 
-    @ManyToOne
     @MapsId("prisonerId")
-    @JoinColumn(name = "prisoner_id")
-    @NotNull(message = "Prisoner is required")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
-    @ManyToOne
-    @MapsId("isbn")
-    @JoinColumn(name = "isbn")
-    @NotNull(message = "Library is required")
+    @MapsId("libraryId")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "library_id", referencedColumnName = "internal_id", nullable = false)
     private Library library;
 
-    public Borrowed(BorrowedKey id,
-                    Prisoner prisoner,
-                    Library library) {
-        this.id = id;
+    public Borrowed() {}
+
+    public Borrowed(Prisoner prisoner, Library library) {
         this.prisoner = prisoner;
         this.library = library;
-    }
-
-    public Borrowed() {
+        this.id = new BorrowedKey(library.getInternalId(), prisoner.getPrisonerId());
     }
 
     public BorrowedKey getId() {
@@ -60,21 +57,18 @@ public class Borrowed {
     }
 
     @Override
-    public final boolean equals(Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Borrowed borrowed)) return false;
-
-        return getId().equals(borrowed.getId()) &&
-                getPrisoner().equals(borrowed.getPrisoner()) &&
-                getLibrary().equals(borrowed.getLibrary());
+        if (!(o instanceof Borrowed)) return false;
+        Borrowed that = (Borrowed) o;
+        return Objects.equals(id, that.id)
+                && Objects.equals(prisoner, that.prisoner)
+                && Objects.equals(library, that.library);
     }
 
     @Override
     public int hashCode() {
-        int result = getId().hashCode();
-        result = 31 * result + getPrisoner().hashCode();
-        result = 31 * result + getLibrary().hashCode();
-        return result;
+        return Objects.hash(id, prisoner, library);
     }
 
     @Override
