@@ -41,7 +41,7 @@ const PropertiesFrontend = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentRecord, setCurrentRecord] = useState({
-    id: { prisonerId: '', propertyName: '' },
+    id: { prisonerId: '' },
     description: ''
   });
   const [prisonersList, setPrisonersList] = useState([]);
@@ -72,7 +72,8 @@ const PropertiesFrontend = () => {
 
   const openSnackbar = (message, severity = 'success') =>
     setSnackbar({ open: true, message, severity });
-  const closeSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
+  const closeSnackbar = () =>
+    setSnackbar(prev => ({ ...prev, open: false }));
 
   const handleDelete = async record => {
     try {
@@ -91,7 +92,7 @@ const PropertiesFrontend = () => {
 
   const handleOpenDialogForCreate = () => {
     setIsEditing(false);
-    setCurrentRecord({ id: { prisonerId: '', propertyName: '' }, description: '' });
+    setCurrentRecord({ id: { prisonerId: '' }, description: '' });
     openDialog();
   };
 
@@ -121,13 +122,7 @@ const PropertiesFrontend = () => {
   const handleSelectPrisoner = prisoner =>
     setCurrentRecord(prev => ({
       ...prev,
-      id: { ...prev.id, prisonerId: prisoner.prisonerId }
-    }));
-
-  const handlePropertyNameChange = e =>
-    setCurrentRecord(prev => ({
-      ...prev,
-      id: { ...prev.id, propertyName: e.target.value }
+      id: { prisonerId: prisoner.prisonerId }
     }));
 
   const handleDescriptionChange = e =>
@@ -343,13 +338,7 @@ const PropertiesFrontend = () => {
               </Button>
             </Box>
           )}
-          <TextField
-            label="Свойство"
-            fullWidth
-            margin="normal"
-            value={currentRecord.id.propertyName}
-            onChange={handlePropertyNameChange}
-          />
+          {/* Поле свойства удалено */}
           <TextField
             label="Описание"
             fullWidth
@@ -363,17 +352,15 @@ const PropertiesFrontend = () => {
             <Typography variant="body1">
               Выбранный ID заключённого: <strong>{currentRecord.id.prisonerId || 'не выбран'}</strong>
             </Typography>
-            <Typography variant="body1">
-              Введённое свойство: <strong>{currentRecord.id.propertyName || 'не указано'}</strong>
-            </Typography>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Отмена</Button>
+          {/* Оставляем активной только проверку наличия prisonerId */}
           <Button
             onClick={handleConfirm}
             color="primary"
-            disabled={!currentRecord.id.prisonerId || !currentRecord.id.propertyName}
+            disabled={!currentRecord.id.prisonerId}
           >
             Подтвердить
           </Button>

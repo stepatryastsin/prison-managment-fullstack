@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/security-levels")
+@RequestMapping("/api/sl")
 @CrossOrigin(origins = "http://localhost:3000")
 public class SecurityLevelController {
 
