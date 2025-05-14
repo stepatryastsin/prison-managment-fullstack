@@ -1,3 +1,5 @@
+// src/pages/Visitors.jsx
+
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Paper,
@@ -15,12 +17,15 @@ import {
   Alert,
   Slide,
   Tooltip,
+  Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { motion } from 'framer-motion';
+import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api/visitors';
 
-const Visitors = () => {
+export default function Visitors() {
   const [visitors, setVisitors] = useState([]);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -39,103 +44,82 @@ const Visitors = () => {
 
   const fetchVisitors = async () => {
     try {
-      const response = await fetch(API_URL);
-      if (!response.ok) throw new Error('Ошибка загрузки посетителей');
-      const data = await response.json();
+      const { data } = await axios.get(API_URL);
       setVisitors(data);
     } catch (error) {
-      console.error('Ошибка загрузки посетителей:', error);
       openSnackbar('Ошибка загрузки посетителей', 'error');
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((p) => ({ ...p, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const method = editingId !== null ? 'PUT' : 'POST';
-      const url = editingId !== null ? `${API_URL}/${editingId}` : API_URL;
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      if (!response.ok) throw new Error('Ошибка сохранения данных');
-      await fetchVisitors();
-      openSnackbar(editingId !== null ? 'Посетитель обновлён' : 'Посетитель добавлен');
+      if (editingId != null) {
+        await axios.put(`${API_URL}/${editingId}`, formData);
+        openSnackbar('Посетитель обновлён');
+      } else {
+        await axios.post(API_URL, formData);
+        openSnackbar('Посетитель добавлен');
+      }
       setEditingId(null);
-      setFormData({
-        firstName: '',
-        lastName: '',
-        phoneNumber: '',
-        relationToPrisoner: '',
-        visitDate: '',
-      });
-    } catch (error) {
-      console.error('Ошибка при сохранении:', error);
+      setFormData({ firstName:'', lastName:'', phoneNumber:'', relationToPrisoner:'', visitDate:'' });
+      fetchVisitors();
+    } catch {
       openSnackbar('Ошибка при сохранении', 'error');
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Ошибка при удалении');
-      await fetchVisitors();
+      await axios.delete(`${API_URL}/${id}`);
       openSnackbar('Посетитель удалён');
-    } catch (error) {
-      console.error('Ошибка при удалении:', error);
+      fetchVisitors();
+    } catch {
       openSnackbar('Ошибка при удалении', 'error');
     }
   };
 
-  const handleEdit = (visitor) => {
+  const handleEdit = (v) => {
     setFormData({
-      firstName: visitor.firstName,
-      lastName: visitor.lastName,
-      phoneNumber: visitor.phoneNumber,
-      relationToPrisoner: visitor.relationToPrisoner,
-      visitDate: visitor.visitDate,
+      firstName: v.firstName,
+      lastName: v.lastName,
+      phoneNumber: v.phoneNumber,
+      relationToPrisoner: v.relationToPrisoner,
+      visitDate: v.visitDate,
     });
-    setEditingId(visitor.visitorId);
+    setEditingId(v.visitorId);
   };
 
-  const filteredVisitors = useMemo(() => {
+  const filtered = useMemo(() => {
     if (!searchQuery.trim()) return visitors;
-    return visitors.filter((visitor) =>
-      Object.values(visitor)
-        .join(' ')
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase())
+    return visitors.filter((v) =>
+      Object.values(v).join(' ').toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [visitors, searchQuery]);
 
-  const openSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
+  const openSnackbar = (msg, sev = 'success') => {
+    setSnackbar({ open: true, message: msg, severity: sev });
   };
-  const closeSnackbar = () => setSnackbar((prev) => ({ ...prev, open: false }));
+  const closeSnackbar = () => setSnackbar((s) => ({ ...s, open: false }));
 
   return (
     <Paper
-      sx={{
-        padding: 3,
-        maxWidth: 1000,
-        margin: 'auto',
-        mt: 3,
-        boxShadow: 3,
-        backgroundColor: '#ffffff',
-      }}
+      component={motion.div}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      sx={{ p: 4, maxWidth: 1000, mx: 'auto', mt: 4, boxShadow: 3 }}
     >
-      <Typography variant="h4" align="center" gutterBottom sx={{ mb: 3 }}>
-        {editingId !== null ? 'Редактировать посетителя' : 'Добавить посетителя'}
+      <Typography variant="h4" align="center" gutterBottom>
+        {editingId != null ? 'Редактировать посетителя' : 'Добавить посетителя'}
       </Typography>
+
       <Box
         component="form"
         onSubmit={handleSubmit}
@@ -143,78 +127,45 @@ const Visitors = () => {
           display: 'flex',
           flexWrap: 'wrap',
           gap: 2,
-          mb: 3,
+          mb: 4,
           justifyContent: 'space-between',
         }}
-        noValidate
       >
-        <TextField
-          label="First Name"
-          name="firstName"
-          value={formData.firstName}
-          onChange={handleChange}
-          required
-          variant="outlined"
-          sx={{ flex: 1, minWidth: 200 }}
-        />
-        <TextField
-          label="Last Name"
-          name="lastName"
-          value={formData.lastName}
-          onChange={handleChange}
-          required
-          variant="outlined"
-          sx={{ flex: 1, minWidth: 200 }}
-        />
-        <TextField
-          label="Phone Number"
-          name="phoneNumber"
-          value={formData.phoneNumber}
-          onChange={handleChange}
-          required
-          variant="outlined"
-          sx={{ flex: 1, minWidth: 200 }}
-        />
-        <TextField
-          label="Relation to Prisoner"
-          name="relationToPrisoner"
-          value={formData.relationToPrisoner}
-          onChange={handleChange}
-          variant="outlined"
-          sx={{ flex: 1, minWidth: 200 }}
-        />
-        <TextField
-          label="Visit Date"
-          type="date"
-          name="visitDate"
-          value={formData.visitDate}
-          onChange={handleChange}
-          required
-          InputLabelProps={{ shrink: true }}
-          variant="outlined"
-          sx={{ flex: 1, minWidth: 200 }}
-        />
+        {[
+          { label: 'First Name', name: 'firstName', required: true },
+          { label: 'Last Name', name: 'lastName', required: true },
+          { label: 'Phone Number', name: 'phoneNumber', required: true },
+          { label: 'Relation to Prisoner', name: 'relationToPrisoner' },
+          { label: 'Visit Date', name: 'visitDate', type: 'date', required: true },
+        ].map((field) => (
+          <TextField
+            key={field.name}
+            label={field.label}
+            name={field.name}
+            type={field.type || 'text'}
+            value={formData[field.name]}
+            onChange={handleChange}
+            required={field.required || false}
+            InputLabelProps={field.type === 'date' ? { shrink: true } : null}
+            sx={{ flex: 1, minWidth: 200 }}
+          />
+        ))}
+
         <Button
-          variant="contained"
-          color="primary"
           type="submit"
-          sx={{
-            height: 'fit-content',
-            whiteSpace: 'nowrap',
-            alignSelf: 'center',
-            px: 3,
-          }}
+          variant="contained"
+          sx={{ alignSelf: 'center', px: 4 }}
         >
-          {editingId !== null ? 'Сохранить' : 'Добавить'}
+          {editingId != null ? 'Сохранить' : 'Добавить'}
         </Button>
       </Box>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+
+      <Stack direction="row" justifyContent="flex-end" mb={2}>
         <TextField
-          variant="outlined"
-          placeholder="Поиск посетителя..."
+          placeholder="Поиск..."
+          size="small"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          size="small"
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -222,53 +173,51 @@ const Visitors = () => {
               </InputAdornment>
             ),
           }}
-          sx={{ maxWidth: 300 }}
+          sx={{ width: 300 }}
         />
-      </Box>
+      </Stack>
+
       <Typography variant="h5" gutterBottom>
         Список посетителей
       </Typography>
-      <Table sx={{ backgroundColor: '#f9f9f9' }}>
-        <TableHead sx={{ backgroundColor: '#1976d2' }}>
+
+      <Table>
+        <TableHead sx={{ backgroundColor: 'primary.main' }}>
           <TableRow>
-            <TableCell sx={{ color: '#fff' }}>First Name</TableCell>
-            <TableCell sx={{ color: '#fff' }}>Last Name</TableCell>
-            <TableCell sx={{ color: '#fff' }}>Phone Number</TableCell>
-            <TableCell sx={{ color: '#fff' }}>Relation to Prisoner</TableCell>
-            <TableCell sx={{ color: '#fff' }}>Visit Date</TableCell>
-            <TableCell align="center" sx={{ color: '#fff' }}>
-              Действия
-            </TableCell>
+            {['First Name', 'Last Name', 'Phone', 'Relation', 'Visit Date', 'Actions'].map((h) => (
+              <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }} align={h === 'Actions' ? 'center' : 'left'}>
+                {h}
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredVisitors.map((visitor) => (
-            <TableRow key={visitor.visitorId} hover>
-              <TableCell>{visitor.firstName}</TableCell>
-              <TableCell>{visitor.lastName}</TableCell>
-              <TableCell>{visitor.phoneNumber}</TableCell>
-              <TableCell>{visitor.relationToPrisoner}</TableCell>
-              <TableCell>{visitor.visitDate}</TableCell>
+          {filtered.map((v) => (
+            <TableRow key={v.visitorId} hover component={motion.tr} whileHover={{ scale: 1.01 }}>
+              <TableCell>{v.firstName}</TableCell>
+              <TableCell>{v.lastName}</TableCell>
+              <TableCell>{v.phoneNumber}</TableCell>
+              <TableCell>{v.relationToPrisoner}</TableCell>
+              <TableCell>{v.visitDate}</TableCell>
               <TableCell align="center">
                 <Tooltip title="Редактировать">
                   <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleEdit(visitor)}
                     size="small"
+                    variant="outlined"
                     sx={{ mr: 1 }}
+                    onClick={() => handleEdit(v)}
                   >
                     Ред.
                   </Button>
                 </Tooltip>
                 <Tooltip title="Удалить">
                   <Button
+                    size="small"
                     variant="outlined"
                     color="error"
-                    onClick={() => handleDelete(visitor.visitorId)}
-                    size="small"
+                    onClick={() => handleDelete(v.visitorId)}
                   >
-                    Удал.
+                    Удл.
                   </Button>
                 </Tooltip>
               </TableCell>
@@ -276,6 +225,7 @@ const Visitors = () => {
           ))}
         </TableBody>
       </Table>
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
@@ -289,6 +239,4 @@ const Visitors = () => {
       </Snackbar>
     </Paper>
   );
-};
-
-export default Visitors;
+}

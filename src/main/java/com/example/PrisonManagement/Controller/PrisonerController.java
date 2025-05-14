@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 
 @RestController
@@ -27,7 +29,7 @@ public class PrisonerController {
 
     @GetMapping
     public ResponseEntity<List<Prisoner>> getAll() {
-        logger.info("Получен запрос GET /api/prisoners - получить всех заключённых");
+        logger.info("GET /api/prisoners — получить всех заключённых");
         List<Prisoner> list = service.getAll();
         logger.info("Найдено {} заключённых", list.size());
         return ResponseEntity.ok(list);
@@ -35,22 +37,19 @@ public class PrisonerController {
 
     @GetMapping("/{prisonerId}")
     public ResponseEntity<Prisoner> getById(@PathVariable Integer prisonerId) {
-        logger.info("Получен запрос GET /api/prisoners/{} - получить заключённого по ID", prisonerId);
+        logger.info("GET /api/prisoners/{} — получить заключённого по ID", prisonerId);
         Prisoner p = service.findById(prisonerId);
-        if (p != null) {
-            logger.info("Заключённый с ID {} найден", prisonerId);
-        } else {
-            logger.warn("Заключённый с ID {} не найден", prisonerId);
-        }
+        logger.info("Заключённый с ID {} {}", prisonerId,
+                (p != null ? "найден" : "не найден"));
         return ResponseEntity.ok(p);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Prisoner create(@RequestBody @Validated Prisoner prisoner) {
-        logger.info("Получен запрос POST /api/prisoners - создать заключённого: {}", prisoner);
+        logger.info("POST /api/prisoners — создать заключённого: {}", prisoner);
         Prisoner created = service.create(prisoner);
-        logger.info("Создан заключённый с prisonerId={}", created.getPrisonerId());
+        logger.info("Создан заключённый с ID={}", created.getPrisonerId());
         return created;
     }
 
@@ -58,7 +57,7 @@ public class PrisonerController {
     public Prisoner update(
             @PathVariable Integer prisonerId,
             @RequestBody @Validated Prisoner prisoner) {
-        logger.info("Получен запрос PUT /api/prisoners/{} - обновить заключённого", prisonerId);
+        logger.info("PUT /api/prisoners/{} — обновить заключённого", prisonerId);
         Prisoner updated = service.update(prisonerId, prisoner);
         logger.info("Заключённый с ID {} обновлён", prisonerId);
         return updated;
@@ -67,8 +66,21 @@ public class PrisonerController {
     @DeleteMapping("/{prisonerId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Integer prisonerId) {
-        logger.info("Получен запрос DELETE /api/prisoners/{} - удалить заключённого", prisonerId);
+        logger.info("DELETE /api/prisoners/{} — удалить заключённого", prisonerId);
         service.delete(prisonerId);
         logger.info("Заключённый с ID {} удалён", prisonerId);
     }
+
+    /**
+     * Обрабатывает ситуацию, когда нельзя удалить заключённого
+     * из-за наличия связанных записей—возвращает HTTP 409 Conflict.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleConflict(IllegalStateException ex) {
+        logger.warn("Conflict при удалении: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ex.getMessage());
+    }
+
 }

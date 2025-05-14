@@ -1,41 +1,48 @@
+// src/App.jsx
 import React, { useEffect, useState } from 'react';
 import {
+  AppBar,
+  Tabs,
+  Tab,
+  Box,               // <- убедитесь, что есть импорт
   Paper,
   Typography,
-  Box,
-  Stack,
-  TextField,
+  Grid,
+  Card,
+  CardHeader,
+  CardContent,
+  Avatar,
   Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  Card,
-  CardContent,
-  Grid
+  TextField,
+  Stack,
+  Chip
 } from '@mui/material';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import BookIcon from '@mui/icons-material/Book';
+import PersonIcon from '@mui/icons-material/Person';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 
-const API_BASE = 'http://localhost:8080/api/borrowed';
-const PRISONERS_API = 'http://localhost:8080/api/prisoners';
-const BOOKS_API = 'http://localhost:8080/api/libraries';
+const API = {
+  borrowed:   'http://localhost:8080/api/borrowed',
+  prisoners: 'http://localhost:8080/api/prisoners',
+  books:      'http://localhost:8080/api/libraries'
+};
 
-export default function Borrowed() {
-  const [borrowedList, setBorrowedList] = useState([]);
+export default function App() {
+  const [tab, setTab]         = useState(0);
+  const [borrowed, setBorrowed] = useState([]);
   const [prisoners, setPrisoners] = useState([]);
-  const [books, setBooks] = useState([]);
+  const [books, setBooks]     = useState([]);
 
-  const [openPrisonerDialog, setOpenPrisonerDialog] = useState(false);
-  const [openBookDialog, setOpenBookDialog] = useState(false);
-  const [searchPrisoner, setSearchPrisoner] = useState('');
-  const [searchBook, setSearchBook] = useState('');
-  const [selectedPrisoner, setSelectedPrisoner] = useState(null);
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [createErrors, setCreateErrors] = useState({});
+  const [dlgOpen, setDlgOpen] = useState(false);
+  const [selPr, setSelPr]     = useState('');
+  const [selBk, setSelBk]     = useState('');
+  const [errors, setErrors]   = useState({});
 
   useEffect(() => {
     fetchAll();
@@ -43,237 +50,238 @@ export default function Borrowed() {
 
   async function fetchAll() {
     try {
-      const [bRes, pRes, lRes] = await Promise.all([
-        fetch(API_BASE),
-        fetch(PRISONERS_API),
-        fetch(BOOKS_API)
+      const [b, p, k] = await Promise.all([
+        axios.get(API.borrowed),
+        axios.get(API.prisoners),
+        axios.get(API.books)
       ]);
-      if (!bRes.ok || !pRes.ok || !lRes.ok) throw new Error();
-      setBorrowedList(await bRes.json());
-      setPrisoners(await pRes.json());
-      setBooks(await lRes.json());
-    } catch (e) {
-      console.error(e);
+      setBorrowed(b.data);
+      setPrisoners(p.data);
+      setBooks(k.data);
+    } catch (err) {
+      console.error(err);
     }
   }
 
-  async function handleCreate() {
-    if (!selectedPrisoner || !selectedBook) {
-      alert('Выберите заключённого и книгу');
+  async function create() {
+    setErrors({});
+    if (!selPr || !selBk) {
+      setErrors({ form: 'Выберите заключённого и книгу' });
       return;
     }
-    const payload = {
-      prisonerId: selectedPrisoner.prisonerId,
-      isbn: selectedBook.isbn
-    };
-    const res = await fetch(API_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      setCreateErrors(err.errors || {});
-      return;
+    try {
+      await axios.post(API.borrowed, {
+        prisonerId: parseInt(selPr),
+        isbn: selBk
+      });
+      setDlgOpen(false);
+      setSelPr(''); setSelBk('');
+      fetchAll();
+    } catch (err) {
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      } else {
+        setErrors({ form: 'Ошибка сервера' });
+      }
     }
-    setCreateErrors({});
-    setSelectedPrisoner(null);
-    setSelectedBook(null);
+  }
+
+  async function remove(pid, isbn) {
+    if (!window.confirm(`Удалить заимствование ${pid} ↔ ${isbn}?`)) return;
+    await axios.delete(`${API.borrowed}/${pid}/${isbn}`);
     fetchAll();
   }
 
-  async function handleDelete(prisonerId, isbn) {
-    if (!window.confirm(`Удалить запись: ${prisonerId} ↔ ${isbn}?`)) return;
-    const res = await fetch(`${API_BASE}/${prisonerId}/${isbn}`, { method: 'DELETE' });
-    if (res.ok) fetchAll();
-  }
-
-  // Группируем по заключённому
-  const grouped = borrowedList.reduce((acc, rec) => {
-    const pid = rec.prisoner.prisonerId;
-    if (!acc[pid]) acc[pid] = { prisoner: rec.prisoner, books: [] };
-    acc[pid].books.push(rec.library);
+  // Группируем
+  const grouped = borrowed.reduce((acc, rec) => {
+    const prisoner = rec.prisoner;
+    const lib      = rec.library;
+    if (!prisoner) return acc;               // если данных нет — пропускаем
+    const pid = prisoner.prisonerId;
+    if (!acc[pid]) acc[pid] = { prisoner, books: [] };
+    acc[pid].books.push(lib);
     return acc;
   }, {});
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 1200, mx: 'auto', mt: 4 }}>
-      <Typography variant="h4" align="center" gutterBottom>
-        Управление заимствованиями
-      </Typography>
+    <Paper sx={{ maxWidth: 1280, mx: 'auto' }}>
+      <AppBar position="static" color="primary">
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} centered>
+          <Tab icon={<LibraryBooksIcon />} label="Заимствования" />
+          <Tab icon={<PersonIcon />} label="Заключённые" />
+          <Tab icon={<BookIcon />} label="Книги" />
+        </Tabs>
+      </AppBar>
 
-      {/* Новая запись */}
-      <Box sx={{ mb: 4, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-        <Typography variant="h6" gutterBottom>
-          Новая запись
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={() => setOpenPrisonerDialog(true)}
-          >
-            {selectedPrisoner
-              ? `Закл.: ${selectedPrisoner.name} (ID ${selectedPrisoner.prisonerId})`
-              : 'Выбрать заключённого'}
-          </Button>
-
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={() => setOpenBookDialog(true)}
-          >
-            {selectedBook
-              ? `Книга: ${selectedBook.bookName} (${selectedBook.isbn})`
-              : 'Выбрать книгу'}
-          </Button>
-
-          <Button variant="contained" onClick={handleCreate}>
-            Создать
-          </Button>
-        </Stack>
-        {createErrors.prisonerId && (
-          <Typography color="error">{createErrors.prisonerId}</Typography>
+      <Box p={3}>
+        {/*** Вкладка "Заимствования" ***/}
+        {tab === 0 && (
+          <>
+            <Box mb={2} display="flex" justifyContent="flex-end">
+              <Button variant="contained" onClick={() => setDlgOpen(true)}>
+                Новое заимствование
+              </Button>
+            </Box>
+            <Grid container spacing={2}>
+              <AnimatePresence>
+                {Object.values(grouped).map(({ prisoner, books }) => (
+                  <Grid item xs={12} md={6} lg={4} key={prisoner.prisonerId}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      whileHover={{ scale: 1.03 }}
+                    >
+                      <Card variant="outlined">
+                        <CardHeader
+                          avatar={
+                            <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                              {prisoner?.name?.[0] || '?'}
+                            </Avatar>
+                          }
+                          title={prisoner?.name || '—'}
+                          subheader={`ID: ${prisoner.prisonerId}`}
+                          action={
+                            <Chip
+                              label={`${books.length} книг`}
+                              color="primary"
+                              size="small"
+                            />
+                          }
+                        />
+                        <CardContent>
+                          <Stack spacing={1}>
+                            {books.map((b) => (
+                              <Box
+                                key={b.isbn}
+                                display="flex"
+                                justifyContent="space-between"
+                                alignItems="center"
+                              >
+                                <Typography variant="body2">
+                                  • {b.bookName || '—'}
+                                </Typography>
+                                <Button
+                                  size="small"
+                                  onClick={() => remove(prisoner.prisonerId, b.isbn)}
+                                >
+                                  ×
+                                </Button>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </Grid>
+                ))}
+              </AnimatePresence>
+            </Grid>
+          </>
         )}
-        {createErrors.isbn && (
-          <Typography color="error">{createErrors.isbn}</Typography>
+
+        {/*** Вкладка "Заключённые" ***/}
+        {tab === 1 && (
+          <motion.div
+            key="prisoners"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Typography variant="h5" gutterBottom>
+              Список заключённых
+            </Typography>
+            <Grid container spacing={2}>
+              {prisoners.map((p) => (
+                <Grid item xs={12} sm={6} md={4} key={p.prisonerId}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6">{p.name || '—'}</Typography>
+                      <Typography color="text.secondary">
+                        ID: {p.prisonerId}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </motion.div>
+        )}
+
+        {/*** Вкладка "Книги" ***/}
+        {tab === 2 && (
+          <motion.div
+            key="books"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Typography variant="h5" gutterBottom>
+              Каталог книг
+            </Typography>
+            <Grid container spacing={2}>
+              {books.map((b) => (
+                <Grid item xs={12} sm={6} md={4} key={b.isbn}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6">{b.bookName || '—'}</Typography>
+                      <Typography color="text.secondary">
+                        ISBN: {b.isbn}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </motion.div>
         )}
       </Box>
 
-      {/* Существующие заимствования */}
-      <Typography variant="h5" gutterBottom>
-        Текущие заимствования
-      </Typography>
-      <Grid container spacing={2}>
-        {Object.values(grouped).map(({ prisoner, books }) => (
-          <Grid key={prisoner.prisonerId} item xs={12} md={6} lg={4}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6">
-                  👤 {prisoner.name} (ID {prisoner.prisonerId})
-                </Typography>
-                <ul>
-                  {books.map((b) => (
-                    <li key={b.isbn}>
-                      {b.bookName} (<em>{b.isbn}</em>){' '}
-                      <Button
-                        size="small"
-                        onClick={() => handleDelete(prisoner.prisonerId, b.isbn)}
-                      >
-                        ×
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Диалог выбора заключённого */}
-      <Dialog
-        open={openPrisonerDialog}
-        onClose={() => setOpenPrisonerDialog(false)}
-        fullWidth
-      >
-        <DialogTitle>Выберите заключённого</DialogTitle>
+      {/*** Диалог создания заимствования ***/}
+      <Dialog open={dlgOpen} onClose={() => setDlgOpen(false)}>
+        <DialogTitle>Новое заимствование</DialogTitle>
         <DialogContent>
-          <TextField
-            fullWidth
-            placeholder="Поиск по имени или ID"
-            value={searchPrisoner}
-            onChange={(e) => setSearchPrisoner(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Имя</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {prisoners
-                .filter((p) => {
-                  const name = p.name ?? '';
-                  return (
-                    name.toLowerCase().includes(searchPrisoner.toLowerCase()) ||
-                    p.prisonerId.toString().includes(searchPrisoner)
-                  );
-                })
-                .map((p) => (
-                  <TableRow
-                    key={p.prisonerId}
-                    hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => {
-                      setSelectedPrisoner(p);
-                      setOpenPrisonerDialog(false);
-                    }}
-                  >
-                    <TableCell>{p.prisonerId}</TableCell>
-                    <TableCell>{p.name}</TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              select
+              label="Заключённый"
+              SelectProps={{ native: true }}
+              value={selPr}
+              onChange={e => setSelPr(e.target.value)}
+            >
+              <option value="">— Выберите —</option>
+              {prisoners.map(p => (
+                <option key={p.prisonerId} value={p.prisonerId}>
+                  {p.name} (ID {p.prisonerId})
+                </option>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              label="Книга"
+              SelectProps={{ native: true }}
+              value={selBk}
+              onChange={e => setSelBk(e.target.value)}
+            >
+              <option value="">— Выберите —</option>
+              {books.map(b => (
+                <option key={b.isbn} value={b.isbn}>
+                  {b.bookName} ({b.isbn})
+                </option>
+              ))}
+            </TextField>
+
+            {errors.form && (
+              <Typography color="error">{errors.form}</Typography>
+            )}
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenPrisonerDialog(false)}>Отмена</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Диалог выбора книги */}
-      <Dialog
-        open={openBookDialog}
-        onClose={() => setOpenBookDialog(false)}
-        fullWidth
-      >
-        <DialogTitle>Выберите книгу</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            placeholder="Поиск по названию или ISBN"
-            value={searchBook}
-            onChange={(e) => setSearchBook(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>ISBN</TableCell>
-                <TableCell>Название</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {books
-                .filter((b) => {
-                  const name = b.bookName ?? '';
-                  return (
-                    name.toLowerCase().includes(searchBook.toLowerCase()) ||
-                    b.isbn.includes(searchBook)
-                  );
-                })
-                .map((b) => (
-                  <TableRow
-                    key={b.isbn}
-                    hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => {
-                      setSelectedBook(b);
-                      setOpenBookDialog(false);
-                    }}
-                  >
-                    <TableCell>{b.isbn}</TableCell>
-                    <TableCell>{b.bookName}</TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenBookDialog(false)}>Отмена</Button>
+          <Button onClick={() => setDlgOpen(false)}>Отмена</Button>
+          <Button variant="contained" onClick={create}>
+            Добавить
+          </Button>
         </DialogActions>
       </Dialog>
     </Paper>

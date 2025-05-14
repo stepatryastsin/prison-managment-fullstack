@@ -31,4 +31,7 @@ public interface BorrowedRepository extends JpaRepository<Borrowed, BorrowedKey>
          WHERE b.id.libraryId = :libraryId
     """)
     List<Prisoner> findPrisonersByLibraryId(@Param("libraryId") Long libraryId);
+
+    boolean existsByPrisoner_PrisonerId(Integer prisonerId);
+    long countByPrisoner_PrisonerId(Integer prisonerId);
 }

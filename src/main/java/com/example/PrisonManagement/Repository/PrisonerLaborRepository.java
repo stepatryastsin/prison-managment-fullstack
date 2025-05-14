@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PrisonerLaborRepository
         extends JpaRepository<PrisonerLabor, PrisonerLaborKey> {
+    long countByPrisoner_PrisonerId(Integer prisonerId);
+    boolean existsByPrisoner_PrisonerId(Integer prisonerId);
 }

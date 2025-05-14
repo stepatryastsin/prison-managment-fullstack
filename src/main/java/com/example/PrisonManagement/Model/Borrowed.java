@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.Objects;
 
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Entity
 @Table(name = "borrowed")
 public class Borrowed {
@@ -15,12 +14,12 @@ public class Borrowed {
     private BorrowedKey id;
 
     @MapsId("prisonerId")
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
     @MapsId("libraryId")
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "library_id", referencedColumnName = "internal_id", nullable = false)
     private Library library;
 
