@@ -1,319 +1,269 @@
+// src/pages/Infirmary.jsx
+
 import React, { useEffect, useState } from 'react';
 import {
-  Box,
+  Paper,
   Typography,
+  TextField,
+  Button,
+  Grid,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  Grid,
-  Paper,
-  Stack,
   Snackbar,
   Alert,
+  Slide,
+  Box,
+  Stack,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
+import axios from 'axios';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
-const INFIRMARY_API_URL  = 'http://localhost:8080/api/infirmary';
-const PRISONER_API_URL  = 'http://localhost:8080/api/prisoners';
+const API_BASE = 'http://localhost:8080/api';
 
-const Infirmary = () => {
-  const [infirmary, setInfirmary]           = useState([]);
-  const [formData, setFormData]             = useState({
-    prisoner_id: '',
-    related_doctor: '',
-    drug_name: '',
-    drug_usage_day: '',
-    disease_type: '',
+const Container = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  maxWidth: 1200,
+  margin: 'auto',
+  marginTop: theme.spacing(4),
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[4],
+}));
+
+const Title = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  letterSpacing: '0.5px',
+  marginBottom: theme.spacing(3),
+}));
+
+export default function Infirmary() {
+  const [records, setRecords] = useState([]);
+  const [prisoners, setPrisoners] = useState([]);
+  const [form, setForm] = useState({
+    prisonerId: '',
+    relatedDoctor: '',
+    drugName: '',
+    drugUsageDay: '',
+    diseaseType: '',
   });
-  const [editingId, setEditingId]           = useState(null);
-  const [searchQuery, setSearchQuery]       = useState('');
-  const [prisonersList, setPrisonersList]   = useState([]);
-  const [prisonerDialogOpen, setPrisonerDialogOpen] = useState(false);
-
-  // Snackbar для ошибок
-  const [errorMessage, setErrorMessage] = useState('');
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-
+  const [editId, setEditId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [openPrisoner, setOpenPrisoner] = useState(false);
+  const [snack, setSnack] = useState({ open: false, msg: '', sev: 'error' });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchInfirmary();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
-  const showError = async (resOrErr, fallback) => {
-    let msg = fallback;
-    if (resOrErr instanceof Response) {
-      try {
-        const err = await resOrErr.json();
-        msg = err.message || fallback;
-      } catch {}
-    } else if (resOrErr && resOrErr.message) {
-      msg = resOrErr.message;
-    }
-    setErrorMessage(msg);
-    setSnackbarOpen(true);
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-  };
-
-  const fetchInfirmary = async () => {
+  const loadAll = async () => {
     try {
-      const response = await fetch(INFIRMARY_API_URL);
-      if (!response.ok) {
-        return showError(response, 'Ошибка загрузки данных');
-      }
-      const data = await response.json();
-      const records = Array.isArray(data) ? data : [data];
-      const validRecords = [];
-      for (const record of records) {
-        if (record.prisoner) {
-          validRecords.push({
-            prescription_num: record.prescriptionNum,
-            prisoner_id:      record.prisoner.prisonerId,
-            related_doctor:   record.relatedDoctor,
-            drug_name:        record.drugName,
-            drug_usage_day:   record.drugUsageDay,
-            disease_type:     record.diseaseType,
-          });
-        } else {
-          // если нет привязки к заключённому — удаляем «битую» запись
-          await fetch(`${INFIRMARY_API_URL}/${record.prescriptionNum}`, { method: 'DELETE' });
-        }
-      }
-      setInfirmary(validRecords);
-    } catch (error) {
-      showError(error, 'Ошибка загрузки рецептов');
+      const [infRes, prRes] = await Promise.all([
+        axios.get(`${API_BASE}/infirmary`),
+        axios.get(`${API_BASE}/prisoners`),
+      ]);
+      // filter out records without prisoner
+      const valid = infRes.data.filter(r => r.prisoner);
+      setRecords(valid);
+      setPrisoners(prRes.data);
+    } catch {
+      showSnack('Ошибка загрузки данных');
     }
   };
 
-  const fetchPrisoners = async () => {
-    try {
-      const response = await fetch(PRISONER_API_URL);
-      if (!response.ok) return showError(response, 'Ошибка загрузки заключённых');
-      setPrisonersList(await response.json());
-    } catch (error) {
-      showError(error, 'Ошибка загрузки заключённых');
-    }
-    setPrisonerDialogOpen(true);
-  };
+  const showSnack = (msg, sev = 'error') => setSnack({ open: true, msg, sev });
+  const closeSnack = () => setSnack(s => ({ ...s, open: false }));
 
-  const handleShowPrisonersList = () => {
-    fetchPrisoners();
-  };
-
-  const handleSelectPrisoner = (pr) => {
-    setFormData(f => ({ ...f, prisoner_id: pr.prisonerId }));
-    setPrisonerDialogOpen(false);
-  };
-
-  const handleChange = (e) => {
+  const handleChange = e => {
     const { name, value } = e.target;
-    setFormData(f => ({ ...f, [name]: value }));
+    setForm(f => ({ ...f, [name]: value }));
   };
 
   const clearForm = () => {
-    setFormData({
-      prisoner_id:   '',
-      related_doctor:'',
-      drug_name:     '',
-      drug_usage_day:'',
-      disease_type:  '',
-    });
-    setEditingId(null);
+    setForm({ prisonerId:'', relatedDoctor:'', drugName:'', drugUsageDay:'', diseaseType:'' });
+    setEditId(null);
   };
 
-  const handleSubmit = async (e) => {
+  const submit = async e => {
     e.preventDefault();
-    const payload = {
-      prisoner:      { prisonerId:    Number(formData.prisoner_id) },
-      relatedDoctor: formData.related_doctor,
-      drugName:      formData.drug_name,
-      drugUsageDay:  Number(formData.drug_usage_day),
-      diseaseType:   formData.disease_type,
-    };
     try {
-      const url    = editingId ? `${INFIRMARY_API_URL}/${editingId}` : INFIRMARY_API_URL;
-      const method = editingId ? 'PUT' : 'POST';
-      const res    = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        return showError(res, 'Ошибка при сохранении рецепта');
+      const payload = {
+        prisoner: { prisonerId: Number(form.prisonerId) },
+        relatedDoctor: form.relatedDoctor,
+        drugName: form.drugName,
+        drugUsageDay: Number(form.drugUsageDay),
+        diseaseType: form.diseaseType,
+      };
+      if (editId) {
+        await axios.put(`${API_BASE}/infirmary/${editId}`, payload);
+      } else {
+        await axios.post(`${API_BASE}/infirmary`, payload);
       }
-      await fetchInfirmary();
+      await loadAll();
       clearForm();
-    } catch (error) {
-      showError(error, 'Ошибка при сохранении');
+    } catch (err) {
+      showSnack('Ошибка при сохранении');
     }
   };
 
-  const handleEdit = (rec) => {
-    setEditingId(rec.prescription_num);
-    setFormData({
-      prisoner_id:   rec.prisoner_id,
-      related_doctor:rec.related_doctor,
-      drug_name:     rec.drug_name,
-      drug_usage_day:rec.drug_usage_day,
-      disease_type:  rec.disease_type,
+  const editRecord = rec => {
+    setEditId(rec.prescriptionNum);
+    setForm({
+      prisonerId: rec.prisoner.prisonerId,
+      relatedDoctor: rec.relatedDoctor,
+      drugName: rec.drugName,
+      drugUsageDay: rec.drugUsageDay,
+      diseaseType: rec.diseaseType,
     });
   };
 
-  const handleDelete = async (id) => {
+  const deleteRecord = async id => {
     if (!window.confirm('Удалить рецепт?')) return;
     try {
-      const res = await fetch(`${INFIRMARY_API_URL}/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        return showError(res, 'Ошибка при удалении рецепта');
-      }
-      await fetchInfirmary();
-      if (editingId === id) clearForm();
-    } catch (error) {
-      showError(error, 'Ошибка при удалении');
+      await axios.delete(`${API_BASE}/infirmary/${id}`);
+      if (editId === id) clearForm();
+      await loadAll();
+    } catch {
+      showSnack('Ошибка при удалении');
     }
   };
 
-  const filtered = infirmary.filter(rec =>
-    Object.values(rec).join(' ').toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = records.filter(r =>
+    `${r.prisoner.prisonerId} ${r.relatedDoctor} ${r.drugName} ${r.diseaseType}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 1200, m: 'auto', mt: 4, borderRadius: 3, boxShadow: 4 }}>
+    <Container
+      component={motion.div}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
+        open={snack.open}
+        autoHideDuration={5000}
+        onClose={closeSnack}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        TransitionComponent={Slide}
       >
-        <Alert severity="error" onClose={handleSnackbarClose} sx={{ width: '100%' }}>
-          {errorMessage}
+        <Alert onClose={closeSnack} severity={snack.sev} sx={{ width: '100%' }}>
+          {snack.msg}
         </Alert>
       </Snackbar>
 
-      <Typography variant="h4" align="center" gutterBottom>
-        Рецепты лечения
-      </Typography>
+      <Title variant="h4" align="center">Рецепты лечения</Title>
 
-      <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4, p: 3, bgcolor: '#f7f7f7', borderRadius: 2 }}>
+      <Box component="form" onSubmit={submit} sx={{ mb: 4, p: 3, bgcolor: '#fafafa', borderRadius: 2 }}>
         <Typography variant="h6" gutterBottom>
-          {editingId ? 'Редактировать рецепт' : 'Добавить новый рецепт'}
+          {editId ? 'Редактирование рецепта' : 'Новый рецепт'}
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
               label="ID заключённого"
-              name="prisoner_id"
-              value={formData.prisoner_id}
-              onClick={handleShowPrisonersList}
+              name="prisonerId"
+              value={form.prisonerId}
+              onClick={() => setOpenPrisoner(true)}
               InputProps={{ readOnly: true }}
               helperText="Нажмите для выбора"
-              required
               sx={{ cursor: 'pointer' }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Лечащий врач"
-              name="related_doctor"
-              value={formData.related_doctor}
-              onChange={handleChange}
               required
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
-              fullWidth
-              label="Препарат"
-              name="drug_name"
-              value={formData.drug_name}
-              onChange={handleChange}
+              fullWidth label="Лечащий врач"
+              name="relatedDoctor" value={form.relatedDoctor}
+              onChange={handleChange} required
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth label="Препарат"
+              name="drugName" value={form.drugName}
+              onChange={handleChange} required
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth label="Доза/день"
+              name="drugUsageDay" type="number"
+              value={form.drugUsageDay} onChange={handleChange}
               required
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
-              fullWidth
-              label="Дозировка в день"
-              name="drug_usage_day"
-              type="number"
-              value={formData.drug_usage_day}
-              onChange={handleChange}
-              required
+              fullWidth label="Тип заболевания"
+              name="diseaseType" value={form.diseaseType}
+              onChange={handleChange} required
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Тип заболевания"
-              name="disease_type"
-              value={formData.disease_type}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={4} sx={{ display: 'flex', alignItems: 'center' }}>
-            <Button fullWidth variant="contained" color="primary" type="submit">
-              {editingId ? 'Сохранить' : 'Добавить'}
-            </Button>
-          </Grid>
-          {editingId && (
-            <Grid item xs={12} sm={4} sx={{ display: 'flex', alignItems: 'center' }}>
-              <Button fullWidth variant="outlined" color="secondary" onClick={clearForm}>
-                Отмена
+          <Grid item xs={12} sm={4} container spacing={1}>
+            <Grid item xs>
+              <Button fullWidth variant="contained" type="submit">
+                {editId ? 'Сохранить' : 'Добавить'}
               </Button>
             </Grid>
-          )}
+            {editId && (
+              <Grid item xs>
+                <Button fullWidth variant="outlined" onClick={clearForm}>
+                  Отмена
+                </Button>
+              </Grid>
+            )}
+          </Grid>
         </Grid>
       </Box>
 
-      <TextField
-        fullWidth
-        label="Поиск рецепта"
-        value={searchQuery}
-        onChange={e => setSearchQuery(e.target.value)}
-        sx={{ mb: 3 }}
-      />
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+        <TextField
+          placeholder="Поиск рецептов..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          sx={{ width: 300 }}
+          InputProps={{
+            startAdornment: <CloseIcon />
+          }}
+        />
+      </Stack>
 
-      <Table size="small" sx={{ mb: 3 }}>
-        <TableHead sx={{ bgcolor: '#e3f2fd' }}>
+      <Table size="small">
+        <TableHead sx={{ bgcolor: '#e0f7fa' }}>
           <TableRow>
-            <TableCell><strong>ID заключённого</strong></TableCell>
-            <TableCell><strong>Врач</strong></TableCell>
-            <TableCell><strong>Препарат</strong></TableCell>
-            <TableCell><strong>Доза/день</strong></TableCell>
-            <TableCell><strong>Заболевание</strong></TableCell>
-            <TableCell align="center"><strong>Действия</strong></TableCell>
+            {['ID заключённого','Врач','Препарат','Доза/день','Заболевание','Действия'].map(h => (
+              <TableCell key={h} sx={{ fontWeight: 600 }}>
+                {h}
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
           {filtered.map(rec => (
-            <TableRow key={rec.prescription_num} hover>
-              <TableCell>{rec.prisoner_id}</TableCell>
-              <TableCell>{rec.related_doctor}</TableCell>
-              <TableCell>{rec.drug_name}</TableCell>
-              <TableCell>{rec.drug_usage_day}</TableCell>
-              <TableCell>{rec.disease_type}</TableCell>
-              <TableCell align="center">
-                <Stack direction="row" spacing={1} justifyContent="center">
-                  <Button size="small" variant="contained" onClick={() => handleEdit(rec)}>
+            <TableRow key={rec.prescriptionNum} hover>
+              <TableCell>{rec.prisoner.prisonerId}</TableCell>
+              <TableCell>{rec.relatedDoctor}</TableCell>
+              <TableCell>{rec.drugName}</TableCell>
+              <TableCell>{rec.drugUsageDay}</TableCell>
+              <TableCell>{rec.diseaseType}</TableCell>
+              <TableCell>
+                <Stack direction="row" spacing={1}>
+                  <Button size="small" variant="contained" onClick={() => editRecord(rec)}>
                     Ред.
                   </Button>
-                  <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(rec.prescription_num)}>
-                    Удалить
+                  <Button size="small" variant="outlined" color="error"
+                    onClick={() => deleteRecord(rec.prescriptionNum)}>
+                    Уд.
                   </Button>
                 </Stack>
               </TableCell>
@@ -322,36 +272,34 @@ const Infirmary = () => {
         </TableBody>
       </Table>
 
-      <Dialog open={prisonerDialogOpen} onClose={() => setPrisonerDialogOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Выберите заключённого
-          <Button onClick={() => setPrisonerDialogOpen(false)}><CloseIcon /></Button>
+      <Dialog open={openPrisoner} onClose={() => setOpenPrisoner(false)} fullWidth maxWidth="md">
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          Выбор заключённого
+          <Button onClick={() => setOpenPrisoner(false)}><CloseIcon/></Button>
         </DialogTitle>
         <DialogContent dividers>
-          {prisonersList.length > 0 ? (
+          {prisoners.length ? (
             <Table size="small">
-              <TableHead sx={{ bgcolor: '#f0f0f0' }}>
+              <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                 <TableRow>
-                  <TableCell><strong>ID</strong></TableCell>
-                  <TableCell><strong>Имя</strong></TableCell>
-                  <TableCell><strong>Фамилия</strong></TableCell>
-                  <TableCell><strong>Камера</strong></TableCell>
-                  <TableCell><strong>Дата Рождения</strong></TableCell>
+                  {['ID','Имя','Фамилия','Камера','Дата рожд.'].map(h => (
+                    <TableCell key={h} sx={{ fontWeight:600 }}>{h}</TableCell>
+                  ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {prisonersList.map(pr => (
-                  <TableRow
-                    key={pr.prisonerId}
-                    hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => handleSelectPrisoner(pr)}
+                {prisoners.map(p => (
+                  <TableRow key={p.prisonerId} hover sx={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      setForm(f => ({ ...f, prisonerId: p.prisonerId }));
+                      setOpenPrisoner(false);
+                    }}
                   >
-                    <TableCell>{pr.prisonerId}</TableCell>
-                    <TableCell>{pr.firstName}</TableCell>
-                    <TableCell>{pr.lastName}</TableCell>
-                    <TableCell>{pr.cell?.cellNum ?? '-'}</TableCell>
-                    <TableCell>{pr.dateOfBirth}</TableCell>
+                    <TableCell>{p.prisonerId}</TableCell>
+                    <TableCell>{p.firstName}</TableCell>
+                    <TableCell>{p.lastName}</TableCell>
+                    <TableCell>{p.cell?.cellNum ?? '—'}</TableCell>
+                    <TableCell>{p.dateOfBirth}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -366,11 +314,9 @@ const Infirmary = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPrisonerDialogOpen(false)}>Закрыть</Button>
+          <Button onClick={() => setOpenPrisoner(false)}>Закрыть</Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+    </Container>
   );
-};
-
-export default Infirmary;
+}

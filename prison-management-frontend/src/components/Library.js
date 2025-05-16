@@ -1,160 +1,188 @@
+// src/pages/LibraryManagement.jsx
+
 import React, { useEffect, useState } from 'react';
 import {
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Typography,
   TextField,
   Button,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
   Stack,
-  Box,
   Snackbar,
-  Alert
+  Alert,
+  Slide,
+  Box,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
+import { motion } from 'framer-motion';
+import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api/libraries';
 
-const LibraryManagement = () => {
+const Container = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  maxWidth: 900,
+  margin: 'auto',
+  marginTop: theme.spacing(4),
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[4],
+}));
+
+const Title = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  letterSpacing: '0.5px',
+  marginBottom: theme.spacing(2),
+}));
+
+export default function LibraryManagement() {
   const [books, setBooks] = useState([]);
-  const [formData, setFormData] = useState({ isbn: '', bookName: '', genre: '' });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [originalIsbn, setOriginalIsbn] = useState(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' });
+  const [form, setForm] = useState({ isbn: '', bookName: '', genre: '' });
+  const [search, setSearch] = useState('');
+  const [editIsbn, setEditIsbn] = useState(null);
+  const [snack, setSnack] = useState({ open: false, msg: '', sev: 'error' });
 
   useEffect(() => {
-    fetchBooks();
+    loadBooks();
   }, []);
 
-  const fetchBooks = async () => {
+  const loadBooks = async () => {
     try {
-      const response = await fetch(API_URL);
-      if (!response.ok) throw new Error('Сетевая ошибка');
-      const data = await response.json();
+      const { data } = await axios.get(API_URL);
       setBooks(data);
-    } catch (error) {
-      console.error(error);
-      setSnackbar({ open: true, message: 'Не удалось загрузить список книг', severity: 'error' });
+    } catch {
+      showSnack('Не удалось загрузить список книг');
     }
   };
 
-  const handleChange = (e) => {
+  const showSnack = (msg, sev = 'error') => {
+    setSnack({ open: true, msg, sev });
+  };
+  const closeSnack = () => setSnack(s => ({ ...s, open: false }));
+
+  const handleChange = e => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setForm(f => ({ ...f, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    const payload = { ...formData };
     try {
-      const url = editingId !== null ? `${API_URL}/${originalIsbn}` : API_URL;
-      const method = editingId !== null ? 'PUT' : 'POST';
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setSnackbar({ open: true, message: result.message || 'Ошибка при сохранении книги', severity: 'error' });
-        return;
-      }
-      fetchBooks();
-      setEditingId(null);
-      setOriginalIsbn(null);
-      setFormData({ isbn: '', bookName: '', genre: '' });
-    } catch (error) {
-      console.error(error);
-      setSnackbar({ open: true, message: 'Произошла ошибка при сохранении книги', severity: 'error' });
-    }
-  };
-
-  const handleDelete = async (isbn) => {
-    try {
-      const response = await fetch(`${API_URL}/${isbn}`, { method: 'DELETE' });
-      const result = await response.json().catch(() => ({}));
-      if (response.status === 409) {
-        setSnackbar({ open: true, message: 'Эта книга используется заключённым и не может быть удалена.', severity: 'warning' });
-      } else if (!response.ok) {
-        setSnackbar({ open: true, message: result.message || 'Ошибка при удалении книги', severity: 'error' });
+      if (editIsbn) {
+        await axios.put(`${API_URL}/${editIsbn}`, form);
       } else {
-        fetchBooks();
+        await axios.post(API_URL, form);
       }
-    } catch (error) {
-      console.error(error);
-      setSnackbar({ open: true, message: 'Произошла ошибка при удалении книги', severity: 'error' });
+      clearForm();
+      loadBooks();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Ошибка при сохранении книги';
+      showSnack(msg);
     }
   };
 
-  const handleEdit = (book) => {
-    setFormData({ isbn: book.isbn, bookName: book.bookName, genre: book.genre });
-    setEditingId(book.isbn);
-    setOriginalIsbn(book.isbn);
+  const handleEdit = book => {
+    setForm({ isbn: book.isbn, bookName: book.bookName, genre: book.genre });
+    setEditIsbn(book.isbn);
   };
 
-  const filteredBooks = books.filter((book) =>
-    Object.values(book)
-      .join(' ')
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+  const handleDelete = async isbn => {
+    try {
+      const res = await axios.delete(`${API_URL}/${isbn}`);
+      loadBooks();
+    } catch (err) {
+      if (err.response?.status === 409) {
+        showSnack('Книга используется и не может быть удалена.', 'warning');
+      } else {
+        showSnack('Ошибка при удалении книги');
+      }
+    }
+  };
+
+  const clearForm = () => {
+    setForm({ isbn: '', bookName: '', genre: '' });
+    setEditIsbn(null);
+  };
+
+  const filtered = books.filter(b =>
+    `${b.isbn} ${b.bookName} ${b.genre}`.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCloseSnackbar = (event, reason) => {
-    if (reason === 'clickaway') return;
-    setSnackbar({ ...snackbar, open: false });
-  };
-
   return (
-    <Paper sx={{ p: 4, maxWidth: 1000, mx: 'auto', mt: 3, borderRadius: 2, boxShadow: 3 }}>
-      <Typography variant="h5" align="center" gutterBottom>
-        {editingId ? 'Редактировать книгу' : 'Добавить книгу'}
-      </Typography>
+    <Container
+      component={motion.div}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <Title variant="h4" align="center">
+        {editIsbn ? 'Редактировать книгу' : 'Добавить книгу'}
+      </Title>
+
       <Box
         component="form"
         onSubmit={handleSubmit}
-        sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, p: 2, border: '1px solid #ccc', borderRadius: 2, bgcolor: '#fafafa', mb: 3 }}
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 3,
+          p: 2,
+          bgcolor: '#fafafa',
+          borderRadius: 2,
+        }}
       >
         <TextField
           label="ISBN"
           name="isbn"
-          value={formData.isbn}
+          value={form.isbn}
           onChange={handleChange}
           required
-          sx={{ flex: 1 }}
-          disabled={editingId !== null} // Запрет на редактирование ISBN при режиме редактирования
+          sx={{ flex: '1 1 30%' }}
+          disabled={!!editIsbn}
         />
         <TextField
-          label="Название книги"
+          label="Название"
           name="bookName"
-          value={formData.bookName}
+          value={form.bookName}
           onChange={handleChange}
           required
-          sx={{ flex: 2 }}
+          sx={{ flex: '1 1 40%' }}
         />
         <TextField
           label="Жанр"
           name="genre"
-          value={formData.genre}
+          value={form.genre}
           onChange={handleChange}
           required
-          sx={{ flex: 2 }}
+          sx={{ flex: '1 1 25%' }}
         />
-        <Button type="submit" variant="contained" color="primary" sx={{ height: 'fit-content', whiteSpace: 'nowrap' }}>
-          {editingId ? 'Сохранить' : 'Добавить'}
+        <Button
+          type="submit"
+          variant="contained"
+          sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
+        >
+          {editIsbn ? 'Сохранить' : 'Добавить'}
         </Button>
+        {editIsbn && (
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={clearForm}
+            sx={{ alignSelf: 'center' }}
+          >
+            Отмена
+          </Button>
+        )}
       </Box>
 
-      <Typography variant="h6" gutterBottom>
-        Поиск книги
-      </Typography>
       <TextField
-        label="Введите текст для поиска"
-        variant="outlined"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
+        label="Поиск книги"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
         fullWidth
         sx={{ mb: 3 }}
       />
@@ -162,28 +190,35 @@ const LibraryManagement = () => {
       <Typography variant="h5" gutterBottom>
         Список книг
       </Typography>
+
       <Table>
         <TableHead sx={{ bgcolor: '#e3f2fd' }}>
           <TableRow>
-            <TableCell><strong>ISBN</strong></TableCell>
-            <TableCell><strong>Название книги</strong></TableCell>
-            <TableCell><strong>Жанр</strong></TableCell>
-            <TableCell align="center"><strong>Действия</strong></TableCell>
+            {['ISBN', 'Название', 'Жанр', 'Действия'].map(h => (
+              <TableCell key={h} sx={{ fontWeight: 600 }} align={h === 'Действия' ? 'center' : 'left'}>
+                {h}
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredBooks.map((book) => (
+          {filtered.map(book => (
             <TableRow key={book.isbn} hover>
               <TableCell>{book.isbn}</TableCell>
               <TableCell>{book.bookName}</TableCell>
               <TableCell>{book.genre}</TableCell>
               <TableCell align="center">
                 <Stack direction="row" spacing={1} justifyContent="center">
-                  <Button variant="contained" color="primary" size="small" onClick={() => handleEdit(book)}>
-                    Редактировать
+                  <Button size="small" variant="contained" onClick={() => handleEdit(book)}>
+                    Ред.
                   </Button>
-                  <Button variant="outlined" color="error" size="small" onClick={() => handleDelete(book.isbn)}>
-                    Удалить
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={() => handleDelete(book.isbn)}
+                  >
+                    Уд.
                   </Button>
                 </Stack>
               </TableCell>
@@ -193,25 +228,16 @@ const LibraryManagement = () => {
       </Table>
 
       <Snackbar
-        open={snackbar.open}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={closeSnack}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        TransitionComponent={Slide}
       >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          action={
-            <Button color="inherit" size="small" onClick={handleCloseSnackbar}>
-              OK
-            </Button>
-          }
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
+        <Alert onClose={closeSnack} severity={snack.sev} sx={{ width: '100%' }}>
+          {snack.msg}
         </Alert>
       </Snackbar>
-    </Paper>
+    </Container>
   );
-};
-
-export default LibraryManagement;
+}

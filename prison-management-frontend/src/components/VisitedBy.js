@@ -1,638 +1,308 @@
+// src/pages/VisitedByFrontend.jsx
+
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  Box,
-  Typography,
+  Paper,
   Table,
+  TableBody,
+  TableCell,
   TableHead,
   TableRow,
-  TableCell,
-  TableBody,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Typography,
   TextField,
+  Button,
+  Box,
   InputAdornment,
-  Paper,
   Snackbar,
   Alert,
   Slide,
   Tooltip,
+  Stack,
   IconButton,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  MenuItem,
-  FormControl,
-  InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
+import SearchIcon from '@mui/icons-material/Search';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckIcon from '@mui/icons-material/Check';
-import SearchIcon from '@mui/icons-material/Search';
-import SortIcon from '@mui/icons-material/Sort';
-import GetAppIcon from '@mui/icons-material/GetApp';
-import { useNavigate } from 'react-router-dom';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { motion } from 'framer-motion';
+import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api/visited-by';
+const API_BASE = 'http://localhost:8080/api';
 
-const VisitedByFrontend = () => {
-  const [visitedByList, setVisitedByList] = useState([]);
-  const [loading, setLoading] = useState(true);
+const Container = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  maxWidth: 1000,
+  margin: 'auto',
+  marginTop: theme.spacing(4),
+  boxShadow: theme.shadows[4],
+  borderRadius: theme.shape.borderRadius * 2,
+}));
+
+const Title = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  letterSpacing: '0.5px',
+  marginBottom: theme.spacing(2),
+}));
+
+const ActionBtn = styled(IconButton)(({ theme }) => ({
+  transition: 'transform 0.2s',
+  '&:hover': { transform: 'scale(1.1)' },
+}));
+
+export default function VisitedByFrontend() {
+  const [visits, setVisits] = useState([]);
+  const [prisoners, setPrisoners] = useState([]);
+  const [visitors, setVisitors] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
+  const [openAdd, setOpenAdd] = useState(false);
+  const [selected, setSelected] = useState({ prisoner: null, visitor: null });
+  const [detail, setDetail] = useState({ open: false, title: '', data: null });
+  const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
 
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState({ id: { prisonerId: '', visitorId: '' } });
+  useEffect(() => {
+    fetchAll();
+  }, []);
 
-  const [integratedDialogOpen, setIntegratedDialogOpen] = useState(false);
-  const [prisonersList, setPrisonersList] = useState([]);
-  const [visitorsList, setVisitorsList] = useState([]);
-  const [loadingPrisoners, setLoadingPrisoners] = useState(false);
-  const [loadingVisitors, setLoadingVisitors] = useState(false);
-  const [errorPrisoners, setErrorPrisoners] = useState(null);
-  const [errorVisitors, setErrorVisitors] = useState(null);
-
-  const [prisonerDetail, setPrisonerDetail] = useState(null);
-  const [visitorDetail, setVisitorDetail] = useState(null);
-  const [openPrisonerDetailDialog, setOpenPrisonerDetailDialog] = useState(false);
-  const [openVisitorDetailDialog, setOpenVisitorDetailDialog] = useState(false);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState('visitDate');
-  const [sortOrder, setSortOrder] = useState('asc');
-  const [dateRange, setDateRange] = useState({ from: '', to: '' });
-
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-
-  const navigate = useNavigate();
-
-  const fetchVisitedBy = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const res = await fetch(API_URL);
-      if (!res.ok) throw new Error('Ошибка при загрузке данных');
-      const data = await res.json();
-      setVisitedByList(data);
-    } catch (err) {
-      setError(err);
+      const [vRes, pRes, tRes] = await Promise.all([
+        axios.get(`${API_BASE}/visited-by`),
+        axios.get(`${API_BASE}/prisoners`),
+        axios.get(`${API_BASE}/visitors`),
+      ]);
+      setVisits(vRes.data);
+      setPrisoners(pRes.data);
+      setVisitors(tRes.data);
+    } catch {
+      setError('Ошибка загрузки данных');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchVisitedBy();
-  }, []);
+  const showSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
+  const closeSnack = () => setSnack(s => ({ ...s, open: false }));
 
-  const handleOpenEditDialog = (record) => {
-    setCurrentRecord(record);
-    setOpenEditDialog(true);
-  };
-
-  const handleCloseEditDialog = () => {
-    setOpenEditDialog(false);
-  };
-
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setCurrentRecord((prev) => ({
-      ...prev,
-      id: { ...prev.id, [name]: value },
-    }));
-  };
-
-  const handleSubmitEdit = async () => {
-    try {
-      const res = await fetch(`${API_URL}/${currentRecord.id.prisonerId}/${currentRecord.id.visitorId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentRecord),
-      });
-      if (res.ok) {
-        await fetchVisitedBy();
-        handleCloseEditDialog();
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleDelete = async (record) => {
-    try {
-      const res = await fetch(`${API_URL}/${record.id.prisonerId}/${record.id.visitorId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        await fetchVisitedBy();
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleOpenIntegratedDialog = async () => {
-    setCurrentRecord({ id: { prisonerId: '', visitorId: '' } });
-    setLoadingPrisoners(true);
-    try {
-      const res1 = await fetch('http://localhost:8080/api/prisoners');
-      if (!res1.ok) throw new Error('Ошибка загрузки данных заключённых');
-      const prisonersData = await res1.json();
-      setPrisonersList(prisonersData);
-    } catch (err) {
-      setErrorPrisoners(err);
-    } finally {
-      setLoadingPrisoners(false);
-    }
-    setLoadingVisitors(true);
-    try {
-      const res2 = await fetch('http://localhost:8080/api/visitors');
-      if (!res2.ok) throw new Error('Ошибка загрузки данных посетителей');
-      const visitorsData = await res2.json();
-      setVisitorsList(visitorsData);
-    } catch (err) {
-      setErrorVisitors(err);
-    } finally {
-      setLoadingVisitors(false);
-    }
-    setIntegratedDialogOpen(true);
-  };
-
-  const handleCloseIntegratedDialog = () => {
-    setIntegratedDialogOpen(false);
-  };
-
-  const handleSelectPrisoner = (prisoner) => {
-    setCurrentRecord((prev) => ({ ...prev, id: { ...prev.id, prisonerId: prisoner.prisonerId } }));
-  };
-
-  const handleSelectVisitor = (visitor) => {
-    setCurrentRecord((prev) => ({ ...prev, id: { ...prev.id, visitorId: visitor.visitorId } }));
-  };
-
-  const handleCreatePrisoner = () => {
-    setIntegratedDialogOpen(false);
-    navigate('/prisoners');
-  };
-
-  const handleCreateVisitor = () => {
-    setIntegratedDialogOpen(false);
-    navigate('/visitors');
-  };
-
-  const handleConfirmSelection = async () => {
-    const payload = {
-      id: {
-        prisonerId: currentRecord.id.prisonerId,
-        visitorId: currentRecord.id.visitorId,
-      },
-      prisoner: { prisonerId: currentRecord.id.prisonerId },
-      visitor: { visitorId: currentRecord.id.visitorId },
-    };
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        await fetchVisitedBy();
-        setIntegratedDialogOpen(false);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleShowPrisonerDetails = async (prisonerId) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/prisoners/${prisonerId}`);
-      const data = await res.json();
-      setPrisonerDetail(data);
-      setOpenPrisonerDetailDialog(true);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleClosePrisonerDetailDialog = () => {
-    setOpenPrisonerDetailDialog(false);
-    setPrisonerDetail(null);
-  };
-
-  const handleShowVisitorDetails = async (visitorId) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/visitors/${visitorId}`);
-      const data = await res.json();
-      setVisitorDetail(data);
-      setOpenVisitorDetailDialog(true);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleCloseVisitorDetailDialog = () => {
-    setOpenVisitorDetailDialog(false);
-    setVisitorDetail(null);
-  };
-
-  const groupedVisitedBy = useMemo(() => {
-    return visitedByList.reduce((acc, record) => {
-      const prisonerId = record.prisoner?.prisonerId || record.id?.prisonerId;
-      if (prisonerId) {
-        acc[prisonerId] = acc[prisonerId] || [];
-        acc[prisonerId].push(record);
-      }
+  const grouped = useMemo(() => {
+    return visits.reduce((acc, rec) => {
+      const pid = rec.prisoner.prisonerId;
+      acc[pid] = acc[pid] || [];
+      acc[pid].push(rec);
       return acc;
     }, {});
-  }, [visitedByList]);
+  }, [visits]);
 
-  const filteredGroupKeys = useMemo(() => {
-    let keys = Object.keys(groupedVisitedBy);
-    if (searchQuery.trim()) {
-      keys = keys.filter((prisonerId) =>
-        groupedVisitedBy[prisonerId].some((record) => {
-          const visitor = record.visitor || {};
-          return (
-            String(visitor.visitorId)
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            (visitor.firstName &&
-              visitor.firstName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (visitor.lastName &&
-              visitor.lastName.toLowerCase().includes(searchQuery.toLowerCase()))
-          );
-        })
-      );
-    }
-    if (dateRange.from || dateRange.to) {
-      keys = keys.filter((prisonerId) =>
-        groupedVisitedBy[prisonerId].some((record) => {
-          const visitDate = new Date(record.visitor?.visitDate || '');
-          const fromCheck = dateRange.from ? visitDate >= new Date(dateRange.from) : true;
-          const toCheck = dateRange.to ? visitDate <= new Date(dateRange.to) : true;
-          return fromCheck && toCheck;
-        })
-      );
-    }
-    return keys.sort((a, b) => a.localeCompare(b));
-  }, [groupedVisitedBy, searchQuery, dateRange]);
+  const filteredIds = useMemo(() => {
+    return Object.keys(grouped).filter(pid =>
+      grouped[pid].some(r => {
+        const v = r.visitor;
+        const txt = `${v.visitorId} ${v.firstName} ${v.lastName}`.toLowerCase();
+        const dt = new Date(v.visitDate);
+        return (
+          (!search || txt.includes(search.toLowerCase())) &&
+          (!dateFilter.from || dt >= new Date(dateFilter.from)) &&
+          (!dateFilter.to   || dt <= new Date(dateFilter.to))
+        );
+      })
+    ).sort();
+  }, [grouped, search, dateFilter]);
 
-  const openSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
+  const deleteRecord = async rec => {
+    try {
+      await axios.delete(`${API_BASE}/visited-by/${rec.prisoner.prisonerId}/${rec.visitor.visitorId}`);
+      showSnack('Запись удалена');
+      fetchAll();
+    } catch {
+      showSnack('Ошибка при удалении', 'error');
+    }
   };
-  
-  const closeSnackbar = () => setSnackbar((prev) => ({ ...prev, open: false }));
 
-  const handleExportCSV = () => {
-    const header = [
-      'Prisoner ID',
-      'Visitor ID',
-      'Visitor First Name',
-      'Visitor Last Name',
-      'Phone',
-      'Visit Date',
-    ];
-    const rows = [];
-    Object.keys(groupedVisitedBy).forEach((prisonerId) => {
-      groupedVisitedBy[prisonerId].forEach((record) => {
-        const visitor = record.visitor || {};
-        rows.push([
-          prisonerId,
-          visitor.visitorId || record.id.visitorId,
-          visitor.firstName || '',
-          visitor.lastName || '',
-          visitor.phoneNumber || '',
-          visitor.visitDate || '',
-        ]);
+  const addRecord = async () => {
+    try {
+      await axios.post(`${API_BASE}/visited-by`, {
+        id: { prisonerId: selected.prisoner, visitorId: selected.visitor },
+        prisoner: { prisonerId: selected.prisoner },
+        visitor:  { visitorId:  selected.visitor  },
       });
-    });
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [header, ...rows].map((e) => e.join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'visited_by_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      showSnack('Запись добавлена');
+      setOpenAdd(false);
+      setSelected({ prisoner: null, visitor: null });
+      fetchAll();
+    } catch {
+      showSnack('Ошибка при добавлении', 'error');
+    }
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Посещаемость
-      </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Button variant="contained" color="primary" onClick={handleOpenIntegratedDialog}>
-          Добавить запись
-        </Button>
-        <Button variant="outlined" color="secondary" startIcon={<GetAppIcon />} onClick={handleExportCSV}>
-          Экспорт CSV
-        </Button>
-      </Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+    <Container
+      component={motion.div}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <Title variant="h4" align="center">Посещаемость</Title>
+
+      <Stack direction="row" justifyContent="space-between" mb={2}>
+        <Button variant="contained" onClick={() => setOpenAdd(true)}>Добавить запись</Button>
+      </Stack>
+
+      <Stack direction="row" spacing={2} mb={3}>
         <TextField
-          variant="outlined"
-          placeholder="Поиск посетителя..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
           size="small"
+          placeholder="Поиск по посетителям…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
           InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            ),
+            startAdornment: <InputAdornment position="start"><SearchIcon/></InputAdornment>
           }}
-          sx={{ maxWidth: 300 }}
+          sx={{ flex: 1 }}
         />
         <TextField
-          label="От:"
-          type="date"
-          size="small"
-          value={dateRange.from}
-          onChange={(e) => setDateRange((prev) => ({ ...prev, from: e.target.value }))}
+          size="small" type="date" label="От"
+          value={dateFilter.from}
+          onChange={e => setDateFilter(d => ({ ...d, from: e.target.value }))}
           InputLabelProps={{ shrink: true }}
         />
         <TextField
-          label="До:"
-          type="date"
-          size="small"
-          value={dateRange.to}
-          onChange={(e) => setDateRange((prev) => ({ ...prev, to: e.target.value }))}
+          size="small" type="date" label="До"
+          value={dateFilter.to}
+          onChange={e => setDateFilter(d => ({ ...d, to: e.target.value }))}
           InputLabelProps={{ shrink: true }}
         />
-      </Box>
+      </Stack>
+
       {loading ? (
-        <Typography>Загрузка...</Typography>
+        <Typography>Загрузка…</Typography>
       ) : error ? (
-        <Typography color="error">Ошибка: {error.message}</Typography>
-      ) : Object.keys(groupedVisitedBy).length > 0 ? (
-        filteredGroupKeys.map((prisonerId) => (
-          <Paper key={prisonerId} sx={{ mb: 2, p: 2 }} elevation={3}>
-            <Accordion defaultExpanded>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">Заключённый ID: {prisonerId}</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Visitor ID</TableCell>
-                      <TableCell>Имя посетителя</TableCell>
-                      <TableCell>Фамилия</TableCell>
-                      <TableCell>Телефон</TableCell>
-                      <TableCell>Дата визита</TableCell>
-                      <TableCell>Действия</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {groupedVisitedBy[prisonerId].map((record, index) => (
-                      <TableRow key={index} hover>
-                        <TableCell>
-                          <Button
-                            variant="text"
-                            onClick={() =>
-                              handleShowVisitorDetails(record.visitor?.visitorId || record.id?.visitorId)
-                            }
-                          >
-                            {record.visitor?.visitorId || record.id?.visitorId || 'не найдено'}
-                          </Button>
-                        </TableCell>
-                        <TableCell>{record.visitor?.firstName || '---'}</TableCell>
-                        <TableCell>{record.visitor?.lastName || '---'}</TableCell>
-                        <TableCell>{record.visitor?.phoneNumber || '---'}</TableCell>
-                        <TableCell>{record.visitor?.visitDate || '---'}</TableCell>
-                        <TableCell>
-                          <Tooltip title="Редактировать запись">
-                            <Button
-                              variant="outlined"
-                              onClick={() => handleOpenEditDialog(record)}
-                              sx={{ mr: 1 }}
-                            >
-                              Редактировать
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="Удалить запись">
-                            <Button
-                              variant="outlined"
-                              color="secondary"
-                              onClick={() => handleDelete(record)}
-                            >
-                              Удалить
-                            </Button>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </AccordionDetails>
-            </Accordion>
-          </Paper>
-        ))
-      ) : (
-        <Typography>Записей не найдено</Typography>
-      )}
+        <Typography color="error">{error}</Typography>
+      ) : filteredIds.length === 0 ? (
+        <Typography>Ничего не найдено</Typography>
+      ) : filteredIds.map(pid => (
+        <Accordion key={pid} defaultExpanded sx={{ mb:2 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon/>}>
+            <Typography variant="h6">Заключённый ID: {pid}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  {['ID','Имя','Фамилия','Телефон','Дата','Удалить'].map(h => (
+                    <TableCell key={h} sx={{ fontWeight:600 }}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {grouped[pid].map((rec,i) => (
+                  <TableRow key={i} hover>
+                    <TableCell>
+                      <Button size="small" onClick={() => setDetail({ open:true, title:'Детали посетителя', data: rec.visitor })}>
+                        {rec.visitor.visitorId}
+                      </Button>
+                    </TableCell>
+                    <TableCell>{rec.visitor.firstName}</TableCell>
+                    <TableCell>{rec.visitor.lastName}</TableCell>
+                    <TableCell>{rec.visitor.phoneNumber}</TableCell>
+                    <TableCell>{rec.visitor.visitDate}</TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Удалить">
+                        <ActionBtn onClick={() => deleteRecord(rec)}>
+                          <DeleteIcon color="error"/>
+                        </ActionBtn>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </AccordionDetails>
+        </Accordion>
+      ))}
 
-      <Dialog
-        open={openEditDialog}
-        onClose={handleCloseEditDialog}
-        TransitionComponent={Slide}
-        TransitionProps={{ direction: 'up' }}
-      >
-        <DialogTitle>Редактировать запись</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            name="prisonerId"
-            label="ID заключённого"
-            type="number"
-            fullWidth
-            variant="standard"
-            value={currentRecord.id.prisonerId}
-            onChange={handleEditChange}
-          />
-          <TextField
-            margin="dense"
-            name="visitorId"
-            label="ID посетителя"
-            type="number"
-            fullWidth
-            variant="standard"
-            value={currentRecord.id.visitorId}
-            onChange={handleEditChange}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Отмена</Button>
-          <Button onClick={handleSubmitEdit}>Обновить</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={integratedDialogOpen}
-        onClose={handleCloseIntegratedDialog}
-        fullWidth
-        maxWidth="md"
-        TransitionComponent={Slide}
-        TransitionProps={{ direction: 'up' }}
-      >
-        <DialogTitle>Выберите заключённого и посетителя</DialogTitle>
+      {/* Add Dialog */}
+      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} fullWidth maxWidth="sm" TransitionComponent={Slide}>
+        <DialogTitle>Новая запись посещения</DialogTitle>
         <DialogContent dividers>
-          <Typography variant="subtitle1" sx={{ mt: 1, mb: 1 }}>
-            Заключённые:
-          </Typography>
-          {loadingPrisoners ? (
-            <Typography>Загрузка заключённых...</Typography>
-          ) : errorPrisoners ? (
-            <Typography color="error">{errorPrisoners.message}</Typography>
-          ) : prisonersList.length > 0 ? (
-            <Box>
-              {prisonersList.map((prisoner) => (
-                <Box key={prisoner.prisonerId} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Button
-                    variant="text"
-                    onClick={() => handleSelectPrisoner(prisoner)}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    {currentRecord.id.prisonerId === prisoner.prisonerId && (
-                      <CheckIcon color="primary" sx={{ mr: 1 }} />
-                    )}
-                    {`ID: ${prisoner.prisonerId} - ${prisoner.firstName} ${prisoner.lastName}`}
-                  </Button>
-                </Box>
-              ))}
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Typography>Нет заключённых</Typography>
-              <Button onClick={handleCreatePrisoner} color="primary">
-                Создать нового
-              </Button>
-            </Box>
-          )}
-          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-            Посетители:
-          </Typography>
-          {loadingVisitors ? (
-            <Typography>Загрузка посетителей...</Typography>
-          ) : errorVisitors ? (
-            <Typography color="error">{errorVisitors.message}</Typography>
-          ) : visitorsList.length > 0 ? (
-            <Box>
-              {visitorsList.map((visitor) => (
-                <Box key={visitor.visitorId} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Button
-                    variant="text"
-                    onClick={() => handleSelectVisitor(visitor)}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    {currentRecord.id.visitorId === visitor.visitorId && (
-                      <CheckIcon color="primary" sx={{ mr: 1 }} />
-                    )}
-                    {`ID: ${visitor.visitorId} - ${visitor.firstName} ${visitor.lastName}`}
-                  </Button>
-                </Box>
-              ))}
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography>Нет посетителей</Typography>
-              <Button onClick={handleCreateVisitor} color="primary">
-                Создать нового
-              </Button>
-            </Box>
-          )}
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body1">
-              Выбранный ID заключённого:{' '}
-              <strong>{currentRecord.id.prisonerId || 'не выбран'}</strong>
-            </Typography>
-            <Typography variant="body1">
-              Выбранный ID посетителя:{' '}
-              <strong>{currentRecord.id.visitorId || 'не выбран'}</strong>
-            </Typography>
-          </Box>
+          <Typography variant="subtitle1">Заключённые:</Typography>
+          {prisoners.map(p => (
+            <Button
+              key={p.prisonerId}
+              fullWidth
+              sx={{ mb:1 }}
+              variant={selected.prisoner===p.prisonerId?'contained':'outlined'}
+              startIcon={selected.prisoner===p.prisonerId?<CheckIcon/>:null}
+              onClick={() => setSelected(s=>({ ...s, prisoner:p.prisonerId }))}
+            >
+              ID {p.prisonerId}: {p.firstName} {p.lastName}
+            </Button>
+          ))}
+          <Typography variant="subtitle1" sx={{ mt:2 }}>Посетители:</Typography>
+          {visitors.map(v => (
+            <Button
+              key={v.visitorId}
+              fullWidth
+              sx={{ mb:1 }}
+              variant={selected.visitor===v.visitorId?'contained':'outlined'}
+              startIcon={selected.visitor===v.visitorId?<CheckIcon/>:null}
+              onClick={() => setSelected(s=>({ ...s, visitor:v.visitorId }))}
+            >
+              ID {v.visitorId}: {v.firstName} {v.lastName}
+            </Button>
+          ))}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseIntegratedDialog}>Отмена</Button>
+          <Button onClick={() => setOpenAdd(false)}>Отмена</Button>
           <Button
-            onClick={handleConfirmSelection}
-            color="primary"
-            disabled={!currentRecord.id.prisonerId || !currentRecord.id.visitorId}
+            variant="contained"
+            onClick={addRecord}
+            disabled={!selected.prisoner || !selected.visitor}
           >
-            Подтвердить
+            Добавить
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openPrisonerDetailDialog} onClose={handleClosePrisonerDetailDialog}>
-        <DialogTitle>Детальная информация о заключённом</DialogTitle>
-        <DialogContent>
-          {prisonerDetail ? (
-            <Box>
-              <Typography>ID: {prisonerDetail.prisonerId}</Typography>
-              <Typography>Имя: {prisonerDetail.firstName}</Typography>
-              <Typography>Фамилия: {prisonerDetail.lastName}</Typography>
-              <Typography>Место рождения: {prisonerDetail.birthPlace}</Typography>
-              <Typography>Дата рождения: {prisonerDetail.dateOfBirth}</Typography>
-              <Typography>Профессия: {prisonerDetail.occupation}</Typography>
-              <Typography>Обвинения: {prisonerDetail.indictment}</Typography>
-              <Typography>Дата поступления: {prisonerDetail.intakeDate}</Typography>
-              <Typography>Дата освобождения: {prisonerDetail.sentenceEndDate}</Typography>
-              <Typography>Камера: {prisonerDetail.cell?.cellNum}</Typography>
-              <Typography>Уровень: {prisonerDetail.securityLevel?.description}</Typography>
-            </Box>
-          ) : (
-            <Typography>Загрузка...</Typography>
-          )}
+      {/* Detail Dialog */}
+      <Dialog open={detail.open} onClose={() => setDetail({ ...detail, open:false })} fullWidth>
+        <DialogTitle>{detail.title}</DialogTitle>
+        <DialogContent dividers>
+          {detail.data
+            ? Object.entries(detail.data).map(([k,v]) => (
+                <Typography key={k} sx={{ mb:1 }}>
+                  <strong>{k.replace(/([A-Z])/g,' $1')}:</strong> {v || '—'}
+                </Typography>
+              ))
+            : <Typography>Нет данных</Typography>
+          }
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClosePrisonerDetailDialog}>Закрыть</Button>
+          <Button onClick={() => setDetail({ ...detail, open:false })}>Закрыть</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openVisitorDetailDialog} onClose={handleCloseVisitorDetailDialog}>
-        <DialogTitle>Детальная информация о посетителе</DialogTitle>
-        <DialogContent>
-          {visitorDetail ? (
-            <Box>
-              <Typography>ID: {visitorDetail.visitorId}</Typography>
-              <Typography>Имя: {visitorDetail.firstName}</Typography>
-              <Typography>Фамилия: {visitorDetail.lastName}</Typography>
-              <Typography>Телефон: {visitorDetail.phoneNumber}</Typography>
-              <Typography>Отношение к заключённому: {visitorDetail.relation_to_prisoner}</Typography>
-              <Typography>Дата визита: {visitorDetail.visitDate}</Typography>
-            </Box>
-          ) : (
-            <Typography>Загрузка...</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseVisitorDetailDialog}>Закрыть</Button>
-        </DialogActions>
-      </Dialog>
-
+      {/* Snackbar */}
       <Snackbar
-        open={snackbar.open}
+        open={snack.open}
         autoHideDuration={3000}
-        onClose={closeSnackbar}
+        onClose={closeSnack}
         TransitionComponent={Slide}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical:'bottom', horizontal:'center' }}
       >
-        <Alert onClose={closeSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
+        <Alert onClose={closeSnack} severity={snack.sev} sx={{ width:'100%' }}>
+          {snack.msg}
         </Alert>
       </Snackbar>
-    </Box>
+    </Container>
   );
-};
-
-export default VisitedByFrontend;
+}

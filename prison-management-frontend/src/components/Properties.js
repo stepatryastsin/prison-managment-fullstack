@@ -1,400 +1,370 @@
+// src/pages/PropertiesFrontend.jsx
+
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
+  Grid,
+  Card,
+  CardHeader,
+  CardContent,
+  Avatar,
   Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
   TextField,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  IconButton,
+  Stack,
   InputAdornment,
   Snackbar,
   Alert,
-  Tooltip
+  Tooltip,
+  Paper
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import CheckIcon from '@mui/icons-material/Check';
+import { styled } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
-import { useNavigate } from 'react-router-dom';
+import InfoIcon from '@mui/icons-material/Info';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import axios from 'axios';
 
 const API_PROPERTIES = 'http://localhost:8080/api/properties';
-const API_PRISONERS = 'http://localhost:8080/api/prisoners';
+const API_PRISONERS   = 'http://localhost:8080/api/prisoners';
 
-const PropertiesFrontend = () => {
-  const [propertiesList, setPropertiesList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [recordsSearch, setRecordsSearch] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState({
-    id: { prisonerId: '' },
+const Container = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  maxWidth: 1280,
+  margin: 'auto',
+  marginTop: theme.spacing(4),
+  background: theme.palette.background.default,
+}));
+
+export default function PropertiesFrontend() {
+  const [propsList, setPropsList] = useState([]);
+  const [prisoners, setPrisoners] = useState([]);
+  const [search, setSearch]       = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState(null);
+
+  const [viewRec, setViewRec]     = useState(null);
+  const [viewOpen, setViewOpen]   = useState(false);
+
+  const [editRec, setEditRec]     = useState(null);
+  const [editOpen, setEditOpen]   = useState(false);
+  const [form, setForm]           = useState({
+    prisonerId: '',
+    propertyName: '',
     description: ''
   });
-  const [prisonersList, setPrisonersList] = useState([]);
-  const [loadingPrisoners, setLoadingPrisoners] = useState(false);
-  const [errorPrisoners, setErrorPrisoners] = useState(null);
-  const [openPrisonerDetailDialog, setOpenPrisonerDetailDialog] = useState(false);
-  const [prisonerDetail, setPrisonerDetail] = useState(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const navigate = useNavigate();
 
-  const fetchProperties = async () => {
+  const [snack, setSnack]         = useState({
+    open: false,
+    msg: '',
+    sev: 'success'
+  });
+
+  const openSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
+  const closeSnack = () => setSnack(s => ({ ...s, open: false }));
+
+  useEffect(fetchAll, []);
+  async function fetchAll() {
     setLoading(true);
     try {
-      const res = await fetch(API_PROPERTIES);
-      if (!res.ok) throw new Error('Ошибка при загрузке записей');
-      const data = await res.json();
-      setPropertiesList(data);
-    } catch (err) {
-      setError(err);
+      const [pRes, prRes] = await Promise.all([
+        axios.get(API_PROPERTIES),
+        axios.get(API_PRISONERS)
+      ]);
+      setPropsList(pRes.data);
+      setPrisoners(prRes.data);
+    } catch {
+      setError('Ошибка загрузки');
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => {
-    fetchProperties();
-  }, []);
-
-  const openSnackbar = (message, severity = 'success') =>
-    setSnackbar({ open: true, message, severity });
-  const closeSnackbar = () =>
-    setSnackbar(prev => ({ ...prev, open: false }));
-
-  const handleDelete = async record => {
-    try {
-      const res = await fetch(
-        `${API_PROPERTIES}/${record.id.prisonerId}/${record.id.propertyName}`,
-        { method: 'DELETE' }
-      );
-      if (res.ok) {
-        await fetchProperties();
-        openSnackbar('Запись удалена');
-      }
-    } catch {
-      openSnackbar('Ошибка удаления записи', 'error');
-    }
-  };
-
-  const handleOpenDialogForCreate = () => {
-    setIsEditing(false);
-    setCurrentRecord({ id: { prisonerId: '' }, description: '' });
-    openDialog();
-  };
-
-  const handleOpenDialogForEdit = record => {
-    setIsEditing(true);
-    setCurrentRecord(record);
-    openDialog();
-  };
-
-  const openDialog = async () => {
-    setLoadingPrisoners(true);
-    try {
-      const res = await fetch(API_PRISONERS);
-      if (!res.ok) throw new Error('Ошибка при загрузке данных заключённых');
-      const data = await res.json();
-      setPrisonersList(data);
-    } catch (err) {
-      setErrorPrisoners(err);
-    } finally {
-      setLoadingPrisoners(false);
-    }
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => setDialogOpen(false);
-
-  const handleSelectPrisoner = prisoner =>
-    setCurrentRecord(prev => ({
-      ...prev,
-      id: { prisonerId: prisoner.prisonerId }
-    }));
-
-  const handleDescriptionChange = e =>
-    setCurrentRecord(prev => ({ ...prev, description: e.target.value }));
-
-  const handleCreatePrisoner = () => {
-    setDialogOpen(false);
-    navigate('/prisoners');
-  };
-
-  const handleConfirm = async () => {
-    const payload = {
-      id: {
-        prisonerId: currentRecord.id.prisonerId,
-        propertyName: currentRecord.id.propertyName
-      },
-      description: currentRecord.description,
-      prisoner: { prisonerId: currentRecord.id.prisonerId }
-    };
-
-    const method = isEditing ? 'PUT' : 'POST';
-    const url = isEditing
-      ? `${API_PROPERTIES}/${currentRecord.id.prisonerId}/${currentRecord.id.propertyName}`
-      : API_PROPERTIES;
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        await fetchProperties();
-        handleCloseDialog();
-        openSnackbar(isEditing ? 'Запись обновлена' : 'Запись создана');
-      }
-    } catch {
-      openSnackbar('Ошибка сохранения записи', 'error');
-    }
-  };
-
-  const handleShowPrisonerDetails = async prisonerId => {
-    try {
-      const res = await fetch(`${API_PRISONERS}/${prisonerId}`);
-      const data = await res.json();
-      setPrisonerDetail(data);
-      setOpenPrisonerDetailDialog(true);
-    } catch {}
-  };
-
-  const handleClosePrisonerDetailDialog = () => {
-    setOpenPrisonerDetailDialog(false);
-    setPrisonerDetail(null);
-  };
-
-  const groupedProperties = useMemo(() => {
-    return propertiesList.reduce((acc, record) => {
-      const prisonerId = record.prisoner?.prisonerId || record.id?.prisonerId;
-      if (prisonerId) {
-        acc[prisonerId] = acc[prisonerId] || [];
-        acc[prisonerId].push(record);
-      }
+  const grouped = useMemo(() => {
+    return propsList.reduce((acc, r) => {
+      const pid = r.prisoner?.prisonerId;
+      if (!pid) return acc;
+      acc[pid] = acc[pid] || { prisoner: r.prisoner, items: [] };
+      acc[pid].items.push(r);
       return acc;
     }, {});
-  }, [propertiesList]);
+  }, [propsList]);
 
-  const filteredGroupKeys = useMemo(() => {
-    if (!recordsSearch.trim()) return Object.keys(groupedProperties);
-    return Object.keys(groupedProperties).filter(prisonerId =>
-      groupedProperties[prisonerId].some(
-        record =>
-          (record.prisoner &&
-            `${record.prisoner.firstName} ${record.prisoner.lastName}`
-              .toLowerCase()
-              .includes(recordsSearch.toLowerCase())) ||
-          (record.id.propertyName &&
-            record.id.propertyName.toLowerCase().includes(recordsSearch.toLowerCase()))
-      )
-    );
-  }, [groupedProperties, recordsSearch]);
+  const filteredKeys = useMemo(() => {
+    if (!search.trim()) return Object.keys(grouped);
+    return Object.keys(grouped).filter(pid => {
+      const { prisoner, items } = grouped[pid];
+      return (
+        prisoner.firstName.toLowerCase().includes(search.toLowerCase()) ||
+        prisoner.lastName.toLowerCase().includes(search.toLowerCase()) ||
+        items.some(r =>
+          r.id.propertyName.toLowerCase().includes(search.toLowerCase())
+        )
+      );
+    });
+  }, [search, grouped]);
+
+  function openForm(rec = null) {
+    if (rec) {
+      setEditRec(rec);
+      setForm({
+        prisonerId: rec.id.prisonerId,
+        propertyName: rec.id.propertyName,
+        description: rec.description
+      });
+    } else {
+      setEditRec(null);
+      setForm({ prisonerId:'', propertyName:'', description:'' });
+    }
+    setEditOpen(true);
+  }
+
+  async function handleSave() {
+    try {
+      const payload = {
+        id: {
+          prisonerId: form.prisonerId,
+          propertyName: form.propertyName
+        },
+        description: form.description,
+        prisoner: { prisonerId: form.prisonerId }
+      };
+      if (editRec) {
+        await axios.put(
+          `${API_PROPERTIES}/${form.prisonerId}/${form.propertyName}`,
+          payload
+        );
+        openSnack('Запись обновлена');
+      } else {
+        await axios.post(API_PROPERTIES, payload);
+        openSnack('Запись добавлена');
+      }
+      setEditOpen(false);
+      fetchAll();
+    } catch {
+      openSnack('Ошибка сохранения', 'error');
+    }
+  }
+
+  async function handleDelete(rec) {
+    if (!window.confirm('Удалить запись?')) return;
+    try {
+      await axios.delete(
+        `${API_PROPERTIES}/${rec.id.prisonerId}/${rec.id.propertyName}`
+      );
+      openSnack('Запись удалена');
+      fetchAll();
+    } catch {
+      openSnack('Ошибка удаления', 'error');
+    }
+  }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Container>
       <Typography variant="h4" gutterBottom>
-        Вещи заключённых в камерах
+        Вещи заключённых
       </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Button variant="contained" color="primary" onClick={handleOpenDialogForCreate}>
-          Добавить запись
-        </Button>
+
+      <Stack direction="row" spacing={2} mb={3}>
         <TextField
-          variant="outlined"
-          placeholder="Поиск записей..."
-          value={recordsSearch}
-          onChange={e => setRecordsSearch(e.target.value)}
+          placeholder="Поиск..."
           size="small"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon color="action" />
+                <SearchIcon />
               </InputAdornment>
             )
           }}
-          sx={{ width: '300px' }}
+          sx={{ flexGrow: 1 }}
         />
-      </Box>
-      {loading ? (
-        <Typography>Загрузка...</Typography>
-      ) : error ? (
-        <Typography color="error">Ошибка: {error.message}</Typography>
-      ) : Object.keys(groupedProperties).length > 0 ? (
-        filteredGroupKeys.map(prisonerId => {
-          const prisonerInfo = groupedProperties[prisonerId][0].prisoner;
+        <Button variant="contained" onClick={() => openForm(null)}>
+          Добавить запись
+        </Button>
+      </Stack>
+
+      {loading && <Typography>Загрузка...</Typography>}
+      {error && <Typography color="error">{error}</Typography>}
+
+      <Grid container spacing={3}>
+        {filteredKeys.map(pid => {
+          const { prisoner, items } = grouped[pid];
           return (
-            <Accordion key={prisonerId} defaultExpanded sx={{ mb: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="h6">Заключённый ID: {prisonerId}</Typography>
-                  {prisonerInfo && prisonerInfo.firstName && prisonerInfo.lastName && (
-                    <Typography variant="body2">
-                      {prisonerInfo.firstName} {prisonerInfo.lastName}
-                    </Typography>
-                  )}
-                  <Button
-                    variant="text"
-                    onClick={e => {
-                      e.stopPropagation();
-                      handleShowPrisonerDetails(prisonerId);
-                    }}
-                    sx={{ alignSelf: 'flex-start', mt: 1 }}
-                  >
-                    Подробнее о заключённом
-                  </Button>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Свойство</TableCell>
-                      <TableCell>Описание</TableCell>
-                      <TableCell align="center">Действия</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {groupedProperties[prisonerId].map((record, index) => (
-                      <TableRow key={index} hover>
-                        <TableCell>{record.id?.propertyName || 'не найдено'}</TableCell>
-                        <TableCell>{record.description || '-'}</TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="Редактировать запись">
-                            <Button
-                              variant="outlined"
-                              onClick={() => handleOpenDialogForEdit(record)}
-                              sx={{ mr: 1 }}
-                            >
-                              Редактировать
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="Удалить запись">
-                            <Button
-                              variant="outlined"
-                              color="secondary"
-                              onClick={() => handleDelete(record)}
-                            >
-                              Удалить
-                            </Button>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
+            <Grid item xs={12} sm={6} md={4} key={pid}>
+              <Card
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: 2,
+                  boxShadow: 2,
+                  '&:hover': { transform: 'scale(1.02)', transition: '0.2s' }
+                }}
+              >
+                <CardHeader
+                  avatar={
+                    <Avatar sx={{ bgcolor: 'primary.main' }}>
+                      {prisoner.firstName[0]}
+                    </Avatar>
+                  }
+                  title={`${prisoner.firstName} ${prisoner.lastName}`}
+                  subheader={`ID: ${pid}`}
+                  action={
+                    <Stack direction="row" spacing={1}>
+                      <Tooltip title="Просмотр">
+                        <IconButton
+                          onClick={() => {
+                            setViewRec(grouped[pid]);
+                            setViewOpen(true);
+                          }}
+                        >
+                          <InfoIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Редактировать">
+                        <IconButton onClick={() => openForm(items[0])}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  }
+                />
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Stack spacing={1}>
+                    {items.map(r => (
+                      <Box
+                        component="div"
+                        key={r.id.propertyName}
+                        sx={{ display: 'flex', justifyContent: 'space-between' }}
+                      >
+                        <Typography variant="body2">
+                          • <strong>{r.id.propertyName}</strong>: {r.description || '—'}
+                        </Typography>
+                        <Tooltip title="Удалить">
+                          <IconButton size="small" onClick={() => handleDelete(r)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     ))}
-                  </TableBody>
-                </Table>
-              </AccordionDetails>
-            </Accordion>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
           );
-        })
-      ) : (
-        <Typography>Записей не найдено</Typography>
-      )}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="md">
-        <DialogTitle>{isEditing ? 'Редактировать запись' : 'Добавить запись'}</DialogTitle>
+        })}
+        {filteredKeys.length === 0 && !loading && (
+          <Typography>Записей не найдено</Typography>
+        )}
+      </Grid>
+
+      {/* View Dialog */}
+      <Dialog
+        open={viewOpen}
+        onClose={() => setViewOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Детали заключённого</DialogTitle>
         <DialogContent dividers>
-          <Typography variant="subtitle1" sx={{ mt: 1, mb: 1 }}>
-            Заключённые:
-          </Typography>
-          {loadingPrisoners ? (
-            <Typography>Загрузка заключённых...</Typography>
-          ) : errorPrisoners ? (
-            <Typography color="error">{errorPrisoners.message}</Typography>
-          ) : prisonersList.length > 0 ? (
-            <List sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #ccc', mb: 2 }}>
-              {prisonersList.map(prisoner => (
-                <ListItem key={prisoner.prisonerId} disablePadding>
-                  <ListItemButton onClick={() => handleSelectPrisoner(prisoner)}>
-                    {currentRecord.id.prisonerId === prisoner.prisonerId && (
-                      <CheckIcon color="primary" sx={{ mr: 1 }} />
-                    )}
-                    <ListItemText
-                      primary={`ID: ${prisoner.prisonerId} - ${prisoner.firstName} ${prisoner.lastName}`}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          ) : (
-            <Box
-              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
-            >
-              <Typography>Нет заключённых</Typography>
-              <Button onClick={handleCreatePrisoner} color="primary">
-                Создать нового
-              </Button>
-            </Box>
+          {viewRec && (
+            <>
+              <Typography variant="h6" gutterBottom>
+                {viewRec.prisoner.firstName} {viewRec.prisoner.lastName} (ID:{' '}
+                {viewRec.prisoner.prisonerId})
+              </Typography>
+              <Stack spacing={1}>
+                {viewRec.items.map(r => (
+                  <Typography key={r.id.propertyName}>
+                    • <strong>{r.id.propertyName}</strong>: {r.description || '—'}
+                  </Typography>
+                ))}
+              </Stack>
+            </>
           )}
-          {/* Поле свойства удалено */}
-          <TextField
-            label="Описание"
-            fullWidth
-            margin="normal"
-            multiline
-            rows={3}
-            value={currentRecord.description}
-            onChange={handleDescriptionChange}
-          />
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body1">
-              Выбранный ID заключённого: <strong>{currentRecord.id.prisonerId || 'не выбран'}</strong>
-            </Typography>
-          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Отмена</Button>
-          {/* Оставляем активной только проверку наличия prisonerId */}
+          <Button onClick={() => setViewOpen(false)}>Закрыть</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit/Create Dialog */}
+      <Dialog
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {editRec ? 'Редактировать' : 'Добавить'} запись
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              select
+              label="Заключённый"
+              value={form.prisonerId}
+              onChange={e =>
+                setForm(f => ({ ...f, prisonerId: e.target.value }))
+              }
+              SelectProps={{ native: true }}
+              fullWidth
+            >
+              <option value="">— Выберите —</option>
+              {prisoners.map(p => (
+                <option key={p.prisonerId} value={p.prisonerId}>
+                  {p.firstName} {p.lastName} (ID {p.prisonerId})
+                </option>
+              ))}
+            </TextField>
+            <TextField
+              label="Свойство"
+              value={form.propertyName}
+              onChange={e =>
+                setForm(f => ({ ...f, propertyName: e.target.value }))
+              }
+              fullWidth
+            />
+            <TextField
+              label="Описание"
+              value={form.description}
+              onChange={e =>
+                setForm(f => ({ ...f, description: e.target.value }))
+              }
+              fullWidth
+              multiline
+              rows={3}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)}>Отмена</Button>
           <Button
-            onClick={handleConfirm}
-            color="primary"
-            disabled={!currentRecord.id.prisonerId}
+            onClick={handleSave}
+            disabled={!form.prisonerId || !form.propertyName}
           >
             Подтвердить
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={openPrisonerDetailDialog} onClose={handleClosePrisonerDetailDialog}>
-        <DialogTitle>Детали заключённого</DialogTitle>
-        <DialogContent>
-          {prisonerDetail ? (
-            <Box>
-              <Typography>ID: {prisonerDetail.prisonerId}</Typography>
-              <Typography>Имя: {prisonerDetail.firstName}</Typography>
-              <Typography>Фамилия: {prisonerDetail.lastName}</Typography>
-            </Box>
-          ) : (
-            <Typography>Загрузка...</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClosePrisonerDetailDialog}>Закрыть</Button>
-        </DialogActions>
-      </Dialog>
+
       <Snackbar
-        open={snackbar.open}
+        open={snack.open}
         autoHideDuration={3000}
-        onClose={closeSnackbar}
+        onClose={closeSnack}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={closeSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
+        <Alert severity={snack.sev} onClose={closeSnack}>
+          {snack.msg}
         </Alert>
       </Snackbar>
-    </Box>
+    </Container>
   );
-};
-
-export default PropertiesFrontend;
+}

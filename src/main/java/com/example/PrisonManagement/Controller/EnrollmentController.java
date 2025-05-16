@@ -35,11 +35,12 @@ public class EnrollmentController {
     @PostMapping("/enrollments")
     @ResponseStatus(HttpStatus.CREATED)
     public EnrolledIn enroll(@RequestBody @Valid EnrolledIn enrollment) {
-        logger.info("Зачисление: заключённый ID={} записан на курс ID={}",
-                enrollment.getPrisoner().getPrisonerId(),
-                enrollment.getCourse().getCourseId());
+        Integer pid = enrollment.getId().getPrisonerId();
+        Integer cid = enrollment.getId().getCourseId();
+        logger.info("Зачисление: заключённый ID={} записан на курс ID={}", pid, cid);
         return service.enrollPrisoner(enrollment);
     }
+
 
     @DeleteMapping("/enrollments/{prisonerId}/{courseId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -59,9 +60,9 @@ public class EnrollmentController {
     @PostMapping("/certificates")
     @ResponseStatus(HttpStatus.CREATED)
     public OwnCertificateFrom issue(@RequestBody @Valid OwnCertificateFrom certificate) {
-        logger.info("Выдача сертификата: заключённому ID={} за курс ID={}",
-                certificate.getPrisoner().getPrisonerId(),
-                certificate.getCourse().getCourseId());
+        Integer pid = certificate.getId().getPrisonerId();
+        Integer cid = certificate.getId().getCourseId();
+        logger.info("Выдача сертификата: заключённому ID={} за курс ID={}", pid, cid);
         return service.issueCertificate(certificate);
     }
 

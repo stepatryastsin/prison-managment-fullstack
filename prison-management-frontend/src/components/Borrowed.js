@@ -1,10 +1,9 @@
-// src/App.jsx
 import React, { useEffect, useState } from 'react';
 import {
   AppBar,
   Tabs,
   Tab,
-  Box,               // <- убедитесь, что есть импорт
+  Box,
   Paper,
   Typography,
   Grid,
@@ -19,13 +18,15 @@ import {
   DialogActions,
   TextField,
   Stack,
-  Chip
+  Chip,
+  IconButton
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import BookIcon from '@mui/icons-material/Book';
 import PersonIcon from '@mui/icons-material/Person';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import InfoIcon from '@mui/icons-material/Info';
 
 const API = {
   borrowed:   'http://localhost:8080/api/borrowed',
@@ -34,15 +35,19 @@ const API = {
 };
 
 export default function App() {
-  const [tab, setTab]         = useState(0);
+  const [tab, setTab]           = useState(0);
   const [borrowed, setBorrowed] = useState([]);
   const [prisoners, setPrisoners] = useState([]);
-  const [books, setBooks]     = useState([]);
+  const [books, setBooks]       = useState([]);
 
-  const [dlgOpen, setDlgOpen] = useState(false);
-  const [selPr, setSelPr]     = useState('');
-  const [selBk, setSelBk]     = useState('');
-  const [errors, setErrors]   = useState({});
+  const [dlgOpen, setDlgOpen]   = useState(false);
+  const [selPr, setSelPr]       = useState('');
+  const [selBk, setSelBk]       = useState('');
+  const [errors, setErrors]     = useState({});
+
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewItem, setViewItem] = useState(null);
+  const [viewType, setViewType] = useState('');
 
   useEffect(() => {
     fetchAll();
@@ -62,6 +67,23 @@ export default function App() {
       console.error(err);
     }
   }
+
+  // Group borrowed by prisoner
+  const grouped = borrowed.reduce((acc, rec) => {
+    const prisoner = rec.prisoner;
+    const lib      = rec.library;
+    if (!prisoner) return acc;
+    const pid = prisoner.prisonerId;
+    if (!acc[pid]) acc[pid] = { prisoner, books: [] };
+    acc[pid].books.push(lib);
+    return acc;
+  }, {});
+
+  const openView = (item, type) => {
+    setViewItem(item);
+    setViewType(type);
+    setViewOpen(true);
+  };
 
   async function create() {
     setErrors({});
@@ -86,23 +108,6 @@ export default function App() {
     }
   }
 
-  async function remove(pid, isbn) {
-    if (!window.confirm(`Удалить заимствование ${pid} ↔ ${isbn}?`)) return;
-    await axios.delete(`${API.borrowed}/${pid}/${isbn}`);
-    fetchAll();
-  }
-
-  // Группируем
-  const grouped = borrowed.reduce((acc, rec) => {
-    const prisoner = rec.prisoner;
-    const lib      = rec.library;
-    if (!prisoner) return acc;               // если данных нет — пропускаем
-    const pid = prisoner.prisonerId;
-    if (!acc[pid]) acc[pid] = { prisoner, books: [] };
-    acc[pid].books.push(lib);
-    return acc;
-  }, {});
-
   return (
     <Paper sx={{ maxWidth: 1280, mx: 'auto' }}>
       <AppBar position="static" color="primary">
@@ -114,7 +119,6 @@ export default function App() {
       </AppBar>
 
       <Box p={3}>
-        {/*** Вкладка "Заимствования" ***/}
         {tab === 0 && (
           <>
             <Box mb={2} display="flex" justifyContent="flex-end">
@@ -142,32 +146,17 @@ export default function App() {
                           title={prisoner?.name || '—'}
                           subheader={`ID: ${prisoner.prisonerId}`}
                           action={
-                            <Chip
-                              label={`${books.length} книг`}
-                              color="primary"
-                              size="small"
-                            />
+                            <IconButton onClick={() => openView({ prisoner, books }, 'borrowed')}>
+                              <InfoIcon />
+                            </IconButton>
                           }
                         />
                         <CardContent>
                           <Stack spacing={1}>
                             {books.map((b) => (
-                              <Box
-                                key={b.isbn}
-                                display="flex"
-                                justifyContent="space-between"
-                                alignItems="center"
-                              >
-                                <Typography variant="body2">
-                                  • {b.bookName || '—'}
-                                </Typography>
-                                <Button
-                                  size="small"
-                                  onClick={() => remove(prisoner.prisonerId, b.isbn)}
-                                >
-                                  ×
-                                </Button>
-                              </Box>
+                              <Typography key={b.isbn} variant="body2">
+                                • {b.bookName || '—'}
+                              </Typography>
                             ))}
                           </Stack>
                         </CardContent>
@@ -180,14 +169,8 @@ export default function App() {
           </>
         )}
 
-        {/*** Вкладка "Заключённые" ***/}
         {tab === 1 && (
-          <motion.div
-            key="prisoners"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
+          <motion.div key="prisoners" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
             <Typography variant="h5" gutterBottom>
               Список заключённых
             </Typography>
@@ -195,11 +178,16 @@ export default function App() {
               {prisoners.map((p) => (
                 <Grid item xs={12} sm={6} md={4} key={p.prisonerId}>
                   <Card>
-                    <CardContent>
-                      <Typography variant="h6">{p.name || '—'}</Typography>
-                      <Typography color="text.secondary">
-                        ID: {p.prisonerId}
-                      </Typography>
+                    <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="h6">{p.name || '—'}</Typography>
+                        <Typography color="text.secondary">
+                          ID: {p.prisonerId}
+                        </Typography>
+                      </Box>
+                      <IconButton onClick={() => openView(p, 'prisoner')}>
+                        <InfoIcon />
+                      </IconButton>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -208,14 +196,8 @@ export default function App() {
           </motion.div>
         )}
 
-        {/*** Вкладка "Книги" ***/}
         {tab === 2 && (
-          <motion.div
-            key="books"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
+          <motion.div key="books" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
             <Typography variant="h5" gutterBottom>
               Каталог книг
             </Typography>
@@ -223,11 +205,16 @@ export default function App() {
               {books.map((b) => (
                 <Grid item xs={12} sm={6} md={4} key={b.isbn}>
                   <Card>
-                    <CardContent>
-                      <Typography variant="h6">{b.bookName || '—'}</Typography>
-                      <Typography color="text.secondary">
-                        ISBN: {b.isbn}
-                      </Typography>
+                    <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="h6">{b.bookName || '—'}</Typography>
+                        <Typography color="text.secondary">
+                          ISBN: {b.isbn}
+                        </Typography>
+                      </Box>
+                      <IconButton onClick={() => openView(b, 'book')}>
+                        <InfoIcon />
+                      </IconButton>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -237,18 +224,12 @@ export default function App() {
         )}
       </Box>
 
-      {/*** Диалог создания заимствования ***/}
+      {/* Создание заимствования */}
       <Dialog open={dlgOpen} onClose={() => setDlgOpen(false)}>
         <DialogTitle>Новое заимствование</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              select
-              label="Заключённый"
-              SelectProps={{ native: true }}
-              value={selPr}
-              onChange={e => setSelPr(e.target.value)}
-            >
+            <TextField select label="Заключённый" SelectProps={{ native: true }} value={selPr} onChange={e => setSelPr(e.target.value)}>
               <option value="">— Выберите —</option>
               {prisoners.map(p => (
                 <option key={p.prisonerId} value={p.prisonerId}>
@@ -256,14 +237,7 @@ export default function App() {
                 </option>
               ))}
             </TextField>
-
-            <TextField
-              select
-              label="Книга"
-              SelectProps={{ native: true }}
-              value={selBk}
-              onChange={e => setSelBk(e.target.value)}
-            >
+            <TextField select label="Книга" SelectProps={{ native: true }} value={selBk} onChange={e => setSelBk(e.target.value)}>
               <option value="">— Выберите —</option>
               {books.map(b => (
                 <option key={b.isbn} value={b.isbn}>
@@ -271,17 +245,45 @@ export default function App() {
                 </option>
               ))}
             </TextField>
-
-            {errors.form && (
-              <Typography color="error">{errors.form}</Typography>
-            )}
+            {errors.form && <Typography color="error">{errors.form}</Typography>}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDlgOpen(false)}>Отмена</Button>
-          <Button variant="contained" onClick={create}>
-            Добавить
-          </Button>
+          <Button variant="contained" onClick={create}>Добавить</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог просмотра */}
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Подробности</DialogTitle>
+        <DialogContent dividers>
+          {viewItem && viewType === 'borrowed' && (
+            <>
+              <Typography><strong>Заключённый:</strong> {viewItem.prisoner.name} (ID {viewItem.prisoner.prisonerId})</Typography>
+              <Typography sx={{ mt: 1 }}><strong>Книги:</strong></Typography>
+              <Stack spacing={1} sx={{ mt: 1 }}>
+                {viewItem.books.map(b => (
+                  <Typography key={b.isbn}>• {b.bookName} (ISBN {b.isbn})</Typography>
+                ))}
+              </Stack>
+            </>
+          )}
+          {viewItem && viewType === 'prisoner' && (
+            <>
+              <Typography><strong>Имя:</strong> {viewItem.name}</Typography>
+              <Typography><strong>ID:</strong> {viewItem.prisonerId}</Typography>
+            </>
+          )}
+          {viewItem && viewType === 'book' && (
+            <>
+              <Typography><strong>Название:</strong> {viewItem.bookName}</Typography>
+              <Typography><strong>ISBN:</strong> {viewItem.isbn}</Typography>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewOpen(false)}>Закрыть</Button>
         </DialogActions>
       </Dialog>
     </Paper>

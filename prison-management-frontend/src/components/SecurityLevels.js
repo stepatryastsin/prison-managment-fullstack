@@ -1,251 +1,276 @@
-import React, { useEffect, useState, useMemo } from 'react'
+// src/pages/SecurityLevels.jsx
+
+import React, { useEffect, useState } from 'react'
 import {
-  Box,
-  Paper,
+  AppBar,
+  Toolbar,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
+  Paper,
+  Grid,
+  Card,
+  CardHeader,
+  CardContent,
+  Avatar,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
   Stack,
-  InputAdornment,
+  Box,
+  useMediaQuery,
+  CircularProgress,
   IconButton,
   Snackbar,
   Alert,
   Slide,
-  CircularProgress,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
 } from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
+import { useTheme, styled } from '@mui/material/styles'
+import { motion, AnimatePresence } from 'framer-motion'
+import InfoIcon from '@mui/icons-material/Info'
+import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import AddIcon from '@mui/icons-material/Add'
 import SaveIcon from '@mui/icons-material/Save'
 import CancelIcon from '@mui/icons-material/Cancel'
-import DeleteIcon from '@mui/icons-material/Delete'
 
 const API_URL = 'http://localhost:8080/api/sl'
 
-const SecurityLevels = () => {
-  const [securityLevels, setSecurityLevels] = useState([])
+const Container = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  maxWidth: 1200,
+  margin: 'auto',
+  marginTop: theme.spacing(4),
+  boxShadow: theme.shadows[4],
+}))
+
+export default function SecurityLevels() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const [levels, setLevels] = useState([])
   const [loading, setLoading] = useState(true)
-  const [editingLevelNo, setEditingLevelNo] = useState(null)
-  const [editingDescription, setEditingDescription] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [newLevelNo, setNewLevelNo] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailItem, setDetailItem] = useState(null)
+
+  const [editId, setEditId] = useState(null)
+  const [editDesc, setEditDesc] = useState('')
+
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, levelNo: null })
 
-  useEffect(() => {
-    fetchSecurityLevels()
-  }, [])
+  const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' })
+  const openSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev })
+  const closeSnack = () => setSnack(s => ({ ...s, open: false }))
 
-  const openSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity })
-  }
-  const closeSnackbar = () => setSnackbar(s => ({ ...s, open: false }))
+  useEffect(() => { fetchLevels() }, [])
 
-  // helper to read JSON error payload
-  const checkResponse = async (res) => {
-    if (!res.ok) {
-      let errMsg = res.statusText
-      try {
-        const errJson = await res.json()
-        if (errJson.message) errMsg = errJson.message
-      } catch {}
-      throw new Error(errMsg)
-    }
-    return res.json()
-  }
-
-  const fetchSecurityLevels = async () => {
+  const fetchLevels = async () => {
     setLoading(true)
     try {
       const res = await fetch(API_URL)
-      const data = await checkResponse(res)
-      setSecurityLevels(data)
-    } catch (err) {
-      openSnackbar(`Ошибка загрузки: ${err.message}`, 'error')
+      if (!res.ok) throw new Error(res.statusText)
+      setLevels(await res.json())
+    } catch (e) {
+      openSnack(`Ошибка загрузки: ${e.message}`, 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleEdit = level => {
-    setEditingLevelNo(level.securityLevelNo)
-    setEditingDescription(level.description)
+  const handleCreate = async () => {
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ securityLevelNo: Number(newLevelNo), description: newDesc })
+      })
+      if (!res.ok) throw new Error((await res.json()).message || res.statusText)
+      openSnack('Уровень создан')
+      setCreateOpen(false)
+      setNewLevelNo('')
+      setNewDesc('')
+      fetchLevels()
+    } catch (e) {
+      openSnack(`Ошибка создания: ${e.message}`, 'error')
+    }
   }
 
-  const handleCancel = () => {
-    setEditingLevelNo(null)
-    setEditingDescription('')
+  const handleEditInit = lvl => {
+    setEditId(lvl.securityLevelNo)
+    setEditDesc(lvl.description || '')
   }
 
   const handleSave = async levelNo => {
     try {
       const res = await fetch(`${API_URL}/${levelNo}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ securityLevelNo: levelNo, description: editingDescription }),
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ securityLevelNo: levelNo, description: editDesc })
       })
-      await checkResponse(res)
-      openSnackbar('Уровень безопасности обновлён', 'success')
-      fetchSecurityLevels()
-      handleCancel()
-    } catch (err) {
-      openSnackbar(`Ошибка обновления: ${err.message}`, 'error')
+      if (!res.ok) throw new Error((await res.json()).message || res.statusText)
+      openSnack('Уровень обновлён')
+      setEditId(null)
+      fetchLevels()
+    } catch (e) {
+      openSnack(`Ошибка обновления: ${e.message}`, 'error')
     }
   }
 
   const handleDelete = async levelNo => {
     try {
-      const res = await fetch(`${API_URL}/${levelNo}`, { method: 'DELETE' })
-      await checkResponse(res)
-      openSnackbar('Уровень безопасности удалён', 'success')
-      fetchSecurityLevels()
-    } catch (err) {
-      openSnackbar(`Ошибка удаления: ${err.message}`, 'error')
+      const res = await fetch(`${API_URL}/${levelNo}`, { method:'DELETE' })
+      if (!res.ok) throw new Error((await res.json()).message || res.statusText)
+      openSnack('Уровень удалён')
+      fetchLevels()
+    } catch (e) {
+      openSnack(`Ошибка удаления: ${e.message}`, 'error')
     } finally {
-      setDeleteConfirm({ open: false, levelNo: null })
+      setDeleteConfirm({ open:false, levelNo:null })
     }
   }
 
-  const filteredLevels = useMemo(() => {
-    if (!searchQuery.trim()) return securityLevels
-    return securityLevels.filter(level =>
-      String(level.securityLevelNo).includes(searchQuery) ||
-      level.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const openDetail = lvl => {
+    setDetailItem(lvl)
+    setDetailOpen(true)
+  }
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" mt={5}>
+        <CircularProgress />
+      </Box>
     )
-  }, [securityLevels, searchQuery])
+  }
 
   return (
-    <Paper sx={{ p: 3, maxWidth: 1000, mx: 'auto', my: 3, boxShadow: 4 }}>
-      <Typography variant="h4" gutterBottom align="center">
-        Уровни безопасности
-      </Typography>
+    <Container component={motion.div} initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.4}}>
+      <AppBar position="static" color="primary" sx={{ mb:2 }}>
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow:1 }}>Уровни безопасности</Typography>
+          <Button color="inherit" startIcon={<AddIcon />} onClick={()=>setCreateOpen(true)}>
+            Новый уровень
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <TextField
-          label="Поиск по уровню или описанию"
-          size="small"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            )
-          }}
-          sx={{ width: 300 }}
-        />
-        {loading && <CircularProgress size={24} />}
-      </Box>
-
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Table>
-          <TableHead sx={{ backgroundColor: '#f0f0f0' }}>
-            <TableRow>
-              <TableCell><strong>Номер уровня</strong></TableCell>
-              <TableCell><strong>Описание</strong></TableCell>
-              <TableCell align="center"><strong>Действия</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredLevels.map(level => (
-              <TableRow key={level.securityLevelNo} hover>
-                <TableCell>{level.securityLevelNo}</TableCell>
-                <TableCell>
-                  {editingLevelNo === level.securityLevelNo ? (
-                    <TextField
-                      value={editingDescription}
-                      onChange={e => setEditingDescription(e.target.value)}
-                      size="small"
-                      fullWidth
-                    />
-                  ) : level.description}
-                </TableCell>
-                <TableCell align="center">
-                  {editingLevelNo === level.securityLevelNo ? (
-                    <Stack direction="row" spacing={1} justifyContent="center">
-                      <Tooltip title="Сохранить">
-                        <IconButton color="primary" onClick={() => handleSave(level.securityLevelNo)}>
-                          <SaveIcon />
+      <Grid container spacing={3}>
+        <AnimatePresence>
+          {levels.map(lvl => (
+            <Grid key={lvl.securityLevelNo} item xs={12} sm={6} md={4}>
+              <motion.div whileHover={{scale:1.03}}>
+                <Card sx={{ display:'flex', flexDirection:'column', height:'100%', boxShadow:3 }}>
+                  <CardHeader
+                    avatar={<Avatar sx={{ bgcolor:'secondary.main' }}>{lvl.securityLevelNo}</Avatar>}
+                    title={`Уровень №${lvl.securityLevelNo}`}
+                    subheader={lvl.description || '—'}
+                    action={
+                      <Stack direction="row" spacing={1}>
+                        <IconButton size="small" onClick={()=>handleEditInit(lvl)}><EditIcon fontSize="small"/></IconButton>
+                        <IconButton size="small" onClick={()=>openDetail(lvl)}><InfoIcon fontSize="small"/></IconButton>
+                        <IconButton size="small" color="error" onClick={()=>setDeleteConfirm({open:true,levelNo:lvl.securityLevelNo})}>
+                          <DeleteIcon fontSize="small"/>
                         </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Отмена">
-                        <IconButton color="secondary" onClick={handleCancel}>
-                          <CancelIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
-                  ) : (
-                    <Stack direction="row" spacing={1} justifyContent="center">
-                      <Tooltip title="Редактировать">
-                        <IconButton onClick={() => handleEdit(level)}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Удалить">
-                        <IconButton color="error"
-                          onClick={() => setDeleteConfirm({ open: true, levelNo: level.securityLevelNo })}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
+                      </Stack>
+                    }
+                  />
+                  {editId === lvl.securityLevelNo && (
+                    <CardContent sx={{ mt:'auto' }}>
+                      <Stack spacing={2}>
+                        <TextField
+                          label="Описание"
+                          value={editDesc}
+                          onChange={e=>setEditDesc(e.target.value)}
+                          fullWidth size="small"
+                        />
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Button variant="contained" startIcon={<SaveIcon />} onClick={()=>handleSave(lvl.securityLevelNo)}>
+                            Сохранить
+                          </Button>
+                          <Button variant="outlined" startIcon={<CancelIcon />} onClick={()=>setEditId(null)}>
+                            Отмена
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </CardContent>
                   )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredLevels.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={3} align="center">Нет данных</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      )}
+                </Card>
+              </motion.div>
+            </Grid>
+          ))}
+        </AnimatePresence>
+      </Grid>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={closeSnackbar}
-        TransitionComponent={Slide}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={closeSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-
-      <Dialog
-        open={deleteConfirm.open}
-        onClose={() => setDeleteConfirm({ open: false, levelNo: null })}
-      >
-        <DialogTitle>Удаление уровня</DialogTitle>
+      {/* Create Dialog */}
+      <Dialog open={createOpen} onClose={()=>setCreateOpen(false)}>
+        <DialogTitle>Новый уровень</DialogTitle>
         <DialogContent>
-          Вы уверены, что хотите удалить уровень №{deleteConfirm.levelNo}?
+          <Stack spacing={2} sx={{ mt:1 }}>
+            <TextField
+              label="Номер уровня"
+              type="number"
+              value={newLevelNo}
+              onChange={e=>setNewLevelNo(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Описание"
+              value={newDesc}
+              onChange={e=>setNewDesc(e.target.value)}
+              fullWidth
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteConfirm({ open: false, levelNo: null })}>
-            Отмена
-          </Button>
-          <Button color="error" onClick={() => handleDelete(deleteConfirm.levelNo)}>
-            Удалить
-          </Button>
+          <Button onClick={()=>setCreateOpen(false)}>Отмена</Button>
+          <Button variant="contained" onClick={handleCreate}>Создать</Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+
+      {/* Detail Dialog */}
+      <Dialog open={detailOpen} onClose={()=>setDetailOpen(false)}>
+        <DialogTitle>Детали уровня</DialogTitle>
+        <DialogContent dividers>
+          {detailItem ? (
+            <>
+              <Typography><strong>№{detailItem.securityLevelNo}</strong></Typography>
+              <Typography sx={{ mt:1 }}>{detailItem.description || '—'}</Typography>
+            </>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={()=>setDetailOpen(false)}>Закрыть</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <Dialog open={deleteConfirm.open} onClose={()=>setDeleteConfirm({open:false,levelNo:null})}>
+        <DialogTitle>Удалить уровень</DialogTitle>
+        <DialogContent>
+          Уверены, что хотите удалить уровень №{deleteConfirm.levelNo}?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={()=>setDeleteConfirm({open:false,levelNo:null})}>Отмена</Button>
+          <Button color="error" onClick={()=>handleDelete(deleteConfirm.levelNo)}>Удалить</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={closeSnack}
+        anchorOrigin={{ vertical:'bottom', horizontal:'center' }}
+        TransitionComponent={Slide}
+      >
+        <Alert onClose={closeSnack} severity={snack.sev} sx={{ width:'100%' }}>
+          {snack.msg}
+        </Alert>
+      </Snackbar>
+    </Container>
   )
 }
-
-export default SecurityLevels

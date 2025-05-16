@@ -1,251 +1,232 @@
+// Cells.jsx
 import React, { useEffect, useState } from 'react';
 import {
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-  TextField,
-  Button,
-  Stack,
-  Box
+  AppBar, Toolbar, Typography, Paper, Grid, Card, CardHeader,
+  CardContent, Avatar, Button, Dialog, DialogTitle, DialogContent,
+  DialogActions, TextField, Stack, Chip, Box, useMediaQuery,
+  CircularProgress
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { motion, AnimatePresence } from 'framer-motion';
+import InfoIcon from '@mui/icons-material/Info';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
 
 const API_URL = 'http://localhost:8080/api/cells';
 
-function Cells() {
+export default function Cells() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [cells, setCells] = useState([]);
-  const [editingCellId, setEditingCellId] = useState(null);
-  const [editingDate, setEditingDate] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const [dlgOpen, setDlgOpen] = useState(false);
+  const [newCellNum, setNewCellNum] = useState('');
+  const [newDate, setNewDate] = useState('');
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+
+  const [editId, setEditId] = useState(null);
+  const [editDate, setEditDate] = useState('');
   const [editErrors, setEditErrors] = useState({});
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [newCellNum, setNewCellNum] = useState('');
-  const [newLastShakedownDate, setNewLastShakedownDate] = useState('');
-  const [createErrors, setCreateErrors] = useState({});
+  const fetchCells = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      setCells(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchCells();
   }, []);
 
-  const fetchCells = async () => {
+  const handleCreate = async () => {
+    if (!newCellNum) return alert('Введите номер камеры');
     try {
-      const response = await fetch(API_URL);
-      if (!response.ok) {
-        throw new Error('Сетевая ошибка');
-      }
-      const data = await response.json();
-      setCells(data);
-    } catch (error) {
-      console.error('Ошибка загрузки данных камер:', error);
-    }
+      await fetch(API_URL, {
+        method: 'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ cellNum: +newCellNum, lastShakedownDate: newDate })
+      });
+      setDlgOpen(false);
+      setNewCellNum('');
+      setNewDate('');
+      fetchCells();
+    } catch (e) { console.error(e) }
   };
 
-  const handleEdit = (cell) => {
-    setEditingCellId(cell.cellNum);
-    const dateStr = cell.lastShakedownDate ? cell.lastShakedownDate.split('T')[0] : '';
-    setEditingDate(dateStr);
-    setEditErrors({});
-  };
-
-  const handleCancel = () => {
-    setEditingCellId(null);
-    setEditingDate('');
+  const handleEditInit = (cell) => {
+    setEditId(cell.cellNum);
+    setEditDate(cell.lastShakedownDate?.split('T')[0] || '');
     setEditErrors({});
   };
 
   const handleSave = async (cellNum) => {
-    const updatedCell = { cellNum, lastShakedownDate: editingDate };
-
     try {
-      const response = await fetch(`${API_URL}/${cellNum}`, {
+      const res = await fetch(`${API_URL}/${cellNum}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedCell),
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ cellNum, lastShakedownDate: editDate })
       });
-
-      if (!response.ok) {
-        const problem = await response.json();
-        // Если сервер вернул простое сообщение — показываем alert
-        if (problem.message) {
-          alert(problem.message);
-        }
-        // Если вернул разбивку по полям — отображаем её рядом с инпутом
-        if (problem.errors) {
-          setEditErrors(problem.errors);
-        }
+      if (!res.ok) {
+        const err = await res.json();
+        setEditErrors(err.errors || {});
         return;
       }
-
-      // Успешно обновлено — сбрасываем ошибки и перезагружаем список
-      setEditErrors({});
-      await fetchCells();
-      setEditingCellId(null);
-      setEditingDate('');
-    } catch (error) {
-      console.error('Ошибка при обновлении даты:', error);
-    }
-  };
-
-  const handleCreate = async () => {
-    if (!newCellNum) {
-      alert('Введите номер камеры');
-      return;
-    }
-    const newCell = {
-      cellNum: parseInt(newCellNum, 10),
-      lastShakedownDate: newLastShakedownDate
-    };
-
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCell),
-      });
-
-      if (!response.ok) {
-        const problem = await response.json();
-        setCreateErrors(problem.errors || {});
-        return;
-      }
-
-      setCreateErrors({});
-      await fetchCells();
-      setNewCellNum('');
-      setNewLastShakedownDate('');
-    } catch (error) {
-      console.error('Ошибка при создании камеры:', error);
-    }
+      setEditId(null);
+      fetchCells();
+    } catch (e) { console.error(e) }
   };
 
   const handleDelete = async (cellNum) => {
-    if (window.confirm('Вы действительно хотите удалить камеру?')) {
-      try {
-        const response = await fetch(`${API_URL}/${cellNum}`, {
-          method: 'DELETE'
-        });
-        if (response.status === 409) {
-          alert('Невозможно удалить камеру, так как в ней находится заключённый.');
-          return;
-        }
-        if (!response.ok) {
-          throw new Error('Ошибка удаления камеры');
-        }
-        await fetchCells();
-      } catch (error) {
-        console.error('Ошибка при удалении камеры:', error);
-      }
-    }
+    if (!window.confirm('Удалить камеру?')) return;
+    try {
+      await fetch(`${API_URL}/${cellNum}`, { method: 'DELETE' });
+      fetchCells();
+    } catch (e) { console.error(e) }
   };
 
-  const filteredCells = cells.filter(cell =>
-    cell.cellNum.toString().includes(searchTerm)
-  );
+  const openDetail = (item) => {
+    setDetailItem(item);
+    setDetailOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" mt={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <Paper sx={{ padding: 4, maxWidth: 900, margin: 'auto', mt: 3, borderRadius: 2, boxShadow: 3 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 3, textAlign: 'center' }}>
-        Управление камерами
-      </Typography>
-
-      {/* Форма создания */}
-      <Box sx={{ mb: 3, p: 2, border: '1px solid #ccc', borderRadius: 2, backgroundColor: '#fafafa' }}>
-        <Typography variant="h6" gutterBottom>
-          Создать новую камеру
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <TextField
-            label="Номер камеры"
-            type="number"
-            value={newCellNum}
-            onChange={(e) => setNewCellNum(e.target.value)}
-            error={!!createErrors.cellNum}
-            helperText={createErrors.cellNum}
-            sx={{ flex: 1 }}
-          />
-          <TextField
-            label="Дата проверки"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            value={newLastShakedownDate}
-            onChange={(e) => setNewLastShakedownDate(e.target.value)}
-            error={!!createErrors.lastShakedownDate}
-            helperText={createErrors.lastShakedownDate}
-            sx={{ flex: 1 }}
-          />
-          <Button variant="contained" color="primary" onClick={handleCreate} sx={{ whiteSpace: 'nowrap' }}>
-            Создать
+    <Paper sx={{ p: isMobile ? 1 : 3, maxWidth: 1200, mx: 'auto', mt: 4 }}>
+      <AppBar position="static" color="primary" sx={{ mb: 2 }}>
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Управление камерами
+          </Typography>
+          <Button
+            color="inherit"
+            startIcon={<AddIcon />}
+            onClick={() => setDlgOpen(true)}
+          >
+            Новая камера
           </Button>
-        </Stack>
-      </Box>
+        </Toolbar>
+      </AppBar>
 
-      {/* Поиск */}
-      <Box sx={{ mb: 3 }}>
-        <TextField
-          label="Поиск по номеру камеры"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          fullWidth
-        />
-      </Box>
-
-      <Table>
-        <TableHead sx={{ backgroundColor: '#e3f2fd' }}>
-          <TableRow>
-            <TableCell><strong>Номер камеры</strong></TableCell>
-            <TableCell><strong>Дата последней проверки</strong></TableCell>
-            <TableCell align="center"><strong>Действия</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filteredCells.map(cell => (
-            <TableRow key={cell.cellNum} hover>
-              <TableCell>{cell.cellNum}</TableCell>
-              <TableCell>
-                {editingCellId === cell.cellNum ? (
-                  <TextField
-                    type="date"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    value={editingDate}
-                    onChange={(e) => setEditingDate(e.target.value)}
-                    error={!!editErrors.lastShakedownDate}
-                    helperText={editErrors.lastShakedownDate}
+      <Grid container spacing={2}>
+        <AnimatePresence>
+          {cells.map(cell => (
+            <Grid key={cell.cellNum} item xs={12} sm={6} md={4}>
+              <motion.div whileHover={{ scale: 1.02 }}>
+                <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
+                  <CardHeader
+                    avatar={<Avatar>{cell.cellNum}</Avatar>}
+                    title={`Камера №${cell.cellNum}`}
+                    subheader={`Проверка: ${cell.lastShakedownDate?.split('T')[0] || '—'}`}
+                    action={
+                      <Stack direction="row" spacing={1}>
+                        <EditIcon
+                          sx={{ cursor: 'pointer' }}
+                          onClick={() => handleEditInit(cell)}
+                        />
+                        <InfoIcon
+                          sx={{ cursor: 'pointer' }}
+                          onClick={() => openDetail(cell)}
+                        />
+                        <DeleteIcon
+                          color="error"
+                          sx={{ cursor: 'pointer' }}
+                          onClick={() => handleDelete(cell.cellNum)}
+                        />
+                      </Stack>
+                    }
                   />
-                ) : (
-                  cell.lastShakedownDate ? cell.lastShakedownDate.split('T')[0] : ''
-                )}
-              </TableCell>
-              <TableCell align="center">
-                {editingCellId === cell.cellNum ? (
-                  <Stack direction="row" spacing={1} justifyContent="center">
-                    <Button variant="contained" color="primary" onClick={() => handleSave(cell.cellNum)}>
-                      Сохранить
-                    </Button>
-                    <Button variant="outlined" color="secondary" onClick={handleCancel}>
-                      Отмена
-                    </Button>
-                  </Stack>
-                ) : (
-                  <Stack direction="row" spacing={1} justifyContent="center">
-                    <Button variant="outlined" onClick={() => handleEdit(cell)}>
-                      Редактировать
-                    </Button>
-                    <Button variant="outlined" color="error" onClick={() => handleDelete(cell.cellNum)}>
-                      Удалить
-                    </Button>
-                  </Stack>
-                )}
-              </TableCell>
-            </TableRow>
+                  {editId === cell.cellNum && (
+                    <CardContent>
+                      <Stack spacing={2}>
+                        <TextField
+                          label="Дата проверки"
+                          type="date"
+                          InputLabelProps={{ shrink: true }}
+                          value={editDate}
+                          onChange={e => setEditDate(e.target.value)}
+                          error={!!editErrors.lastShakedownDate}
+                          helperText={editErrors.lastShakedownDate}
+                        />
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant="contained"
+                            onClick={() => handleSave(cell.cellNum)}
+                          >
+                            Сохранить
+                          </Button>
+                          <Button variant="outlined" onClick={() => setEditId(null)}>
+                            Отмена
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </CardContent>
+                  )}
+                </Card>
+              </motion.div>
+            </Grid>
           ))}
-        </TableBody>
-      </Table>
+        </AnimatePresence>
+      </Grid>
+
+      {/* Диалог создания */}
+      <Dialog open={dlgOpen} onClose={() => setDlgOpen(false)}>
+        <DialogTitle>Новая камера</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Номер камеры"
+              type="number"
+              value={newCellNum}
+              onChange={e => setNewCellNum(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Дата проверки"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={newDate}
+              onChange={e => setNewDate(e.target.value)}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDlgOpen(false)}>Отмена</Button>
+          <Button variant="contained" onClick={handleCreate}>Создать</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог деталей */}
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)}>
+        <DialogTitle>Детали камеры</DialogTitle>
+        <DialogContent>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>
+            {JSON.stringify(detailItem, null, 2)}
+          </pre>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailOpen(false)}>Закрыть</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }
-
-export default Cells;

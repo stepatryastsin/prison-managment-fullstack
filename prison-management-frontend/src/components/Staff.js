@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import axios from 'axios';
 import {
   Paper,
   Typography,
@@ -6,10 +7,10 @@ import {
   Button,
   Grid,
   Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableRow,
+  TableCell,
+  TableBody,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -20,217 +21,168 @@ import {
   Box,
   Snackbar,
   Alert,
+  Slide,
+  IconButton,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
+import { motion } from 'framer-motion';
+import CloseIcon from '@mui/icons-material/Close';
 
-const STAFF_API_URL = 'http://localhost:8080/api/staff';
-const JOB_API_URL   = 'http://localhost:8080/api/job';
+// Используем переменные окружения для гибкости
+const STAFF_API = 'http://localhost:8080/api/staff';
+const JOB_API   = 'http://localhost:8080/api/job';
+
+// Стили контейнера
+const Container = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  maxWidth: 1200,
+  margin: 'auto',
+  marginTop: theme.spacing(6),
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[6],
+  backgroundColor: theme.palette.background.default,
+}));
+
+const Title = styled(Typography)(({ theme }) => ({
+  fontWeight: 700,
+  letterSpacing: '1px',
+  marginBottom: theme.spacing(3),
+  color: theme.palette.primary.main,
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontWeight: 600,
+  backgroundColor: theme.palette.grey[200],
+}));
 
 const Staff = () => {
-  const [staffList, setStaffList] = useState([]);
-  const [formData, setFormData] = useState({
+  const [staff, setStaff] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({
     firstName: '',
     lastName: '',
-    job: { jobId: null, jobDescription: '' },
+    jobId: null,
+    jobDesc: '',
     salary: '',
   });
-  const [originalJob, setOriginalJob] = useState({ jobId: null, jobDescription: '' });
   const [editingId, setEditingId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [jobDialogOpen, setJobDialogOpen] = useState(false);
-  const [jobs, setJobs] = useState([]);
-
-  // Snackbar state
-  const [errorMessage,   setErrorMessage]   = useState('');
-  const [snackbarOpen,   setSnackbarOpen]   = useState(false);
+  const [search, setSearch] = useState('');
+  const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
 
   useEffect(() => {
-    fetchStaff();
-    fetchJobs();
+    loadData();
   }, []);
 
-  // Fetch staff with error handling
-  const fetchStaff = async () => {
+  const loadData = async () => {
     try {
-      const res = await fetch(STAFF_API_URL);
-      if (!res.ok) {
-        // parse your ResponseError JSON
-        const err = await res.json();
-        throw err;
-      }
-      setStaffList(await res.json());
-    } catch (err) {
-      showError(err, 'Ошибка загрузки сотрудников');
+      const [sRes, jRes] = await Promise.all([
+        axios.get(STAFF_API),
+        axios.get(JOB_API),
+      ]);
+      setStaff(sRes.data);
+      setJobs(jRes.data);
+    } catch {
+      showSnack('Ошибка загрузки данных', 'error');
     }
   };
 
-  const fetchJobs = async () => {
-    try {
-      const res = await fetch(JOB_API_URL);
-      if (!res.ok) {
-        const err = await res.json();
-        throw err;
-      }
-      setJobs(await res.json());
-    } catch (err) {
-      showError(err, 'Ошибка загрузки должностей');
-    }
+  const showSnack = (msg, severity = 'success') => {
+    setSnack({ open: true, msg, sev: severity });
+  };
+  const closeSnack = () => setSnack((s) => ({ ...s, open: false }));
+
+  const clearForm = () => {
+    setForm({ firstName: '', lastName: '', jobId: null, jobDesc: '', salary: '' });
+    setEditingId(null);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'jobDescription') {
-      setFormData(f => ({
-        ...f,
-        job: { ...f.job, jobDescription: value }
-      }));
-    } else {
-      setFormData(f => ({ ...f, [name]: value }));
-    }
+    setForm((f) => ({ ...f, [name]: value }));
   };
 
-  const clearForm = () => {
-    setFormData({
-      firstName: '',
-      lastName: '',
-      job: { jobId: null, jobDescription: '' },
-      salary: '',
-    });
-    setOriginalJob({ jobId: null, jobDescription: '' });
-    setEditingId(null);
+  const handleSelectJob = (job) => {
+    setForm((f) => ({ ...f, jobId: job.jobId, jobDesc: job.jobDescription }));
+    setDialogOpen(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      alert('Имя и Фамилия обязательны');
+    const { firstName, lastName, jobDesc, salary, jobId } = form;
+    if (!firstName.trim() || !lastName.trim() || !jobDesc || Number(salary) <= 0) {
+      showSnack('Заполните все поля корректно', 'error');
       return;
     }
-    if (!formData.job.jobDescription.trim()) {
-      alert('Выберите должность');
-      return;
-    }
-    if (Number(formData.salary) <= 0) {
-      alert('Зарплата должна быть больше нуля');
-      return;
-    }
-
-    const payload = {
-      firstName: formData.firstName,
-      lastName:  formData.lastName,
-      salary:    Number(formData.salary),
-    };
-    const existing = jobs.find(j => j.jobDescription === formData.job.jobDescription);
-    payload.job = existing
-      ? { jobId: existing.jobId, jobDescription: existing.jobDescription }
-      : { jobDescription: formData.job.jobDescription };
-
+    const payload = { firstName, lastName, salary: Number(salary), job: { jobId, jobDescription: jobDesc } };
     try {
-      const method = editingId ? 'PUT' : 'POST';
-      const url    = editingId ? `${STAFF_API_URL}/${editingId}` : STAFF_API_URL;
-      const res    = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw err;
+      if (editingId) {
+        await axios.put(`${STAFF_API}/${editingId}`, payload);
+        showSnack('Сотрудник обновлён', 'success');
+      } else {
+        await axios.post(STAFF_API, payload);
+        showSnack('Сотрудник добавлен', 'success');
       }
-      await fetchStaff();
       clearForm();
+      loadData();
     } catch (err) {
-      showError(err, 'Ошибка при сохранении сотрудника');
+      showSnack(err.response?.data?.message || 'Ошибка при сохранении', 'error');
     }
   };
 
-  const handleEdit = (s) => {
-    setEditingId(s.staffId);
-    setOriginalJob({ jobId: s.job?.jobId ?? null, jobDescription: s.job?.jobDescription ?? '' });
-    setFormData({
-      firstName: s.firstName,
-      lastName:  s.lastName,
-      job:       { jobId: s.job?.jobId ?? null, jobDescription: s.job?.jobDescription ?? '' },
-      salary:    s.salary?.toString() ?? '',
+  const handleEdit = (emp) => {
+    setEditingId(emp.staffId);
+    setForm({
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      jobId: emp.job?.jobId,
+      jobDesc: emp.job?.jobDescription || '',
+      salary: emp.salary.toString(),
     });
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Удалить сотрудника?')) return;
     try {
-      const res = await fetch(`${STAFF_API_URL}/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const err = await res.json();
-        throw err;
-      }
-      await fetchStaff();
+      await axios.delete(`${STAFF_API}/${id}`);
+      showSnack('Сотрудник удалён', 'success');
       if (editingId === id) clearForm();
-    } catch (err) {
-      showError(err, 'Ошибка при удалении сотрудника');
+      loadData();
+    } catch {
+      showSnack('Ошибка при удалении', 'error');
     }
   };
 
-  const filtered = useMemo(() => {
-    return staffList.filter(s =>
-      `${s.firstName} ${s.lastName} ${s.job?.jobDescription}`.toLowerCase()
-        .includes(searchQuery.toLowerCase())
-    );
-  }, [staffList, searchQuery]);
-
-  const handleShowJobDialog = () => {
-    setJobDialogOpen(true);
-  };
-  const handleSelectJob = (job) => {
-    setFormData(f => ({
-      ...f,
-      job: { jobId: job.jobId, jobDescription: job.jobDescription }
-    }));
-    setJobDialogOpen(false);
-  };
-
-  // Show ResponseError in Snackbar
-  const showError = (err, fallback) => {
-    let msg = fallback;
-    if (err && typeof err.message === 'string') {
-      msg = err.message;
-    }
-    setErrorMessage(msg);
-    setSnackbarOpen(true);
-    console.error(fallback, err);
-  };
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-  };
+  const filtered = useMemo(
+    () =>
+      staff.filter((s) =>
+        `${s.firstName} ${s.lastName} ${s.job?.jobDescription}`.toLowerCase().includes(search.toLowerCase())
+      ),
+    [staff, search]
+  );
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 1200, m: 'auto', mt: 4, bgcolor: '#fafafa' }}>
-      {/* Snackbar для ошибок */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert onClose={handleSnackbarClose} severity="error" sx={{ width: '100%' }}>
-          {errorMessage}
-        </Alert>
-      </Snackbar>
+    <Container
+      component={motion.div}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Title variant="h3" align="center">
+        {editingId ? 'Редактирование сотрудника' : 'Добавление сотрудника'}
+      </Title>
 
-      <Typography variant="h5" align="center" gutterBottom>
-        {editingId ? 'Редактировать сотрудника' : 'Добавить сотрудника'}
-      </Typography>
-
-      <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mb: 4 }}>
-        <Grid container spacing={2}>
+      {/* Форма добавления / редактирования */}
+      <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
+        <Grid container spacing={3}>
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
               label="Имя"
               name="firstName"
-              value={formData.firstName}
+              value={form.firstName}
               onChange={handleChange}
               required
-              variant="outlined"
-              sx={{ bgcolor: '#fff' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -238,25 +190,21 @@ const Staff = () => {
               fullWidth
               label="Фамилия"
               name="lastName"
-              value={formData.lastName}
+              value={form.lastName}
               onChange={handleChange}
               required
-              variant="outlined"
-              sx={{ bgcolor: '#fff' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
               label="Должность"
-              name="jobDescription"
-              value={formData.job.jobDescription}
-              onClick={handleShowJobDialog}
+              name="jobDesc"
+              value={form.jobDesc}
+              onClick={() => setDialogOpen(true)}
               InputProps={{ readOnly: true }}
-              helperText="Нажмите для выбора"
+              helperText="Нажмите, чтобы выбрать"
               required
-              variant="outlined"
-              sx={{ bgcolor: '#fff', cursor: 'pointer' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -265,21 +213,20 @@ const Staff = () => {
               label="Зарплата"
               name="salary"
               type="number"
-              value={formData.salary}
+              value={form.salary}
               onChange={handleChange}
+              InputProps={{ inputProps: { min: 0 } }}
               required
-              variant="outlined"
-              sx={{ bgcolor: '#fff' }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
-            <Button fullWidth variant="contained" color="primary" type="submit">
+            <Button fullWidth variant="contained" size="large" type="submit">
               {editingId ? 'Сохранить' : 'Добавить'}
             </Button>
           </Grid>
           {editingId && (
             <Grid item xs={12} sm={4}>
-              <Button fullWidth variant="outlined" color="secondary" onClick={clearForm}>
+              <Button fullWidth variant="outlined" size="large" onClick={clearForm}>
                 Отмена
               </Button>
             </Grid>
@@ -287,49 +234,71 @@ const Staff = () => {
         </Grid>
       </Box>
 
-      <Typography variant="h6" gutterBottom>Поиск</Typography>
-      <TextField
-        fullWidth
-        placeholder="Поиск..."
-        variant="outlined"
-        value={searchQuery}
-        onChange={e => setSearchQuery(e.target.value)}
-        sx={{ mb: 3, bgcolor: '#fff' }}
-      />
+      {/* Поиск */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+        <TextField
+          placeholder="Поиск сотрудников..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ width: 300 }}
+        />
+      </Box>
 
-      <Typography variant="h5" gutterBottom>Сотрудники</Typography>
-      <Table sx={{ bgcolor: '#fff' }}>
-        <TableHead>
-          <TableRow sx={{ bgcolor: '#1976d2' }}>
-            {['ID','Имя','Фамилия','Должность','Зарплата','Действия'].map(h => (
-              <TableCell key={h} sx={{ color:'#fff' }}>{h}</TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.map(s => (
-            <TableRow key={s.staffId} hover>
-              <TableCell>{s.staffId}</TableCell>
-              <TableCell>{s.firstName}</TableCell>
-              <TableCell>{s.lastName}</TableCell>
-              <TableCell>{s.job?.jobDescription}</TableCell>
-              <TableCell>{s.salary}</TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={1}>
-                  <Button size="small" onClick={() => handleEdit(s)} variant="contained">Ред.</Button>
-                  <Button size="small" color="error" onClick={() => handleDelete(s.staffId)} variant="outlined">Удал.</Button>
-                </Stack>
-              </TableCell>
+      {/* Таблица сотрудников */}
+      <Paper elevation={3} sx={{ overflowX: 'auto' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              {['ID', 'Имя', 'Фамилия', 'Должность', 'Зарплата', 'Действия'].map((h) => (
+                <StyledTableCell key={h}>{h}</StyledTableCell>
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {filtered.map((s, idx) => (
+              <TableRow
+                key={s.staffId}
+                hover
+                sx={{
+                  backgroundColor: idx % 2 === 0 ? 'grey.50' : 'common.white',
+                }}
+              >
+                <TableCell>{s.staffId}</TableCell>
+                <TableCell>{s.firstName}</TableCell>
+                <TableCell>{s.lastName}</TableCell>
+                <TableCell>{s.job?.jobDescription}</TableCell>
+                <TableCell>{s.salary.toLocaleString()}</TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={1}>
+                    <Button variant="text" onClick={() => handleEdit(s)}>
+                      Редактировать
+                    </Button>
+                    <Button variant="text" color="error" onClick={() => handleDelete(s.staffId)}>
+                      Удалить
+                    </Button>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
 
-      <Dialog open={jobDialogOpen} onClose={() => setJobDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ bgcolor:'#1976d2', color:'#fff' }}>Выберите должность</DialogTitle>
-        <DialogContent>
+      {/* Диалог выбора должности */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth>
+        <DialogTitle>
+          Выберите должность
+n          <IconButton
+            aria-label="close"
+            onClick={() => setDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
           <List>
-            {jobs.map(j => (
+            {jobs.map((j) => (
               <ListItem button key={j.jobId} onClick={() => handleSelectJob(j)}>
                 <ListItemText primary={j.jobDescription} />
               </ListItem>
@@ -337,7 +306,25 @@ const Staff = () => {
           </List>
         </DialogContent>
       </Dialog>
-    </Paper>
+
+      {/* Снэкбар уведомлений */}
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={4000}
+        onClose={closeSnack}
+        TransitionComponent={Slide}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={closeSnack}
+          severity={snack.sev}
+          sx={{ width: '100%' }}
+          variant="filled"
+        >
+          {snack.msg}
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 };
 

@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useMemo } from 'react'
+// src/pages/Job.jsx
+
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Typography,
   TextField,
   Button,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
   Stack,
   Box,
   InputAdornment,
@@ -16,308 +18,271 @@ import {
   Snackbar,
   Alert,
   Slide,
-  Tooltip
-} from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
-import SortIcon from '@mui/icons-material/Sort'
-import GetAppIcon from '@mui/icons-material/GetApp'
-import EditIcon from '@mui/icons-material/Edit'
-import SaveIcon from '@mui/icons-material/Save'
-import CancelIcon from '@mui/icons-material/Cancel'
+  Tooltip,
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
+import { motion } from 'framer-motion';
+import SearchIcon from '@mui/icons-material/Search';
+import SortIcon from '@mui/icons-material/Sort';
+import GetAppIcon from '@mui/icons-material/GetApp';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api/job'
+const API_URL = 'http://localhost:8080/api/job';
 
-const Job = () => {
-  const [jobs, setJobs] = useState([])
-  const [editingJobId, setEditingJobId] = useState(null)
-  const [editingDescription, setEditingDescription] = useState('')
-  const [newJobDescription, setNewJobDescription] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortOrder, setSortOrder] = useState('asc')
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
+const Container = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  maxWidth: 1000,
+  margin: 'auto',
+  marginTop: theme.spacing(4),
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[4],
+}));
+
+const Title = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  letterSpacing: '0.5px',
+  marginBottom: theme.spacing(2),
+}));
+
+export default function Job() {
+  const [jobs, setJobs] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [editingDesc, setEditingDesc] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [search, setSearch] = useState('');
+  const [sortAsc, setSortAsc] = useState(true);
+  const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
 
   useEffect(() => {
-    fetchJobs()
-  }, [])
+    loadJobs();
+  }, []);
 
-  const checkJobUsage = async (id) => {
+  const loadJobs = async () => {
     try {
-      const response = await fetch(`${API_URL}/${id}/usage`)
-      if (!response.ok) throw new Error('Usage check error')
-      const { usageCount } = await response.json()
-      return usageCount
-    } catch (error) {
-      console.error('Ошибка проверки использования работы:', error)
-      return null
+      const { data } = await axios.get(API_URL);
+      // fetch usage in parallel
+      const withUsage = await Promise.all(data.map(async j => {
+        try {
+          const res = await axios.get(`${API_URL}/${j.jobId}/usage`);
+          return { ...j, usageCount: res.data.usageCount };
+        } catch {
+          return { ...j, usageCount: null };
+        }
+      }));
+      setJobs(withUsage);
+    } catch {
+      showSnack('Ошибка загрузки данных', 'error');
     }
-  }
+  };
 
-  const fetchJobs = async () => {
-    try {
-      const response = await fetch(API_URL)
-      if (!response.ok) throw new Error('Network error')
-      const data = await response.json()
-      const jobsWithUsage = await Promise.all(
-        data.map(async (job) => {
-          const usageCount = await checkJobUsage(job.jobId)
-          return { ...job, usageCount }
-        })
-      )
-      setJobs(jobsWithUsage)
-    } catch (error) {
-      console.error('Ошибка загрузки данных о должностях:', error)
-      openSnackbar('Ошибка загрузки данных', 'error')
-    }
-  }
+  const showSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
+  const closeSnack = () => setSnack(s => ({ ...s, open: false }));
 
-  const handleEdit = (job) => {
-    setEditingJobId(job.jobId)
-    setEditingDescription(job.jobDescription)
-  }
-
+  const handleEditInit = job => {
+    setEditingId(job.jobId);
+    setEditingDesc(job.jobDescription);
+  };
   const handleCancel = () => {
-    setEditingJobId(null)
-    setEditingDescription('')
-  }
-
-  const handleSave = async (id) => {
+    setEditingId(null);
+    setEditingDesc('');
+  };
+  const handleSave = async id => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: id, jobDescription: editingDescription }),
-      })
-      if (!response.ok) throw new Error('Update error')
-      fetchJobs()
-      setEditingJobId(null)
-      setEditingDescription('')
-      openSnackbar('Должность обновлена')
-    } catch (error) {
-      console.error('Ошибка при обновлении должности:', error)
-      openSnackbar('Ошибка обновления', 'error')
+      await axios.put(`${API_URL}/${id}`, { jobId: id, jobDescription: editingDesc });
+      showSnack('Должность обновлена');
+      loadJobs();
+      handleCancel();
+    } catch {
+      showSnack('Ошибка обновления', 'error');
     }
-  }
-
+  };
   const handleCreate = async () => {
-    if (!newJobDescription.trim()) return
+    if (!newDesc.trim()) return;
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobDescription: newJobDescription }),
-      })
-      if (!response.ok) throw new Error('Creation error')
-      setNewJobDescription('')
-      fetchJobs()
-      openSnackbar('Должность добавлена')
-    } catch (error) {
-      console.error('Ошибка при создании новой работы:', error)
-      openSnackbar('Ошибка создания', 'error')
+      await axios.post(API_URL, { jobDescription: newDesc });
+      setNewDesc('');
+      showSnack('Должность добавлена');
+      loadJobs();
+    } catch {
+      showSnack('Ошибка создания', 'error');
     }
-  }
-
-  const handleDelete = async (id) => {
-    const usageCount = await checkJobUsage(id)
-    if (usageCount === null) return alert('Ошибка проверки использования работы')
-    if (usageCount > 0)
-      return alert(`Нельзя удалить работу, так как она используется сотрудниками: ${usageCount}`)
+  };
+  const handleDelete = async id => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' })
-      if (!response.ok) throw new Error('Delete error')
-      fetchJobs()
-      openSnackbar('Должность удалена')
-    } catch (error) {
-      console.error('Ошибка при удалении работы:', error)
-      alert('Ошибка при удалении работы')
+      const usage = (await axios.get(`${API_URL}/${id}/usage`)).data.usageCount;
+      if (usage > 0) {
+        showSnack(`Нельзя удалить, используется: ${usage}`, 'warning');
+        return;
+      }
+      await axios.delete(`${API_URL}/${id}`);
+      showSnack('Должность удалена');
+      loadJobs();
+    } catch {
+      showSnack('Ошибка удаления', 'error');
     }
-  }
+  };
 
-  // Filtering and sorting jobs
-  const filteredSortedJobs = useMemo(() => {
-    let result = jobs.filter(job =>
-      job.jobDescription.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    result.sort((a, b) => {
-      if (a.jobDescription < b.jobDescription) return sortOrder === 'asc' ? -1 : 1
-      if (a.jobDescription > b.jobDescription) return sortOrder === 'asc' ? 1 : -1
-      return 0
-    })
-    return result
-  }, [jobs, searchQuery, sortOrder])
-
-  const toggleSortOrder = () => {
-    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-  }
-
-  const openSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity })
-  }
-  const closeSnackbar = () => setSnackbar({ ...snackbar, open: false })
-
-  // Export jobs to CSV
-  const handleExportCSV = () => {
-    const header = ['Job ID', 'Job Description', 'Usage Count']
-    const rows = filteredSortedJobs.map(job => [
-      job.jobId,
-      `"${job.jobDescription.replace(/"/g, '""')}"`,
-      job.usageCount !== null && job.usageCount !== undefined ? job.usageCount : '-'
-    ])
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [header, ...rows].map(e => e.join(',')).join('\n')
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', 'jobs_export.csv')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  const filteredSorted = useMemo(() => {
+    let arr = jobs.filter(j =>
+      j.jobDescription.toLowerCase().includes(search.toLowerCase())
+    );
+    arr.sort((a, b) =>
+      (a.jobDescription < b.jobDescription ? -1 : 1) * (sortAsc ? 1 : -1)
+    );
+    return arr;
+  }, [jobs, search, sortAsc]);
 
   return (
-    <Paper sx={{ p: 3, maxWidth: 1000, margin: 'auto', mt: 3, boxShadow: 4 }}>
-      <Typography variant="h4" align="center" gutterBottom>
-        Список должностей
-      </Typography>
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+    <Container
+      component={motion.div}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <Title variant="h4" align="center">Управление должностями</Title>
+
+      {/* New job */}
+      <Stack direction="row" spacing={2} mb={3}>
         <TextField
-          label="Описание новой работы"
-          value={newJobDescription}
-          onChange={(e) => setNewJobDescription(e.target.value)}
+          label="Описание новой должности"
+          value={newDesc}
+          onChange={e => setNewDesc(e.target.value)}
           fullWidth
         />
         <Button variant="contained" onClick={handleCreate} startIcon={<SaveIcon />}>
           Добавить
         </Button>
       </Stack>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+
+      {/* Search & controls */}
+      <Box display="flex" justifyContent="space-between" mb={2}>
         <TextField
-          variant="outlined"
-          placeholder="Поиск по описанию..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
           size="small"
+          placeholder="Поиск..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
           InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            ),
+            startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>
           }}
           sx={{ maxWidth: 300 }}
         />
         <Stack direction="row" spacing={1}>
           <Tooltip title="Сортировать">
-            <IconButton onClick={toggleSortOrder}>
-              <SortIcon color="action" />
+            <IconButton onClick={() => setSortAsc(!sortAsc)}>
+              <SortIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Экспортировать CSV">
-            <IconButton onClick={handleExportCSV}>
-              <GetAppIcon color="action" />
+          <Tooltip title="Экспорт CSV">
+            <IconButton onClick={() => {
+              const header = ['ID','Описание','Используется'];
+              const rows = filteredSorted.map(j => [
+                j.jobId,
+                `"${j.jobDescription.replace(/"/g,'""')}"`,
+                j.usageCount ?? '-'
+              ]);
+              const csv = 'data:text/csv;charset=utf-8,' +
+                [header, ...rows].map(r=>r.join(',')).join('\n');
+              const link = document.createElement('a');
+              link.href = encodeURI(csv);
+              link.download = 'jobs.csv';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}>
+              <GetAppIcon />
             </IconButton>
           </Tooltip>
         </Stack>
       </Box>
+
+      {/* Table */}
       <Table>
-        <TableHead sx={{ backgroundColor: '#f0f0f0' }}>
+        <TableHead sx={{ bgcolor: '#f0f0f0' }}>
           <TableRow>
-            <TableCell><strong>ID</strong></TableCell>
-            <TableCell><strong>Описание</strong></TableCell>
-            <TableCell><strong>Используется</strong></TableCell>
-            <TableCell align="center"><strong>Действия</strong></TableCell>
+            {['ID','Описание','Используется','Действия'].map(h => (
+              <TableCell key={h} sx={{ fontWeight:600 }} align={h==='Действия'?'center':'left'}>
+                {h}
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredSortedJobs.map((job) => (
+          {filteredSorted.map(job => (
             <TableRow key={job.jobId} hover>
               <TableCell>{job.jobId}</TableCell>
               <TableCell>
-                {editingJobId === job.jobId ? (
+                {editingId===job.jobId ? (
                   <TextField
-                    value={editingDescription}
-                    onChange={(e) => setEditingDescription(e.target.value)}
-                    variant="outlined"
+                    value={editingDesc}
+                    onChange={e=>setEditingDesc(e.target.value)}
                     size="small"
                     fullWidth
                   />
-                ) : (
-                  job.jobDescription
-                )}
+                ) : job.jobDescription}
               </TableCell>
-              <TableCell>
-                {job.usageCount !== null && job.usageCount !== undefined ? job.usageCount : '-'}
-              </TableCell>
+              <TableCell>{job.usageCount ?? '-'}</TableCell>
               <TableCell align="center">
-                {editingJobId === job.jobId ? (
+                {editingId===job.jobId ? (
                   <Stack direction="row" spacing={1} justifyContent="center">
-                    <Tooltip title="Сохранить изменения">
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleSave(job.jobId)}
-                        startIcon={<SaveIcon />}
-                      >
-                        Сохранить
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title="Отмена">
-                      <Button
-                        variant="outlined"
-                        onClick={handleCancel}
-                        startIcon={<CancelIcon />}
-                      >
-                        Отмена
-                      </Button>
-                    </Tooltip>
+                    <Button
+                      variant="contained"
+                      onClick={()=>handleSave(job.jobId)}
+                      startIcon={<SaveIcon />}
+                    >
+                      Сохранить
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleCancel}
+                      startIcon={<CancelIcon />}
+                    >
+                      Отмена
+                    </Button>
                   </Stack>
                 ) : (
                   <Stack direction="row" spacing={1} justifyContent="center">
-                    <Tooltip title="Редактировать">
-                      <Button
-                        variant="outlined"
-                        onClick={() => handleEdit(job)}
-                        startIcon={<EditIcon />}
-                      >
-                        Редактировать
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title="Удалить">
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={() => handleDelete(job.jobId)}
-                      >
-                        Удалить
-                      </Button>
-                    </Tooltip>
+                    <Button
+                      variant="outlined"
+                      onClick={()=>handleEditInit(job)}
+                      startIcon={<EditIcon />}
+                    >
+                      Редактировать
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={()=>handleDelete(job.jobId)}
+                    >
+                      Удалить
+                    </Button>
                   </Stack>
                 )}
               </TableCell>
             </TableRow>
           ))}
-          {filteredSortedJobs.length === 0 && (
+          {filteredSorted.length===0 && (
             <TableRow>
-              <TableCell colSpan={4} align="center">
-                Нет данных
-              </TableCell>
+              <TableCell colSpan={4} align="center">Нет данных</TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+
+      {/* Snackbar */}
       <Snackbar
-        open={snackbar.open}
+        open={snack.open}
         autoHideDuration={3000}
-        onClose={closeSnackbar}
+        onClose={closeSnack}
         TransitionComponent={Slide}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical:'bottom', horizontal:'center' }}
       >
-        <Alert severity={snackbar.severity} onClose={closeSnackbar} sx={{ width: '100%' }}>
-          {snackbar.message}
+        <Alert onClose={closeSnack} severity={snack.sev} sx={{ width:'100%' }}>
+          {snack.msg}
         </Alert>
       </Snackbar>
-    </Paper>
-  )
+    </Container>
+  );
 }
-
-export default Job
