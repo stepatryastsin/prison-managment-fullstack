@@ -1,3 +1,5 @@
+// src/pages/OwnCertificateFromFrontend.jsx
+
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Box,
@@ -22,161 +24,148 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-// URL для получения сертификатов заключённых по курсам
 const API_CERTIFICATES = 'http://localhost:8080/api/ownCertificateFrom';
 
-const OwnCertificateFromFrontend = () => {
+export default function OwnCertificateFromFrontend() {
   const [recordList, setRecordList] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [errorRecords, setErrorRecords] = useState(null);
-  // Строка поиска для фильтрации записей
   const [recordsSearch, setRecordsSearch] = useState('');
-  // Snackbar для уведомлений (например, об ошибках загрузки)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // Получение записей из API
-  const fetchRecords = () => {
+  const openSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+  const closeSnackbar = () => setSnackbar(s => ({ ...s, open: false }));
+
+  const fetchRecords = async () => {
     setLoadingRecords(true);
-    fetch(API_CERTIFICATES)
-      .then((res) => {
-        if (!res.ok) throw new Error('Ошибка при загрузке данных сертификатов');
-        return res.json();
-      })
-      .then((data) => {
-        setRecordList(data);
-        setLoadingRecords(false);
-      })
-      .catch((err) => {
-        setErrorRecords(err);
-        setLoadingRecords(false);
-        openSnackbar(err.message, 'error');
+    try {
+      const res = await fetch(API_CERTIFICATES, {
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' }
       });
+      if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+      const data = await res.json();
+      setRecordList(data);
+    } catch (err) {
+      setErrorRecords(err);
+      openSnackbar(err.message, 'error');
+    } finally {
+      setLoadingRecords(false);
+    }
   };
 
   useEffect(() => {
     fetchRecords();
   }, []);
 
-  const openSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
-  };
-  const closeSnackbar = () => setSnackbar({ ...snackbar, open: false });
-
-  // Функция удаления сертификата по prisonerId и courseId
-  const handleDeleteCertificate = (record) => {
+  const handleDeleteCertificate = async (record) => {
     const prisonerId = record.prisoner?.prisonerId || record.id?.prisonerId;
     const courseId = record.course?.courseId || record.id?.courseId;
     if (!prisonerId || !courseId) {
-      openSnackbar('Невозможно удалить: отсутствуют идентификаторы', 'error');
-      return;
+      return openSnackbar('Отсутствуют идентификаторы', 'error');
     }
-    if (window.confirm('Вы действительно хотите удалить сертификат?')) {
-      fetch(`${API_CERTIFICATES}/${prisonerId}/${courseId}`, {
+    if (!window.confirm('Удалить сертификат?')) return;
+    try {
+      const res = await fetch(`${API_CERTIFICATES}/${prisonerId}/${courseId}`, {
         method: 'DELETE',
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error('Ошибка удаления сертификата');
-          openSnackbar('Сертификат успешно удалён', 'success');
-          fetchRecords();
-        })
-        .catch((err) => {
-          console.error(err);
-          openSnackbar(err.message, 'error');
-        });
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+      openSnackbar('Сертификат удалён', 'success');
+      await fetchRecords();
+    } catch (err) {
+      openSnackbar(err.message, 'error');
     }
   };
 
-  // Группировка записей по prisonerId для удобного просмотра
   const groupedRecords = useMemo(() => {
     return recordList.reduce((acc, record) => {
-      const prisonerId = record.prisoner?.prisonerId || record.id?.prisonerId;
-      if (prisonerId) {
-        if (!acc[prisonerId]) acc[prisonerId] = [];
-        acc[prisonerId].push(record);
-      }
+      const pid = record.prisoner?.prisonerId || record.id?.prisonerId;
+      if (!pid) return acc;
+      acc[pid] = acc[pid] || [];
+      acc[pid].push(record);
       return acc;
     }, {});
   }, [recordList]);
 
-  // Фильтрация записей по строке поиска (по имени заключённого или названию курса)
-  const filteredGroupKeys = useMemo(() => {
-    if (!recordsSearch.trim()) return Object.keys(groupedRecords);
-    return Object.keys(groupedRecords).filter((prisonerId) =>
-      groupedRecords[prisonerId].some((record) =>
-        (record.prisoner &&
-          `${record.prisoner.firstName} ${record.prisoner.lastName}`
-            .toLowerCase()
-            .includes(recordsSearch.toLowerCase())) ||
-        (record.course &&
-          record.course.courseName.toLowerCase().includes(recordsSearch.toLowerCase()))
-      )
+  const filteredKeys = useMemo(() => {
+    if (!recordsSearch) return Object.keys(groupedRecords);
+    return Object.keys(groupedRecords).filter(pid =>
+      groupedRecords[pid].some(rec => {
+        const name = rec.prisoner
+          ? `${rec.prisoner.firstName} ${rec.prisoner.lastName}`.toLowerCase()
+          : '';
+        const course = rec.course?.courseName.toLowerCase() || '';
+        return name.includes(recordsSearch.toLowerCase()) || course.includes(recordsSearch.toLowerCase());
+      })
     );
-  }, [groupedRecords, recordsSearch]);
+  }, [recordsSearch, groupedRecords]);
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom align="center">
-        Просмотр сертификатов заключённых по курсам
+      <Typography variant="h4" align="center" gutterBottom>
+        Сертификаты заключённых по курсам
       </Typography>
+
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
         <TextField
-          variant="outlined"
-          placeholder="Поиск записей..."
-          value={recordsSearch}
-          onChange={(e) => setRecordsSearch(e.target.value)}
           size="small"
+          placeholder="Поиск..."
+          value={recordsSearch}
+          onChange={e => setRecordsSearch(e.target.value)}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon color="action" />
+                <SearchIcon />
               </InputAdornment>
             )
           }}
-          sx={{ width: '300px' }}
+          sx={{ width: 300 }}
         />
       </Box>
+
       {loadingRecords ? (
-        <Typography>Загрузка записей...</Typography>
+        <Typography>Загрузка...</Typography>
       ) : errorRecords ? (
         <Typography color="error">Ошибка: {errorRecords.message}</Typography>
-      ) : Object.keys(groupedRecords).length > 0 ? (
-        filteredGroupKeys.map((prisonerId) => (
-          <Accordion key={prisonerId} defaultExpanded sx={{ mb: 2, borderRadius: 2 }}>
+      ) : filteredKeys.length > 0 ? (
+        filteredKeys.map(pid => (
+          <Accordion key={pid} defaultExpanded sx={{ mb: 2 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="h6">
-                Заключённый ID: {prisonerId}
-                {groupedRecords[prisonerId][0]?.prisoner &&
-                  ` - ${groupedRecords[prisonerId][0].prisoner.firstName} ${groupedRecords[prisonerId][0].prisoner.lastName}`}
+                Заключённый ID: {pid}
+                {groupedRecords[pid][0]?.prisoner &&
+                  ` — ${groupedRecords[pid][0].prisoner.firstName} ${groupedRecords[pid][0].prisoner.lastName}`}
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>Course ID</strong></TableCell>
-                    <TableCell><strong>Название курса</strong></TableCell>
-                    <TableCell align="center"><strong>Действия</strong></TableCell>
+                    <TableCell>Course ID</TableCell>
+                    <TableCell>Название курса</TableCell>
+                    <TableCell align="center">Действия</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {groupedRecords[prisonerId].map((record, idx) => (
-                    <TableRow key={idx} hover>
+                  {groupedRecords[pid].map((rec, i) => (
+                    <TableRow key={i} hover>
+                      <TableCell>{rec.course?.courseId || rec.id?.courseId || '-'}</TableCell>
                       <TableCell>
-                        {record.course?.courseId || record.id?.courseId || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {record.course?.courseName || '---'}
-                        {record.course?.deleted && (
+                        {rec.course?.courseName || '—'}
+                        {rec.course?.deleted && (
                           <Typography variant="caption" color="error" sx={{ ml: 1 }}>
                             (Не активен)
                           </Typography>
                         )}
                       </TableCell>
                       <TableCell align="center">
-                        <Tooltip title="Удалить сертификат">
+                        <Tooltip title="Удалить">
                           <IconButton
                             color="error"
-                            onClick={() => handleDeleteCertificate(record)}
+                            onClick={() => handleDeleteCertificate(rec)}
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -206,6 +195,4 @@ const OwnCertificateFromFrontend = () => {
       </Snackbar>
     </Box>
   );
-};
-
-export default OwnCertificateFromFrontend;
+}

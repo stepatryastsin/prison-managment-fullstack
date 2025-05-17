@@ -45,20 +45,23 @@ const Container = styled(Paper)(({ theme }) => ({
   boxShadow: theme.shadows[4],
 }))
 
-export default function SecurityLevels() {
+export default function SecurityLevels({ readOnly = false }) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const [levels, setLevels] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // только если не readOnly:
   const [createOpen, setCreateOpen] = useState(false)
   const [newLevelNo, setNewLevelNo] = useState('')
   const [newDesc, setNewDesc] = useState('')
 
+  // детали доступны всем:
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailItem, setDetailItem] = useState(null)
 
+  // edit / delete только если не readOnly:
   const [editId, setEditId] = useState(null)
   const [editDesc, setEditDesc] = useState('')
 
@@ -68,14 +71,21 @@ export default function SecurityLevels() {
   const openSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev })
   const closeSnack = () => setSnack(s => ({ ...s, open: false }))
 
-  useEffect(() => { fetchLevels() }, [])
+  useEffect(() => {
+    fetchLevels()
+  }, [])
 
   const fetchLevels = async () => {
     setLoading(true)
     try {
-      const res = await fetch(API_URL)
-      if (!res.ok) throw new Error(res.statusText)
-      setLevels(await res.json())
+      const res = await fetch(API_URL, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+      })
+      if (!res.ok) throw new Error(`Ошибка: ${res.status}`)
+      const data = await res.json()
+      setLevels(data)
     } catch (e) {
       openSnack(`Ошибка загрузки: ${e.message}`, 'error')
     } finally {
@@ -87,10 +97,17 @@ export default function SecurityLevels() {
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ securityLevelNo: Number(newLevelNo), description: newDesc })
+        body: JSON.stringify({
+          securityLevelNo: Number(newLevelNo),
+          description: newDesc
+        })
       })
-      if (!res.ok) throw new Error((await res.json()).message || res.statusText)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.message || res.statusText)
+      }
       openSnack('Уровень создан')
       setCreateOpen(false)
       setNewLevelNo('')
@@ -110,10 +127,14 @@ export default function SecurityLevels() {
     try {
       const res = await fetch(`${API_URL}/${levelNo}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({ securityLevelNo: levelNo, description: editDesc })
       })
-      if (!res.ok) throw new Error((await res.json()).message || res.statusText)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.message || res.statusText)
+      }
       openSnack('Уровень обновлён')
       setEditId(null)
       fetchLevels()
@@ -124,8 +145,14 @@ export default function SecurityLevels() {
 
   const handleDelete = async levelNo => {
     try {
-      const res = await fetch(`${API_URL}/${levelNo}`, { method:'DELETE' })
-      if (!res.ok) throw new Error((await res.json()).message || res.statusText)
+      const res = await fetch(`${API_URL}/${levelNo}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.message || res.statusText)
+      }
       openSnack('Уровень удалён')
       fetchLevels()
     } catch (e) {
@@ -153,9 +180,12 @@ export default function SecurityLevels() {
       <AppBar position="static" color="primary" sx={{ mb:2 }}>
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow:1 }}>Уровни безопасности</Typography>
-          <Button color="inherit" startIcon={<AddIcon />} onClick={()=>setCreateOpen(true)}>
-            Новый уровень
-          </Button>
+          {/* Кнопка создания — только если не readOnly */}
+          {!readOnly && (
+            <Button color="inherit" startIcon={<AddIcon />} onClick={()=>setCreateOpen(true)}>
+              Новый уровень
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
 
@@ -171,15 +201,26 @@ export default function SecurityLevels() {
                     subheader={lvl.description || '—'}
                     action={
                       <Stack direction="row" spacing={1}>
-                        <IconButton size="small" onClick={()=>handleEditInit(lvl)}><EditIcon fontSize="small"/></IconButton>
-                        <IconButton size="small" onClick={()=>openDetail(lvl)}><InfoIcon fontSize="small"/></IconButton>
-                        <IconButton size="small" color="error" onClick={()=>setDeleteConfirm({open:true,levelNo:lvl.securityLevelNo})}>
-                          <DeleteIcon fontSize="small"/>
+                        {/* Кнопки редактирования и удаления — только если не readOnly */}
+                        {!readOnly && (
+                          <>
+                            <IconButton size="small" onClick={()=>handleEditInit(lvl)}>
+                              <EditIcon fontSize="small"/>
+                            </IconButton>
+                            <IconButton size="small" color="error" onClick={()=>setDeleteConfirm({open:true,levelNo:lvl.securityLevelNo})}>
+                              <DeleteIcon fontSize="small"/>
+                            </IconButton>
+                          </>
+                        )}
+                        {/* Инфо — всегда */}
+                        <IconButton size="small" onClick={()=>openDetail(lvl)}>
+                          <InfoIcon fontSize="small"/>
                         </IconButton>
                       </Stack>
                     }
                   />
-                  {editId === lvl.securityLevelNo && (
+                  {/* Inline-редактирование — только если не readOnly */}
+                  {!readOnly && editId === lvl.securityLevelNo && (
                     <CardContent sx={{ mt:'auto' }}>
                       <Stack spacing={2}>
                         <TextField
@@ -206,59 +247,66 @@ export default function SecurityLevels() {
         </AnimatePresence>
       </Grid>
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onClose={()=>setCreateOpen(false)}>
-        <DialogTitle>Новый уровень</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt:1 }}>
-            <TextField
-              label="Номер уровня"
-              type="number"
-              value={newLevelNo}
-              onChange={e=>setNewLevelNo(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Описание"
-              value={newDesc}
-              onChange={e=>setNewDesc(e.target.value)}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={()=>setCreateOpen(false)}>Отмена</Button>
-          <Button variant="contained" onClick={handleCreate}>Создать</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Create Dialog — только если не readOnly */}
+      {!readOnly && (
+        <Dialog open={createOpen} onClose={()=>setCreateOpen(false)}>
+          <DialogTitle>Новый уровень</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt:1 }}>
+              <TextField
+                label="Номер уровня"
+                type="number"
+                value={newLevelNo}
+                onChange={e=>setNewLevelNo(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Описание"
+                value={newDesc}
+                onChange={e=>setNewDesc(e.target.value)}
+                fullWidth
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={()=>setCreateOpen(false)}>Отмена</Button>
+            <Button variant="contained" onClick={handleCreate}>Создать</Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
-      {/* Detail Dialog */}
+      {/* Detail Dialog — всегда */}
       <Dialog open={detailOpen} onClose={()=>setDetailOpen(false)}>
         <DialogTitle>Детали уровня</DialogTitle>
         <DialogContent dividers>
-          {detailItem ? (
+          {detailItem && (
             <>
               <Typography><strong>№{detailItem.securityLevelNo}</strong></Typography>
               <Typography sx={{ mt:1 }}>{detailItem.description || '—'}</Typography>
             </>
-          ) : null}
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={()=>setDetailOpen(false)}>Закрыть</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirm */}
-      <Dialog open={deleteConfirm.open} onClose={()=>setDeleteConfirm({open:false,levelNo:null})}>
-        <DialogTitle>Удалить уровень</DialogTitle>
-        <DialogContent>
-          Уверены, что хотите удалить уровень №{deleteConfirm.levelNo}?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={()=>setDeleteConfirm({open:false,levelNo:null})}>Отмена</Button>
-          <Button color="error" onClick={()=>handleDelete(deleteConfirm.levelNo)}>Удалить</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Delete Confirm — только если не readOnly */}
+      {!readOnly && (
+        <Dialog
+          open={deleteConfirm.open}
+          onClose={()=>setDeleteConfirm({open:false,levelNo:null})}
+        >
+          <DialogTitle>Удалить уровень</DialogTitle>
+          <DialogContent>
+            Уверены, что хотите удалить уровень №{deleteConfirm.levelNo}?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={()=>setDeleteConfirm({open:false,levelNo:null})}>Отмена</Button>
+            <Button color="error" onClick={()=>handleDelete(deleteConfirm.levelNo)}>Удалить</Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       <Snackbar
         open={snack.open}

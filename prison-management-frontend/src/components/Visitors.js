@@ -1,5 +1,4 @@
 // src/pages/Visitors.jsx
-
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Paper,
@@ -20,12 +19,12 @@ import {
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api/visitors';
 
-export default function Visitors() {
+export default function Visitors({ readOnly = false }) {
   const [visitors, setVisitors] = useState([]);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -67,7 +66,7 @@ export default function Visitors() {
         openSnackbar('Посетитель добавлен');
       }
       setEditingId(null);
-      setFormData({ firstName:'', lastName:'', phoneNumber:'', relationToPrisoner:'', visitDate:'' });
+      setFormData({ firstName: '', lastName: '', phoneNumber: '', relationToPrisoner: '', visitDate: '' });
       fetchVisitors();
     } catch {
       openSnackbar('Ошибка при сохранении', 'error');
@@ -75,6 +74,7 @@ export default function Visitors() {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Удалить этого посетителя?')) return;
     try {
       await axios.delete(`${API_URL}/${id}`);
       openSnackbar('Посетитель удалён');
@@ -108,135 +108,165 @@ export default function Visitors() {
   const closeSnackbar = () => setSnackbar((s) => ({ ...s, open: false }));
 
   return (
-    <Paper
-      component={motion.div}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-      sx={{ p: 4, maxWidth: 1000, mx: 'auto', mt: 4, boxShadow: 3 }}
-    >
-      <Typography variant="h4" align="center" gutterBottom>
-        {editingId != null ? 'Редактировать посетителя' : 'Добавить посетителя'}
-      </Typography>
-
-      <Box
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 4,
-          justifyContent: 'space-between',
-        }}
+    <AnimatePresence>
+      <Paper
+        component={motion.div}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.4 }}
+        sx={{ p: 4, maxWidth: 1000, mx: 'auto', mt: 4, boxShadow: 3 }}
       >
-        {[
-          { label: 'First Name', name: 'firstName', required: true },
-          { label: 'Last Name', name: 'lastName', required: true },
-          { label: 'Phone Number', name: 'phoneNumber', required: true },
-          { label: 'Relation to Prisoner', name: 'relationToPrisoner' },
-          { label: 'Visit Date', name: 'visitDate', type: 'date', required: true },
-        ].map((field) => (
+        {/* Форма добавления/редактирования — только если не readOnly */}
+        {!readOnly && (
+          <>
+            <Typography variant="h4" align="center" gutterBottom>
+              {editingId != null ? 'Редактировать посетителя' : 'Добавить посетителя'}
+            </Typography>
+
+            <Box
+              component="form"
+              onSubmit={handleSubmit}
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 2,
+                mb: 4,
+                justifyContent: 'space-between',
+              }}
+            >
+              {[
+                { label: 'First Name', name: 'firstName', required: true },
+                { label: 'Last Name', name: 'lastName', required: true },
+                { label: 'Phone Number', name: 'phoneNumber', required: true },
+                { label: 'Relation to Prisoner', name: 'relationToPrisoner' },
+                { label: 'Visit Date', name: 'visitDate', type: 'date', required: true },
+              ].map((field) => (
+                <TextField
+                  key={field.name}
+                  label={field.label}
+                  name={field.name}
+                  type={field.type || 'text'}
+                  value={formData[field.name]}
+                  onChange={handleChange}
+                  required={field.required || false}
+                  InputLabelProps={field.type === 'date' ? { shrink: true } : null}
+                  sx={{ flex: 1, minWidth: 200 }}
+                />
+              ))}
+
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ alignSelf: 'center', px: 4 }}
+              >
+                {editingId != null ? 'Сохранить' : 'Добавить'}
+              </Button>
+            </Box>
+          </>
+        )}
+
+        {/* Поиск — всегда */}
+        <Stack direction="row" justifyContent="flex-end" mb={2}>
           <TextField
-            key={field.name}
-            label={field.label}
-            name={field.name}
-            type={field.type || 'text'}
-            value={formData[field.name]}
-            onChange={handleChange}
-            required={field.required || false}
-            InputLabelProps={field.type === 'date' ? { shrink: true } : null}
-            sx={{ flex: 1, minWidth: 200 }}
+            placeholder="Поиск..."
+            size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ width: 300 }}
           />
-        ))}
+        </Stack>
 
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{ alignSelf: 'center', px: 4 }}
-        >
-          {editingId != null ? 'Сохранить' : 'Добавить'}
-        </Button>
-      </Box>
+        <Typography variant="h5" gutterBottom>
+          Список посетителей
+        </Typography>
 
-      <Stack direction="row" justifyContent="flex-end" mb={2}>
-        <TextField
-          placeholder="Поиск..."
-          size="small"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ width: 300 }}
-        />
-      </Stack>
-
-      <Typography variant="h5" gutterBottom>
-        Список посетителей
-      </Typography>
-
-      <Table>
-        <TableHead sx={{ backgroundColor: 'primary.main' }}>
-          <TableRow>
-            {['First Name', 'Last Name', 'Phone', 'Relation', 'Visit Date', 'Actions'].map((h) => (
-              <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }} align={h === 'Actions' ? 'center' : 'left'}>
-                {h}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.map((v) => (
-            <TableRow key={v.visitorId} hover component={motion.tr} whileHover={{ scale: 1.01 }}>
-              <TableCell>{v.firstName}</TableCell>
-              <TableCell>{v.lastName}</TableCell>
-              <TableCell>{v.phoneNumber}</TableCell>
-              <TableCell>{v.relationToPrisoner}</TableCell>
-              <TableCell>{v.visitDate}</TableCell>
-              <TableCell align="center">
-                <Tooltip title="Редактировать">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    sx={{ mr: 1 }}
-                    onClick={() => handleEdit(v)}
-                  >
-                    Ред.
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Удалить">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    onClick={() => handleDelete(v.visitorId)}
-                  >
-                    Удл.
-                  </Button>
-                </Tooltip>
-              </TableCell>
+        <Table>
+          <TableHead sx={{ backgroundColor: 'primary.main' }}>
+            <TableRow>
+              {['First Name', 'Last Name', 'Phone', 'Relation', 'Visit Date', 'Actions'].map((h) => (
+                <TableCell
+                  key={h}
+                  sx={{ color: '#fff', fontWeight: 'bold' }}
+                  align={h === 'Actions' ? 'center' : 'left'}
+                >
+                  {h}
+                </TableCell>
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={closeSnackbar}
-        TransitionComponent={Slide}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={closeSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Paper>
+          <TableBody>
+            <AnimatePresence>
+              {filtered.map((v) => (
+                <TableRow
+                  key={v.visitorId}
+                  hover
+                  component={motion.tr}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  whileHover={{ scale: 1.01 }}
+                >
+                  <TableCell>{v.firstName}</TableCell>
+                  <TableCell>{v.lastName}</TableCell>
+                  <TableCell>{v.phoneNumber}</TableCell>
+                  <TableCell>{v.relationToPrisoner}</TableCell>
+                  <TableCell>{v.visitDate}</TableCell>
+                  <TableCell align="center">
+                    {!readOnly && (
+                      <>
+                        <Tooltip title="Редактировать">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ mr: 1 }}
+                            onClick={() => handleEdit(v)}
+                          >
+                            Ред.
+                          </Button>
+                        </Tooltip>
+                        <Tooltip title="Удалить">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => handleDelete(v.visitorId)}
+                          >
+                            Удл.
+                          </Button>
+                        </Tooltip>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </AnimatePresence>
+          </TableBody>
+        </Table>
+
+        {/* Snackbar */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={closeSnackbar}
+          TransitionComponent={Slide}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={closeSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Paper>
+    </AnimatePresence>
   );
 }

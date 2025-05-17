@@ -1,281 +1,284 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import axios from 'axios';
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Container,
-  Tabs,
-  Tab,
-  Box,
-  Menu,
-  MenuItem,
+  AppBar, Toolbar, Typography, Button, Container,
+  Tabs, Tab, Box, Menu, MenuItem, TextField, Alert
 } from '@mui/material';
 
-// Импорт компонентов разделов
+// Импорт компонентов страниц
 import Prisoners from './components/Prisoners';
 import Staff from './components/Staff';
-import Job from './components/Job'; 
+import Job from './components/Job';
 import Cells from './components/Cells';
 import Visitors from './components/Visitors';
 import Infirmary from './components/Infirmary';
 import Library from './components/Library';
 import Courses from './components/Courses';
-import Work from './components/EnrollmentCertificates'; 
+import Work from './components/EnrollmentCertificates';
 import Borrowed from './components/Borrowed';
 import VisitedBy from './components/VisitedBy';
-import Properties from './components/Properties'; 
+import Properties from './components/Properties';
 import OwnCertificateFromFrontend from './components/OwnCertificateFromFrontend';
 import PrisonerLaborFrontend from './components/PrisonerLabor';
 import SecurityLevels from './components/SecurityLevels';
 
-function App() {
-  // Состояние для выбранной вкладки
-  const [tabValue, setTabValue] = useState(0);
-  // Состояние для главного меню
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  // Состояния для подменю (объект с именами разделов)
-  const [submenu, setSubmenu] = useState({ 
-    prisoners: null,
-    staff: null,
-    cells: null,
-    visitors: null,
-  });
+axios.defaults.withCredentials = true;
 
-  // Обработчик смены вкладок
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
+const AuthContext = createContext();
+export const useAuth = () => useContext(AuthContext);
 
-  // Универсальные обработчики для главного меню
-  const handleMenuOpen = (event) => {
-    setMenuAnchor(event.currentTarget);
-  };
-  const handleMenuClose = () => {
-    setMenuAnchor(null);
-  };
+// Компонент для защиты маршрутов по ролям
+const Protected = ({ allowed, children }) => {
+  const { role } = useAuth();
+  if (!allowed.includes(role)) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
 
-  // Обработчики открытия/закрытия подменю по имени раздела
-  const handleSubmenuOpen = (menuName, event) => {
-    setSubmenu((prev) => ({ ...prev, [menuName]: event.currentTarget }));
-  };
-  const handleSubmenuClose = (menuName) => {
-    setSubmenu((prev) => ({ ...prev, [menuName]: null }));
+// Страница авторизации
+const AuthPage = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    try {
+      const res = await axios.post('http://localhost:8080/auth/login', { username, password });
+      const role = res.data.role.replace('ROLE_', '').toLowerCase();
+      onLogin(role);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Ошибка входа');
+    }
   };
 
   return (
-    <Router>
-      {/* Шапка приложения */}
-      <AppBar position="static" sx={{ backgroundColor: '#1976d2' }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Система управления пенитенциарным учреждением
-          </Typography>
-          <Button color="inherit" onClick={handleMenuOpen}>
-            Меню
-          </Button>
-          <Menu 
-            anchorEl={menuAnchor} 
-            open={Boolean(menuAnchor)}
-            onClose={handleMenuClose}
-            sx={{ mt: 1 }}
-          >
-            <MenuItem component={Link} to="/prisoners" onClick={handleMenuClose}>
-              Заключённые
-            </MenuItem>
-            <MenuItem component={Link} to="/staff" onClick={handleMenuClose}>
-              Персонал
-            </MenuItem>
-            <MenuItem component={Link} to="/cells" onClick={handleMenuClose}>
-              Камеры
-            </MenuItem>
-            <MenuItem component={Link} to="/infirmary" onClick={handleMenuClose}>
-              Лазарет
-            </MenuItem>
-            <MenuItem component={Link} to="/library" onClick={handleMenuClose}>
-              Библиотека
-            </MenuItem>
-          </Menu>
-        </Toolbar>
+    <Box sx={{ maxWidth: 400, mx: 'auto', mt: 10 }}>
+      <Typography variant="h5" gutterBottom>Авторизация</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <TextField
+        label="Логин"
+        fullWidth
+        sx={{ mb: 2 }}
+        value={username}
+        onChange={e => setUsername(e.target.value)}
+      />
+      <TextField
+        label="Пароль"
+        type="password"
+        fullWidth
+        sx={{ mb: 2 }}
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+      />
+      <Button variant="contained" fullWidth onClick={handleLogin}>Войти</Button>
+    </Box>
+  );
+};
 
-        {/* Вкладки навигации */}
-        <Tabs value={tabValue} onChange={handleTabChange} centered>
-          <Tab label="Главная" component={Link} to="/" />
-          <Tab 
-            label="Заключённые" 
-            onClick={(event) => handleSubmenuOpen('prisoners', event)}
-          />
-          <Tab label="Обучение" component={Link} to="/prisoners/courses" />
-          <Tab 
-            label="Персонал" 
-            onClick={(event) => handleSubmenuOpen('staff', event)}
-          />
-          <Tab 
-            label="Камеры" 
-            onClick={(event) => handleSubmenuOpen('cells', event)}
-          />
-          <Tab 
-            label="Посетители" 
-            onClick={(event) => handleSubmenuOpen('visitors', event)}
-          />
-          <Tab label="Лазарет" component={Link} to="/infirmary" />
-          <Tab label="Библиотека" component={Link} to="/library" />
-        </Tabs>
+function App() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [role, setRole] = useState(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [submenuAnchors, setSubmenuAnchors] = useState({});
 
-        {/* Подменю для Заключённых */}
-        <Menu
-          anchorEl={submenu.prisoners}
-          open={Boolean(submenu.prisoners)}
-          onClose={() => handleSubmenuClose('prisoners')}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+  const isAdmin = role === 'admin';
+  const isWarden = role === 'warden';
+  const isViewer = role === 'viewer';
+  const readOnly = isViewer;
+
+  useEffect(() => {
+    axios.get('http://localhost:8080/auth/check')
+      .then(res => {
+        setAuthenticated(true);
+        setRole(res.data.role.replace('ROLE_', '').toLowerCase());
+      })
+      .catch(() => {
+        setAuthenticated(false);
+        setRole(null);
+      });
+  }, []);
+
+  const handleLogout = async () => {
+    await axios.post('http://localhost:8080/auth/logout');
+    setAuthenticated(false);
+    setRole(null);
+  };
+
+  // Обработчики для подменю
+  const handleOpenSubmenu = (key) => (event) => {
+    setSubmenuAnchors(prev => ({ ...prev, [key]: event.currentTarget }));
+  };
+
+  const handleCloseSubmenu = (key) => () => {
+    setSubmenuAnchors(prev => ({ ...prev, [key]: null }));
+  };
+
+  const renderMenu = (key, items) => (
+    <Menu
+      anchorEl={submenuAnchors[key]}
+      open={Boolean(submenuAnchors[key])}
+      onClose={handleCloseSubmenu(key)}
+    >
+      {items.map(({ to, label }) => (
+        <MenuItem
+          key={to}
+          component={Link}
+          to={to}
+          onClick={handleCloseSubmenu(key)}
         >
-          <MenuItem 
-            component={Link} 
-            to="/prisoners" 
-            onClick={() => handleSubmenuClose('prisoners')}
-          >
-            Все заключённые
-          </MenuItem>
-          <MenuItem 
-            component={Link} 
-            to="/prisoners/prisoner-labor" 
-            onClick={() => handleSubmenuClose('prisoners')}
-          >
-            Работа заключённых
-          </MenuItem>
-          <MenuItem 
-            component={Link} 
-            to="/prisoners/borrowed" 
-            onClick={() => handleSubmenuClose('prisoners')}
-          >
-            Книги из библиотеки
-          </MenuItem>
-          <MenuItem 
-            component={Link} 
-            to="/prisoners/properties" 
-            onClick={() => handleSubmenuClose('prisoners')}
-          >
-            Вещи в камерах
-          </MenuItem>
-          <MenuItem 
-            component={Link} 
-            to="/enrollments-certs" 
-            onClick={() => handleSubmenuClose('prisoners')}
-          >
-            Регистрация и сертификаты
-          </MenuItem>
-        </Menu>
+          {label}
+        </MenuItem>
+      ))}
+    </Menu>
+  );
 
-        {/* Подменю для Персонала */}
-        <Menu
-          anchorEl={submenu.staff}
-          open={Boolean(submenu.staff)}
-          onClose={() => handleSubmenuClose('staff')}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <MenuItem 
-            component={Link} 
-            to="/staff" 
-            onClick={() => handleSubmenuClose('staff')}
-          >
-            Все сотрудники
-          </MenuItem>
-          <MenuItem 
-            component={Link} 
-            to="/staff/job" 
-            onClick={() => handleSubmenuClose('staff')}
-          >
-            Должности
-          </MenuItem>
-        </Menu>
+  if (!authenticated) {
+    return <AuthPage onLogin={(r) => { setAuthenticated(true); setRole(r); }} />;
+  }
 
-        {/* Подменю для Камер */}
-        <Menu
-          anchorEl={submenu.cells}
-          open={Boolean(submenu.cells)}
-          onClose={() => handleSubmenuClose('cells')}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <MenuItem 
-            component={Link} 
-            to="/cells" 
-            onClick={() => handleSubmenuClose('cells')}
-          >
-            Камеры
-          </MenuItem>
-          <MenuItem 
-            component={Link} 
-            to="/security-levels" 
-            onClick={() => handleSubmenuClose('cells')}
-          >
-            Уровни безопасности
-          </MenuItem>
-        </Menu>
+  return (
+    <AuthContext.Provider value={{ role }}>
+      <Router>
+        <AppBar position="static">
+          <Toolbar>
+            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+              Пенитенциарная система
+            </Typography>
+            <Button color="inherit" onClick={e => setMenuAnchor(e.currentTarget)}>Меню</Button>
+            <Button color="inherit" onClick={handleLogout}>Выйти</Button>
+            <Menu
+              anchorEl={menuAnchor}
+              open={Boolean(menuAnchor)}
+              onClose={() => setMenuAnchor(null)}
+            >
+              <MenuItem component={Link} to="/prisoners" onClick={() => setMenuAnchor(null)}>Заключённые</MenuItem>
+              {isAdmin && <MenuItem component={Link} to="/staff" onClick={() => setMenuAnchor(null)}>Персонал</MenuItem>}
+              {isAdmin && <MenuItem component={Link} to="/cells" onClick={() => setMenuAnchor(null)}>Камеры</MenuItem>}
+              <MenuItem component={Link} to="/infirmary" onClick={() => setMenuAnchor(null)}>Лазарет</MenuItem>
+              <MenuItem component={Link} to="/library" onClick={() => setMenuAnchor(null)}>Библиотека</MenuItem>
+            </Menu>
+          </Toolbar>
 
-        {/* Подменю для Посетителей */}
-        <Menu
-          anchorEl={submenu.visitors}
-          open={Boolean(submenu.visitors)}
-          onClose={() => handleSubmenuClose('visitors')}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <MenuItem 
-            component={Link} 
-            to="/visitors" 
-            onClick={() => handleSubmenuClose('visitors')}
-          >
-            Запись и просмотр посетителей
-          </MenuItem>
-          <MenuItem 
-            component={Link} 
-            to="/visited-by" 
-            onClick={() => handleSubmenuClose('visitors')}
-          >
-            Проверка посещаемости
-          </MenuItem>
-        </Menu>
-      </AppBar>
+          <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} centered>
+            <Tab label="Главная" component={Link} to="/" />
+            <Tab label="Заключённые" onClick={handleOpenSubmenu('prisoners')} />
+            {!isViewer && <Tab label="Обучение" component={Link} to="/prisoners/courses" />}
+            {isAdmin && <Tab label="Персонал" onClick={handleOpenSubmenu('staff')} />}
+            {isAdmin && <Tab label="Камеры" onClick={handleOpenSubmenu('cells')} />}
+            <Tab label="Посетители" onClick={handleOpenSubmenu('visitors')} />
+            <Tab label="Лазарет" component={Link} to="/infirmary" />
+            <Tab label="Библиотека" component={Link} to="/library" />
+          </Tabs>
 
-      {/* Контейнер для вывода контента */}
-      <Container sx={{ mt: 4 }}>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" gutterBottom>
-                  Добро пожаловать в систему управления пенитенциарным учреждением
-                </Typography>
-                <Typography variant="body1">
-                  Используйте верхнее меню или вкладки для перехода в нужный раздел.
-                </Typography>
-              </Box>
-            }
-          />
-          <Route path="/prisoners" element={<Prisoners />} />
-          <Route path="/prisoners/courses" element={<Courses />} />
-          {/* Изменённый маршрут для "Работа заключённых" */}
-          <Route path="/prisoners/prisoner-labor" element={<PrisonerLaborFrontend />} />
-          <Route path="/own-certificate-from" element={<OwnCertificateFromFrontend />} />
-          <Route path="/prisoners/borrowed" element={<Borrowed />} />
-          <Route path="/prisoners/properties" element={<Properties />} />
-          <Route path="/staff" element={<Staff />} />
-          <Route path="/staff/job" element={<Job />} />
-          <Route path="/cells" element={<Cells />} />
-          <Route path="/security-levels" element={<SecurityLevels />} />
-          <Route path="/visitors" element={<Visitors />} />
-          <Route path="/infirmary" element={<Infirmary />} />
-          <Route path="/library" element={<Library />} />
-          <Route path="/visited-by" element={<VisitedBy />} />
-          <Route path="/enrollments-certs" element={<Work />} />
-        </Routes>
-      </Container>
-    </Router>
+          {renderMenu('prisoners', [
+            { to: '/prisoners', label: 'Все заключённые' },
+            ...(!isViewer ? [
+              { to: '/prisoners/prisoner-labor', label: 'Труд' },
+              { to: '/prisoners/borrowed', label: 'Книги' },
+              { to: '/enrollments-certs', label: 'Регистрации/Сертификаты' }
+            ] : []),
+            { to: '/prisoners/properties', label: 'Вещи' }
+          ])}
+
+          {isAdmin && renderMenu('staff', [
+            { to: '/staff', label: 'Все сотрудники' },
+            { to: '/staff/job', label: 'Должности' }
+          ])}
+
+          {isAdmin && renderMenu('cells', [
+            { to: '/cells', label: 'Камеры' },
+            { to: '/security-levels', label: 'Уровни защиты' }
+          ])}
+
+          {renderMenu('visitors', [
+            { to: '/visitors', label: 'Регистрация посетителей' },
+            { to: '/visited-by', label: 'Посещаемость' }
+          ])}
+        </AppBar>
+
+        <Container sx={{ mt: 4 }}>
+          <Routes>
+            <Route path="/" element={<Box textAlign="center" mt={4}><Typography variant="h4">Добро пожаловать, {role}</Typography></Box>} />
+
+            {/* Заключённые */}
+            <Route path="/prisoners" element={
+              <Protected allowed={['admin', 'warden', 'viewer']}>
+                <Prisoners readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/prisoners/properties" element={
+              <Protected allowed={['admin', 'warden', 'viewer']}>
+                <Properties readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/prisoners/courses" element={
+              <Protected allowed={['admin', 'warden']}>
+                <Courses readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/prisoners/prisoner-labor" element={
+              <Protected allowed={['admin', 'warden']}>
+                <PrisonerLaborFrontend readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/prisoners/borrowed" element={
+              <Protected allowed={['admin', 'warden']}>
+                <Borrowed readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/enrollments-certs" element={
+              <Protected allowed={['admin', 'warden']}>
+                <Work readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/own-certificate-from" element={
+              <Protected allowed={['admin', 'warden']}>
+                <OwnCertificateFromFrontend readOnly={readOnly} />
+              </Protected>} />
+
+            {/* Персонал */}
+            <Route path="/staff" element={
+              <Protected allowed={['admin']}>
+                <Staff />
+              </Protected>} />
+            <Route path="/staff/job" element={
+              <Protected allowed={['admin']}>
+                <Job />
+              </Protected>} />
+
+            {/* Камеры */}
+            <Route path="/cells" element={
+              <Protected allowed={['admin']}>
+                <Cells />
+              </Protected>} />
+            <Route path="/security-levels" element={
+              <Protected allowed={['admin']}>
+                <SecurityLevels />
+              </Protected>} />
+
+            {/* Посетители */}
+            <Route path="/visitors" element={
+              <Protected allowed={['admin', 'warden', 'viewer']}>
+                <Visitors readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/visited-by" element={
+              <Protected allowed={['admin', 'warden', 'viewer']}>
+                <VisitedBy readOnly={readOnly} />
+              </Protected>} />
+
+            {/* Общие */}
+            <Route path="/infirmary" element={
+              <Protected allowed={['admin', 'warden', 'viewer']}>
+                <Infirmary readOnly={readOnly} />
+              </Protected>} />
+            <Route path="/library" element={
+              <Protected allowed={['admin', 'warden', 'viewer']}>
+                <Library readOnly={readOnly} />
+              </Protected>} />
+
+            {/* Резерв */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Container>
+      </Router>
+    </AuthContext.Provider>
   );
 }
 

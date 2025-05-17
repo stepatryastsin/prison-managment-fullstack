@@ -18,7 +18,7 @@ import {
   Box,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api/libraries';
@@ -38,7 +38,7 @@ const Title = styled(Typography)(({ theme }) => ({
   marginBottom: theme.spacing(2),
 }));
 
-export default function LibraryManagement() {
+export default function LibraryManagement({ readOnly = false }) {
   const [books, setBooks] = useState([]);
   const [form, setForm] = useState({ isbn: '', bookName: '', genre: '' });
   const [search, setSearch] = useState('');
@@ -68,8 +68,14 @@ export default function LibraryManagement() {
     setForm(f => ({ ...f, [name]: value }));
   };
 
+  const clearForm = () => {
+    setForm({ isbn: '', bookName: '', genre: '' });
+    setEditIsbn(null);
+  };
+
   const handleSubmit = async e => {
     e.preventDefault();
+    if (readOnly) return;
     try {
       if (editIsbn) {
         await axios.put(`${API_URL}/${editIsbn}`, form);
@@ -85,13 +91,15 @@ export default function LibraryManagement() {
   };
 
   const handleEdit = book => {
+    if (readOnly) return;
     setForm({ isbn: book.isbn, bookName: book.bookName, genre: book.genre });
     setEditIsbn(book.isbn);
   };
 
   const handleDelete = async isbn => {
+    if (readOnly) return;
     try {
-      const res = await axios.delete(`${API_URL}/${isbn}`);
+      await axios.delete(`${API_URL}/${isbn}`);
       loadBooks();
     } catch (err) {
       if (err.response?.status === 409) {
@@ -102,142 +110,147 @@ export default function LibraryManagement() {
     }
   };
 
-  const clearForm = () => {
-    setForm({ isbn: '', bookName: '', genre: '' });
-    setEditIsbn(null);
-  };
-
   const filtered = books.filter(b =>
     `${b.isbn} ${b.bookName} ${b.genre}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <Container
-      component={motion.div}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <Title variant="h4" align="center">
-        {editIsbn ? 'Редактировать книгу' : 'Добавить книгу'}
-      </Title>
-
-      <Box
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 3,
-          p: 2,
-          bgcolor: '#fafafa',
-          borderRadius: 2,
-        }}
+    <AnimatePresence mode="wait">
+      <motion.div
+        key="library-page"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.4 }}
       >
-        <TextField
-          label="ISBN"
-          name="isbn"
-          value={form.isbn}
-          onChange={handleChange}
-          required
-          sx={{ flex: '1 1 30%' }}
-          disabled={!!editIsbn}
-        />
-        <TextField
-          label="Название"
-          name="bookName"
-          value={form.bookName}
-          onChange={handleChange}
-          required
-          sx={{ flex: '1 1 40%' }}
-        />
-        <TextField
-          label="Жанр"
-          name="genre"
-          value={form.genre}
-          onChange={handleChange}
-          required
-          sx={{ flex: '1 1 25%' }}
-        />
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
-        >
-          {editIsbn ? 'Сохранить' : 'Добавить'}
-        </Button>
-        {editIsbn && (
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={clearForm}
-            sx={{ alignSelf: 'center' }}
+        <Container>
+          {!readOnly && (
+            <>
+              <Title variant="h4" align="center">
+                {editIsbn ? 'Редактировать книгу' : 'Добавить книгу'}
+              </Title>
+
+              <Box
+                component="form"
+                onSubmit={handleSubmit}
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 2,
+                  mb: 3,
+                  p: 2,
+                  bgcolor: '#fafafa',
+                  borderRadius: 2,
+                }}
+              >
+                <TextField
+                  label="ISBN"
+                  name="isbn"
+                  value={form.isbn}
+                  onChange={handleChange}
+                  required
+                  sx={{ flex: '1 1 30%' }}
+                  disabled={!!editIsbn || readOnly}
+                />
+                <TextField
+                  label="Название"
+                  name="bookName"
+                  value={form.bookName}
+                  onChange={handleChange}
+                  required
+                  sx={{ flex: '1 1 40%' }}
+                  InputProps={{ readOnly }}
+                />
+                <TextField
+                  label="Жанр"
+                  name="genre"
+                  value={form.genre}
+                  onChange={handleChange}
+                  required
+                  sx={{ flex: '1 1 25%' }}
+                  InputProps={{ readOnly }}
+                />
+                <Button type="submit" variant="contained" sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}>
+                  {editIsbn ? 'Сохранить' : 'Добавить'}
+                </Button>
+                {editIsbn && (
+                  <Button variant="outlined" color="secondary" onClick={clearForm} sx={{ alignSelf: 'center' }}>
+                    Отмена
+                  </Button>
+                )}
+              </Box>
+
+              <TextField
+                label="Поиск книги"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                fullWidth
+                sx={{ mb: 3 }}
+              />
+            </>
+          )}
+
+          <Typography variant="h5" gutterBottom>
+            Список книг
+          </Typography>
+
+          <Table>
+            <TableHead sx={{ bgcolor: '#e3f2fd' }}>
+              <TableRow>
+                {['ISBN', 'Название', 'Жанр', 'Действия'].map(h => (
+                  <TableCell key={h} sx={{ fontWeight: 600 }} align={h === 'Действия' ? 'center' : 'left'}>
+                    {h}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filtered.map(book => (
+                <TableRow key={book.isbn} hover>
+                  <TableCell>{book.isbn}</TableCell>
+                  <TableCell>{book.bookName}</TableCell>
+                  <TableCell>{book.genre}</TableCell>
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      {!readOnly ? (
+                        <>
+                          <Button size="small" variant="contained" onClick={() => handleEdit(book)}>
+                            Ред.
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => handleDelete(book.isbn)}
+                          >
+                            Уд.
+                          </Button>
+                        </>
+                      ) : (
+                        <Typography variant="body2" color="textSecondary">
+                          только просмотр
+                        </Typography>
+                      )}
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <Snackbar
+            open={snack.open}
+            autoHideDuration={3000}
+            onClose={closeSnack}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            TransitionComponent={Slide}
           >
-            Отмена
-          </Button>
-        )}
-      </Box>
-
-      <TextField
-        label="Поиск книги"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        fullWidth
-        sx={{ mb: 3 }}
-      />
-
-      <Typography variant="h5" gutterBottom>
-        Список книг
-      </Typography>
-
-      <Table>
-        <TableHead sx={{ bgcolor: '#e3f2fd' }}>
-          <TableRow>
-            {['ISBN', 'Название', 'Жанр', 'Действия'].map(h => (
-              <TableCell key={h} sx={{ fontWeight: 600 }} align={h === 'Действия' ? 'center' : 'left'}>
-                {h}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.map(book => (
-            <TableRow key={book.isbn} hover>
-              <TableCell>{book.isbn}</TableCell>
-              <TableCell>{book.bookName}</TableCell>
-              <TableCell>{book.genre}</TableCell>
-              <TableCell align="center">
-                <Stack direction="row" spacing={1} justifyContent="center">
-                  <Button size="small" variant="contained" onClick={() => handleEdit(book)}>
-                    Ред.
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    onClick={() => handleDelete(book.isbn)}
-                  >
-                    Уд.
-                  </Button>
-                </Stack>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Snackbar
-        open={snack.open}
-        autoHideDuration={3000}
-        onClose={closeSnack}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        TransitionComponent={Slide}
-      >
-        <Alert onClose={closeSnack} severity={snack.sev} sx={{ width: '100%' }}>
-          {snack.msg}
-        </Alert>
-      </Snackbar>
-    </Container>
+            <Alert onClose={closeSnack} severity={snack.sev} sx={{ width: '100%' }}>
+              {snack.msg}
+            </Alert>
+          </Snackbar>
+        </Container>
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -41,7 +41,7 @@ const Container = styled(Paper)(({ theme }) => ({
   background: theme.palette.background.default,
 }));
 
-export default function PropertiesFrontend() {
+export default function PropertiesFrontend({ readOnly = false }) {
   const [propsList, setPropsList] = useState([]);
   const [prisoners, setPrisoners] = useState([]);
   const [search, setSearch]       = useState('');
@@ -51,6 +51,7 @@ export default function PropertiesFrontend() {
   const [viewRec, setViewRec]     = useState(null);
   const [viewOpen, setViewOpen]   = useState(false);
 
+  // edit/create only if not readOnly
   const [editRec, setEditRec]     = useState(null);
   const [editOpen, setEditOpen]   = useState(false);
   const [form, setForm]           = useState({
@@ -59,12 +60,7 @@ export default function PropertiesFrontend() {
     description: ''
   });
 
-  const [snack, setSnack]         = useState({
-    open: false,
-    msg: '',
-    sev: 'success'
-  });
-
+  const [snack, setSnack]         = useState({ open: false, msg: '', sev: 'success' });
   const openSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
   const closeSnack = () => setSnack(s => ({ ...s, open: false }));
 
@@ -185,9 +181,12 @@ export default function PropertiesFrontend() {
           }}
           sx={{ flexGrow: 1 }}
         />
-        <Button variant="contained" onClick={() => openForm(null)}>
-          Добавить запись
-        </Button>
+        {/* Add button only if not readOnly */}
+        {!readOnly && (
+          <Button variant="contained" onClick={() => openForm(null)}>
+            Добавить запись
+          </Button>
+        )}
       </Stack>
 
       {loading && <Typography>Загрузка...</Typography>}
@@ -228,11 +227,21 @@ export default function PropertiesFrontend() {
                           <InfoIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Редактировать">
-                        <IconButton onClick={() => openForm(items[0])}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
+                      {/* Edit/Delete only if not readOnly */}
+                      {!readOnly && (
+                        <>
+                          <Tooltip title="Редактировать">
+                            <IconButton onClick={() => openForm(items[0])}>
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Удалить">
+                            <IconButton onClick={() => handleDelete(items[0])}>
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
                     </Stack>
                   }
                 />
@@ -247,11 +256,14 @@ export default function PropertiesFrontend() {
                         <Typography variant="body2">
                           • <strong>{r.id.propertyName}</strong>: {r.description || '—'}
                         </Typography>
-                        <Tooltip title="Удалить">
-                          <IconButton size="small" onClick={() => handleDelete(r)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        {/* per-item delete if not readOnly */}
+                        {!readOnly && (
+                          <Tooltip title="Удалить">
+                            <IconButton size="small" onClick={() => handleDelete(r)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
                     ))}
                   </Stack>
@@ -260,7 +272,7 @@ export default function PropertiesFrontend() {
             </Grid>
           );
         })}
-        {filteredKeys.length === 0 && !loading && (
+        {!loading && filteredKeys.length === 0 && (
           <Typography>Записей не найдено</Typography>
         )}
       </Grid>
@@ -295,65 +307,67 @@ export default function PropertiesFrontend() {
         </DialogActions>
       </Dialog>
 
-      {/* Edit/Create Dialog */}
-      <Dialog
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          {editRec ? 'Редактировать' : 'Добавить'} запись
-        </DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} mt={1}>
-            <TextField
-              select
-              label="Заключённый"
-              value={form.prisonerId}
-              onChange={e =>
-                setForm(f => ({ ...f, prisonerId: e.target.value }))
-              }
-              SelectProps={{ native: true }}
-              fullWidth
+      {/* Edit/Create Dialog — only if not readOnly */}
+      {!readOnly && (
+        <Dialog
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>
+            {editRec ? 'Редактировать' : 'Добавить'} запись
+          </DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} mt={1}>
+              <TextField
+                select
+                label="Заключённый"
+                value={form.prisonerId}
+                onChange={e =>
+                  setForm(f => ({ ...f, prisonerId: e.target.value }))
+                }
+                SelectProps={{ native: true }}
+                fullWidth
+              >
+                <option value="">— Выберите —</option>
+                {prisoners.map(p => (
+                  <option key={p.prisonerId} value={p.prisonerId}>
+                    {p.firstName} {p.lastName} (ID {p.prisonerId})
+                  </option>
+                ))}
+              </TextField>
+              <TextField
+                label="Свойство"
+                value={form.propertyName}
+                onChange={e =>
+                  setForm(f => ({ ...f, propertyName: e.target.value }))
+                }
+                fullWidth
+              />
+              <TextField
+                label="Описание"
+                value={form.description}
+                onChange={e =>
+                  setForm(f => ({ ...f, description: e.target.value }))
+                }
+                fullWidth
+                multiline
+                rows={3}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditOpen(false)}>Отмена</Button>
+            <Button
+              onClick={handleSave}
+              disabled={!form.prisonerId || !form.propertyName}
             >
-              <option value="">— Выберите —</option>
-              {prisoners.map(p => (
-                <option key={p.prisonerId} value={p.prisonerId}>
-                  {p.firstName} {p.lastName} (ID {p.prisonerId})
-                </option>
-              ))}
-            </TextField>
-            <TextField
-              label="Свойство"
-              value={form.propertyName}
-              onChange={e =>
-                setForm(f => ({ ...f, propertyName: e.target.value }))
-              }
-              fullWidth
-            />
-            <TextField
-              label="Описание"
-              value={form.description}
-              onChange={e =>
-                setForm(f => ({ ...f, description: e.target.value }))
-              }
-              fullWidth
-              multiline
-              rows={3}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditOpen(false)}>Отмена</Button>
-          <Button
-            onClick={handleSave}
-            disabled={!form.prisonerId || !form.propertyName}
-          >
-            Подтвердить
-          </Button>
-        </DialogActions>
-      </Dialog>
+              Подтвердить
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       <Snackbar
         open={snack.open}

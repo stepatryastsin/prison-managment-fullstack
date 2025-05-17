@@ -1,9 +1,24 @@
 // Cells.jsx
 import React, { useEffect, useState } from 'react';
 import {
-  AppBar, Toolbar, Typography, Paper, Grid, Card, CardHeader,
-  CardContent, Avatar, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Stack, Chip, Box, useMediaQuery,
+  AppBar,
+  Toolbar,
+  Typography,
+  Paper,
+  Grid,
+  Card,
+  CardHeader,
+  CardContent,
+  Avatar,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Stack,
+  Box,
+  useMediaQuery,
   CircularProgress
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -33,14 +48,20 @@ export default function Cells() {
   const [editDate, setEditDate] = useState('');
   const [editErrors, setEditErrors] = useState({});
 
+  // Fetch list of cells with session cookie
   const fetchCells = async () => {
     setLoading(true);
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_URL, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
       const data = await res.json();
       setCells(data);
     } catch (e) {
-      console.error(e);
+      console.error('fetchCells error:', e);
     } finally {
       setLoading(false);
     }
@@ -50,32 +71,40 @@ export default function Cells() {
     fetchCells();
   }, []);
 
+  // Create new cell
   const handleCreate = async () => {
     if (!newCellNum) return alert('Введите номер камеры');
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: 'POST',
-        headers:{'Content-Type':'application/json'},
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cellNum: +newCellNum, lastShakedownDate: newDate })
       });
+      if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
       setDlgOpen(false);
       setNewCellNum('');
       setNewDate('');
       fetchCells();
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error('handleCreate error:', e);
+    }
   };
 
+  // Init edit mode
   const handleEditInit = (cell) => {
     setEditId(cell.cellNum);
     setEditDate(cell.lastShakedownDate?.split('T')[0] || '');
     setEditErrors({});
   };
 
+  // Save edits
   const handleSave = async (cellNum) => {
     try {
       const res = await fetch(`${API_URL}/${cellNum}`, {
         method: 'PUT',
-        headers:{'Content-Type':'application/json'},
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cellNum, lastShakedownDate: editDate })
       });
       if (!res.ok) {
@@ -85,15 +114,24 @@ export default function Cells() {
       }
       setEditId(null);
       fetchCells();
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error('handleSave error:', e);
+    }
   };
 
+  // Delete cell
   const handleDelete = async (cellNum) => {
     if (!window.confirm('Удалить камеру?')) return;
     try {
-      await fetch(`${API_URL}/${cellNum}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/${cellNum}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
       fetchCells();
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error('handleDelete error:', e);
+    }
   };
 
   const openDetail = (item) => {
@@ -116,11 +154,7 @@ export default function Cells() {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Управление камерами
           </Typography>
-          <Button
-            color="inherit"
-            startIcon={<AddIcon />}
-            onClick={() => setDlgOpen(true)}
-          >
+          <Button color="inherit" startIcon={<AddIcon />} onClick={() => setDlgOpen(true)}>
             Новая камера
           </Button>
         </Toolbar>
@@ -138,19 +172,9 @@ export default function Cells() {
                     subheader={`Проверка: ${cell.lastShakedownDate?.split('T')[0] || '—'}`}
                     action={
                       <Stack direction="row" spacing={1}>
-                        <EditIcon
-                          sx={{ cursor: 'pointer' }}
-                          onClick={() => handleEditInit(cell)}
-                        />
-                        <InfoIcon
-                          sx={{ cursor: 'pointer' }}
-                          onClick={() => openDetail(cell)}
-                        />
-                        <DeleteIcon
-                          color="error"
-                          sx={{ cursor: 'pointer' }}
-                          onClick={() => handleDelete(cell.cellNum)}
-                        />
+                        <EditIcon sx={{ cursor: 'pointer' }} onClick={() => handleEditInit(cell)} />
+                        <InfoIcon sx={{ cursor: 'pointer' }} onClick={() => openDetail(cell)} />
+                        <DeleteIcon color="error" sx={{ cursor: 'pointer' }} onClick={() => handleDelete(cell.cellNum)} />
                       </Stack>
                     }
                   />
@@ -167,10 +191,7 @@ export default function Cells() {
                           helperText={editErrors.lastShakedownDate}
                         />
                         <Stack direction="row" spacing={1}>
-                          <Button
-                            variant="contained"
-                            onClick={() => handleSave(cell.cellNum)}
-                          >
+                          <Button variant="contained" onClick={() => handleSave(cell.cellNum)}>
                             Сохранить
                           </Button>
                           <Button variant="outlined" onClick={() => setEditId(null)}>
@@ -187,7 +208,7 @@ export default function Cells() {
         </AnimatePresence>
       </Grid>
 
-      {/* Диалог создания */}
+      {/* Create Dialog */}
       <Dialog open={dlgOpen} onClose={() => setDlgOpen(false)}>
         <DialogTitle>Новая камера</DialogTitle>
         <DialogContent>
@@ -215,13 +236,11 @@ export default function Cells() {
         </DialogActions>
       </Dialog>
 
-      {/* Диалог деталей */}
+      {/* Detail Dialog */}
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)}>
         <DialogTitle>Детали камеры</DialogTitle>
         <DialogContent>
-          <pre style={{ whiteSpace: 'pre-wrap' }}>
-            {JSON.stringify(detailItem, null, 2)}
-          </pre>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(detailItem, null, 2)}</pre>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailOpen(false)}>Закрыть</Button>

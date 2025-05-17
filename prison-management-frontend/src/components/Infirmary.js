@@ -45,7 +45,7 @@ const Title = styled(Typography)(({ theme }) => ({
   marginBottom: theme.spacing(3),
 }));
 
-export default function Infirmary() {
+export default function Infirmary({ readOnly = false }) {
   const [records, setRecords] = useState([]);
   const [prisoners, setPrisoners] = useState([]);
   const [form, setForm] = useState({
@@ -69,7 +69,6 @@ export default function Infirmary() {
         axios.get(`${API_BASE}/infirmary`),
         axios.get(`${API_BASE}/prisoners`),
       ]);
-      // filter out records without prisoner
       const valid = infRes.data.filter(r => r.prisoner);
       setRecords(valid);
       setPrisoners(prRes.data);
@@ -87,7 +86,7 @@ export default function Infirmary() {
   };
 
   const clearForm = () => {
-    setForm({ prisonerId:'', relatedDoctor:'', drugName:'', drugUsageDay:'', diseaseType:'' });
+    setForm({ prisonerId: '', relatedDoctor: '', drugName: '', drugUsageDay: '', diseaseType: '' });
     setEditId(null);
   };
 
@@ -162,89 +161,91 @@ export default function Infirmary() {
 
       <Title variant="h4" align="center">Рецепты лечения</Title>
 
-      <Box component="form" onSubmit={submit} sx={{ mb: 4, p: 3, bgcolor: '#fafafa', borderRadius: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          {editId ? 'Редактирование рецепта' : 'Новый рецепт'}
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="ID заключённого"
-              name="prisonerId"
-              value={form.prisonerId}
-              onClick={() => setOpenPrisoner(true)}
-              InputProps={{ readOnly: true }}
-              helperText="Нажмите для выбора"
-              sx={{ cursor: 'pointer' }}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth label="Лечащий врач"
-              name="relatedDoctor" value={form.relatedDoctor}
-              onChange={handleChange} required
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth label="Препарат"
-              name="drugName" value={form.drugName}
-              onChange={handleChange} required
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth label="Доза/день"
-              name="drugUsageDay" type="number"
-              value={form.drugUsageDay} onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth label="Тип заболевания"
-              name="diseaseType" value={form.diseaseType}
-              onChange={handleChange} required
-            />
-          </Grid>
-          <Grid item xs={12} sm={4} container spacing={1}>
-            <Grid item xs>
-              <Button fullWidth variant="contained" type="submit">
-                {editId ? 'Сохранить' : 'Добавить'}
-              </Button>
+      {!readOnly && (
+        <Box component="form" onSubmit={submit} sx={{ mb: 4, p: 3, bgcolor: '#fafafa', borderRadius: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            {editId ? 'Редактирование рецепта' : 'Новый рецепт'}
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="ID заключённого"
+                name="prisonerId"
+                value={form.prisonerId}
+                onClick={() => setOpenPrisoner(true)}
+                InputProps={{ readOnly: true }}
+                helperText="Нажмите для выбора"
+                sx={{ cursor: 'pointer' }}
+                required
+              />
             </Grid>
-            {editId && (
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth label="Лечащий врач"
+                name="relatedDoctor" value={form.relatedDoctor}
+                onChange={handleChange} required
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth label="Препарат"
+                name="drugName" value={form.drugName}
+                onChange={handleChange} required
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth label="Доза/день"
+                name="drugUsageDay" type="number"
+                value={form.drugUsageDay} onChange={handleChange}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth label="Тип заболевания"
+                name="diseaseType" value={form.diseaseType}
+                onChange={handleChange} required
+              />
+            </Grid>
+            <Grid item xs={12} sm={4} container spacing={1}>
               <Grid item xs>
-                <Button fullWidth variant="outlined" onClick={clearForm}>
-                  Отмена
+                <Button fullWidth variant="contained" type="submit">
+                  {editId ? 'Сохранить' : 'Добавить'}
                 </Button>
               </Grid>
-            )}
+              {editId && (
+                <Grid item xs>
+                  <Button fullWidth variant="outlined" onClick={clearForm}>
+                    Отмена
+                  </Button>
+                </Grid>
+              )}
+            </Grid>
           </Grid>
-        </Grid>
-      </Box>
+        </Box>
+      )}
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <TextField
-          placeholder="Поиск рецептов..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          sx={{ width: 300 }}
-          InputProps={{
-            startAdornment: <CloseIcon />
-          }}
-        />
-      </Stack>
+      {!readOnly && (
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+          <TextField
+            placeholder="Поиск рецептов..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            sx={{ width: 300 }}
+            InputProps={{
+              startAdornment: <CloseIcon />
+            }}
+          />
+        </Stack>
+      )}
 
       <Table size="small">
         <TableHead sx={{ bgcolor: '#e0f7fa' }}>
           <TableRow>
-            {['ID заключённого','Врач','Препарат','Доза/день','Заболевание','Действия'].map(h => (
-              <TableCell key={h} sx={{ fontWeight: 600 }}>
-                {h}
-              </TableCell>
+            {['ID заключённого', 'Врач', 'Препарат', 'Доза/день', 'Заболевание', 'Действия'].map(h => (
+              <TableCell key={h} sx={{ fontWeight: 600 }}>{h}</TableCell>
             ))}
           </TableRow>
         </TableHead>
@@ -257,15 +258,15 @@ export default function Infirmary() {
               <TableCell>{rec.drugUsageDay}</TableCell>
               <TableCell>{rec.diseaseType}</TableCell>
               <TableCell>
-                <Stack direction="row" spacing={1}>
-                  <Button size="small" variant="contained" onClick={() => editRecord(rec)}>
-                    Ред.
-                  </Button>
-                  <Button size="small" variant="outlined" color="error"
-                    onClick={() => deleteRecord(rec.prescriptionNum)}>
-                    Уд.
-                  </Button>
-                </Stack>
+                {!readOnly ? (
+                  <Stack direction="row" spacing={1}>
+                    <Button size="small" variant="contained" onClick={() => editRecord(rec)}>Ред.</Button>
+                    <Button size="small" variant="outlined" color="error"
+                      onClick={() => deleteRecord(rec.prescriptionNum)}>Уд.</Button>
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="textSecondary">только просмотр</Typography>
+                )}
               </TableCell>
             </TableRow>
           ))}
@@ -275,15 +276,15 @@ export default function Infirmary() {
       <Dialog open={openPrisoner} onClose={() => setOpenPrisoner(false)} fullWidth maxWidth="md">
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between' }}>
           Выбор заключённого
-          <Button onClick={() => setOpenPrisoner(false)}><CloseIcon/></Button>
+          <Button onClick={() => setOpenPrisoner(false)}><CloseIcon /></Button>
         </DialogTitle>
         <DialogContent dividers>
           {prisoners.length ? (
             <Table size="small">
               <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                 <TableRow>
-                  {['ID','Имя','Фамилия','Камера','Дата рожд.'].map(h => (
-                    <TableCell key={h} sx={{ fontWeight:600 }}>{h}</TableCell>
+                  {['ID', 'Имя', 'Фамилия', 'Камера', 'Дата рожд.'].map(h => (
+                    <TableCell key={h} sx={{ fontWeight: 600 }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>

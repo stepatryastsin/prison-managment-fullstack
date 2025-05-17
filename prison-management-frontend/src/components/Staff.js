@@ -1,38 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import {
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Grid,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  List,
-  ListItem,
-  ListItemText,
-  Stack,
-  Box,
-  Snackbar,
-  Alert,
-  Slide,
-  IconButton,
+  Paper, Typography, TextField, Button, Grid,
+  Table, TableHead, TableRow, TableCell, TableBody,
+  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
+  Stack, Box, Snackbar, Alert, Slide, IconButton,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import CloseIcon from '@mui/icons-material/Close';
 
-// Используем переменные окружения для гибкости
 const STAFF_API = 'http://localhost:8080/api/staff';
-const JOB_API   = 'http://localhost:8080/api/job';
+const JOB_API = 'http://localhost:8080/api/job';
 
-// Стили контейнера
 const Container = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
   maxWidth: 1200,
@@ -55,7 +35,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   backgroundColor: theme.palette.grey[200],
 }));
 
-const Staff = () => {
+export default function Staff() {
   const [staff, setStaff] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -65,6 +45,8 @@ const Staff = () => {
     jobId: null,
     jobDesc: '',
     salary: '',
+    username: '',
+    password: '',
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
@@ -74,63 +56,115 @@ const Staff = () => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  async function loadData() {
     try {
       const [sRes, jRes] = await Promise.all([
-        axios.get(STAFF_API),
-        axios.get(JOB_API),
+        axios.get(STAFF_API, { params: { t: Date.now() } }),
+        axios.get(JOB_API, { params: { t: Date.now() } }),
       ]);
       setStaff(sRes.data);
       setJobs(jRes.data);
     } catch {
       showSnack('Ошибка загрузки данных', 'error');
     }
-  };
+  }
 
-  const showSnack = (msg, severity = 'success') => {
-    setSnack({ open: true, msg, sev: severity });
-  };
-  const closeSnack = () => setSnack((s) => ({ ...s, open: false }));
+  const showSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
+  const closeSnack = () => setSnack(s => ({ ...s, open: false }));
 
   const clearForm = () => {
-    setForm({ firstName: '', lastName: '', jobId: null, jobDesc: '', salary: '' });
+    setForm({
+      firstName: '',
+      lastName: '',
+      jobId: null,
+      jobDesc: '',
+      salary: '',
+      username: '',
+      password: '',
+    });
     setEditingId(null);
   };
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    setForm(f => ({ ...f, [name]: value }));
   };
 
-  const handleSelectJob = (job) => {
-    setForm((f) => ({ ...f, jobId: job.jobId, jobDesc: job.jobDescription }));
+  const handleSelectJob = job => {
+    setForm(f => ({ ...f, jobId: job.jobId, jobDesc: job.jobDescription }));
     setDialogOpen(false);
   };
 
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
-    const { firstName, lastName, jobDesc, salary, jobId } = form;
-    if (!firstName.trim() || !lastName.trim() || !jobDesc || Number(salary) <= 0) {
-      showSnack('Заполните все поля корректно', 'error');
-      return;
+    const { firstName, lastName, jobId, jobDesc, salary, username, password } = form;
+
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !jobId ||
+      Number(salary) < 0 ||
+      !username.trim() ||
+      (!editingId && !password.trim())
+    ) {
+      return showSnack('Заполните все поля корректно', 'error');
     }
-    const payload = { firstName, lastName, salary: Number(salary), job: { jobId, jobDescription: jobDesc } };
+
+    const payload = {
+      firstName,
+      lastName,
+      salary: Number(salary),
+      username,
+      password: password || '', // может быть пустым при обновлении
+      job: {
+        jobId,
+        jobDescription: jobDesc,
+      },
+    };
+
     try {
       if (editingId) {
         await axios.put(`${STAFF_API}/${editingId}`, payload);
+
+        if (password.trim()) {
+          await axios.post(`${STAFF_API}/set-password`, null, {
+            params: { username, password },
+          });
+        }
+
         showSnack('Сотрудник обновлён', 'success');
       } else {
         await axios.post(STAFF_API, payload);
         showSnack('Сотрудник добавлен', 'success');
       }
-      clearForm();
-      loadData();
-    } catch (err) {
-      showSnack(err.response?.data?.message || 'Ошибка при сохранении', 'error');
-    }
-  };
 
-  const handleEdit = (emp) => {
+      clearForm();
+
+      setStaff([]);
+      await loadData();
+
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Ошибка при сохранении';
+      showSnack(msg, 'error');
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Удалить сотрудника?')) return;
+    try {
+      await axios.delete(`${STAFF_API}/${id}`);
+      showSnack('Сотрудник удалён', 'success');
+      if (editingId === id) clearForm();
+
+      setStaff([]);
+      await loadData();
+
+    } catch {
+      showSnack('Ошибка при удалении', 'error');
+    }
+  }
+
+  const handleEdit = emp => {
     setEditingId(emp.staffId);
     setForm({
       firstName: emp.firstName,
@@ -138,25 +172,17 @@ const Staff = () => {
       jobId: emp.job?.jobId,
       jobDesc: emp.job?.jobDescription || '',
       salary: emp.salary.toString(),
+      username: emp.username,
+      password: '', // поле очищается при редактировании
     });
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Удалить сотрудника?')) return;
-    try {
-      await axios.delete(`${STAFF_API}/${id}`);
-      showSnack('Сотрудник удалён', 'success');
-      if (editingId === id) clearForm();
-      loadData();
-    } catch {
-      showSnack('Ошибка при удалении', 'error');
-    }
   };
 
   const filtered = useMemo(
     () =>
-      staff.filter((s) =>
-        `${s.firstName} ${s.lastName} ${s.job?.jobDescription}`.toLowerCase().includes(search.toLowerCase())
+      staff.filter(s =>
+        `${s.firstName} ${s.lastName} ${s.job?.jobDescription} ${s.username}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
       ),
     [staff, search]
   );
@@ -172,7 +198,6 @@ const Staff = () => {
         {editingId ? 'Редактирование сотрудника' : 'Добавление сотрудника'}
       </Title>
 
-      {/* Форма добавления / редактирования */}
       <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={4}>
@@ -220,6 +245,28 @@ const Staff = () => {
             />
           </Grid>
           <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Username"
+              name="username"
+              value={form.username}
+              onChange={handleChange}
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Password"
+              name="password"
+              type="password"
+              value={form.password}
+              onChange={handleChange}
+              required={!editingId}
+              helperText={editingId ? 'Оставьте пустым, чтобы не менять' : ''}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
             <Button fullWidth variant="contained" size="large" type="submit">
               {editingId ? 'Сохранить' : 'Добавить'}
             </Button>
@@ -234,62 +281,85 @@ const Staff = () => {
         </Grid>
       </Box>
 
-      {/* Поиск */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
         <TextField
           placeholder="Поиск сотрудников..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={e => setSearch(e.target.value)}
           sx={{ width: 300 }}
         />
       </Box>
 
-      {/* Таблица сотрудников */}
-      <Paper elevation={3} sx={{ overflowX: 'auto' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              {['ID', 'Имя', 'Фамилия', 'Должность', 'Зарплата', 'Действия'].map((h) => (
-                <StyledTableCell key={h}>{h}</StyledTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filtered.map((s, idx) => (
-              <TableRow
-                key={s.staffId}
-                hover
-                sx={{
-                  backgroundColor: idx % 2 === 0 ? 'grey.50' : 'common.white',
-                }}
-              >
-                <TableCell>{s.staffId}</TableCell>
-                <TableCell>{s.firstName}</TableCell>
-                <TableCell>{s.lastName}</TableCell>
-                <TableCell>{s.job?.jobDescription}</TableCell>
-                <TableCell>{s.salary.toLocaleString()}</TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={1}>
-                    <Button variant="text" onClick={() => handleEdit(s)}>
-                      Редактировать
-                    </Button>
-                    <Button variant="text" color="error" onClick={() => handleDelete(s.staffId)}>
-                      Удалить
-                    </Button>
-                  </Stack>
-                </TableCell>
+      <AnimatePresence>
+        <Paper
+          key="staff-table"
+          component={motion.div}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3 }}
+          elevation={3}
+          sx={{ overflowX: 'auto' }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow>
+                {['ID', 'Имя', 'Фамилия', 'Должность', 'Зарплата', 'Username', 'Действия'].map(h => (
+                  <StyledTableCell key={h}>{h}</StyledTableCell>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+            </TableHead>
 
-      {/* Диалог выбора должности */}
+            <TableBody
+              component={motion.tbody}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                visible: { transition: { staggerChildren: 0.05 } },
+                hidden: {},
+              }}
+            >
+              <AnimatePresence>
+                {filtered.map((s, idx) => (
+                  <motion.tr
+                    key={s.staffId}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                      backgroundColor: idx % 2 ? 'white' : '#f9f9f9',
+                    }}
+                  >
+                    <TableCell>{s.staffId}</TableCell>
+                    <TableCell>{s.firstName}</TableCell>
+                    <TableCell>{s.lastName}</TableCell>
+                    <TableCell>{s.job?.jobDescription}</TableCell>
+                    <TableCell>{s.salary.toLocaleString()}</TableCell>
+                    <TableCell>{s.username}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={1}>
+                        <Button variant="text" onClick={() => handleEdit(s)}>
+                          Редактировать
+                        </Button>
+                        <Button variant="text" color="error" onClick={() => handleDelete(s.staffId)}>
+                          Удалить
+                        </Button>
+                      </Stack>
+                    </TableCell>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </TableBody>
+          </Table>
+        </Paper>
+      </AnimatePresence>
+
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth>
         <DialogTitle>
           Выберите должность
-n          <IconButton
-            aria-label="close"
+          <IconButton
             onClick={() => setDialogOpen(false)}
             sx={{ position: 'absolute', right: 8, top: 8 }}
           >
@@ -298,7 +368,7 @@ n          <IconButton
         </DialogTitle>
         <DialogContent dividers>
           <List>
-            {jobs.map((j) => (
+            {jobs.map(j => (
               <ListItem button key={j.jobId} onClick={() => handleSelectJob(j)}>
                 <ListItemText primary={j.jobDescription} />
               </ListItem>
@@ -307,7 +377,6 @@ n          <IconButton
         </DialogContent>
       </Dialog>
 
-      {/* Снэкбар уведомлений */}
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
@@ -315,17 +384,10 @@ n          <IconButton
         TransitionComponent={Slide}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          onClose={closeSnack}
-          severity={snack.sev}
-          sx={{ width: '100%' }}
-          variant="filled"
-        >
+        <Alert onClose={closeSnack} severity={snack.sev} variant="filled">
           {snack.msg}
         </Alert>
       </Snackbar>
     </Container>
   );
-};
-
-export default Staff;
+}
