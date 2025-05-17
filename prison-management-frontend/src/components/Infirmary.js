@@ -108,7 +108,8 @@ export default function Infirmary({ readOnly = false }) {
       await loadAll();
       clearForm();
     } catch (err) {
-      showSnack('Ошибка при сохранении');
+      const msg = err.response?.data?.message || 'Ошибка при сохранении';
+      showSnack(msg, 'error');
     }
   };
 

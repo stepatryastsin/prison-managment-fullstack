@@ -142,8 +142,9 @@ export default function VisitedByFrontend({ readOnly = false }) {
       setOpenAdd(false);
       setSelected({ prisoner: null, visitor: null });
       fetchAll();
-    } catch {
-      showSnack('Ошибка при добавлении', 'error');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Ошибка при сохранении';
+      showSnack(msg, 'error');
     }
   };
 

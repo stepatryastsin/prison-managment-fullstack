@@ -144,7 +144,7 @@ export default function Staff() {
       await loadData();
 
     } catch (err) {
-      const msg = err.response?.data?.message || 'Ошибка при сохранении';
+      const msg = err.response?.data?.message;
       showSnack(msg, 'error');
     }
   }
