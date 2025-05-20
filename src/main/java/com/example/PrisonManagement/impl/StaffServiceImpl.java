@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,80 +24,79 @@ import java.util.Optional;
 public class StaffServiceImpl implements StaffService {
 
     private static final Logger logger = LoggerFactory.getLogger(StaffServiceImpl.class);
-    private final StaffRepository repo;
 
-    @Autowired
-    public StaffServiceImpl(StaffRepository repo) {
-        this.repo = Objects.requireNonNull(repo, "StaffRepository must not be null");
-        logger.info("Initialized StaffServiceImpl with repository: {}", repo.getClass().getSimpleName());
+    private final StaffRepository repo;
+    private final PasswordEncoder encoder;
+
+    public StaffServiceImpl(StaffRepository repo, PasswordEncoder encoder) {
+        this.repo = Objects.requireNonNull(repo);
+        this.encoder = Objects.requireNonNull(encoder);
+        logger.info("Initialized StaffServiceImpl");
     }
 
     @Override
-    @Transactional
     public List<Staff> findAll() {
-        logger.debug("Start fetching all staff entries");
+        logger.debug("Fetching all staff");
         List<Staff> list = repo.findAll();
-        logger.info("Fetched {} staff entries", list.size());
+        logger.info("Fetched {} entries", list.size());
         return list;
     }
 
     @Override
-    @Transactional
     public Staff findById(Integer id) {
-        Objects.requireNonNull(id, "Staff id must not be null");
-        logger.debug("Finding staff with id={}", id);
-        return repo.findById(id)
-                .orElseThrow(() -> {
-                    logger.warn("Staff with id={} not found", id);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Staff with id=" + id + " not found");
-                });
+        Objects.requireNonNull(id);
+        return repo.findById(id).orElseThrow(() -> {
+            logger.warn("Not found id={}", id);
+            return new ResponseStatusException(HttpStatus.NOT_FOUND, "Staff not found");
+        });
     }
 
     @Override
     public Staff create(Staff staff) {
-        Objects.requireNonNull(staff, "Staff must not be null");
-        logger.debug("Creating new staff: {} {}", staff.getFirstName(), staff.getLastName());
+        Objects.requireNonNull(staff);
+        logger.debug("Creating {}", staff);
         Staff saved = repo.save(staff);
-        logger.info("Created staff with id={}", saved.getStaffId());
+        logger.info("Created id={}", saved.getStaffId());
         return saved;
     }
 
     @Override
     public Staff update(Integer id, Staff staff) {
-        Objects.requireNonNull(id, "Staff id must not be null");
-        Objects.requireNonNull(staff, "Staff must not be null");
-        logger.debug("Updating staff with id={}", id);
-        Staff existing = findById(id);
-        existing.setFirstName(staff.getFirstName());
-        existing.setLastName(staff.getLastName());
-        existing.setSalary(staff.getSalary());
-        existing.setJob(staff.getJob());
-        Staff updated = repo.save(existing);
-        logger.info("Updated staff with id={}", id);
-        return updated;
+        Objects.requireNonNull(id);
+        Objects.requireNonNull(staff);
+        Staff exist = findById(id);
+        exist.setFirstName(staff.getFirstName());
+        exist.setLastName(staff.getLastName());
+        exist.setJob(staff.getJob());
+        exist.setSalary(staff.getSalary());
+        Staff upd = repo.save(exist);
+        logger.info("Updated id={}", id);
+        return upd;
     }
 
     @Override
     public void delete(Integer id) {
-        Objects.requireNonNull(id, "Staff id must not be null");
-        logger.debug("Deleting staff with id={}", id);
+        Objects.requireNonNull(id);
         if (!repo.existsById(id)) {
-            logger.warn("Attempt to delete non-existent staff with id={}", id);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Staff with id=" + id + " not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Staff not found");
         }
         repo.deleteById(id);
-        logger.info("Deleted staff with id={}", id);
+        logger.info("Deleted id={}", id);
     }
 
     @Override
-    @Transactional
     public int getUsageCount(Integer jobId) {
-        Objects.requireNonNull(jobId, "Job id must not be null");
-        logger.debug("Counting staff usage for jobId={}", jobId);
+        Objects.requireNonNull(jobId);
         long count = repo.countByJob_JobId(jobId);
-        logger.info("Job id={} is used by {} staff members", jobId, count);
+        logger.info("Job {} used by {}", jobId, count);
         return (int) count;
+    }
+
+    @Override
+    public Staff setPassword(String username, String rawPassword) {
+        Staff s = repo.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found"));
+        s.setPassword(encoder.encode(rawPassword));
+        return repo.save(s);
     }
 }

@@ -18,7 +18,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/cells")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(
+        origins = "http://localhost:3000",
+        allowCredentials = "true",
+        allowedHeaders = "*"
+)
 public class CellController {
 
     private static final Logger logger = LoggerFactory.getLogger(CellController.class);

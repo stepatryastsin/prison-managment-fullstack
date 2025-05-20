@@ -2,11 +2,10 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  AppBar, Toolbar, Typography, Button, Container,
-  Box, Menu, MenuItem, TextField, Alert
+  AppBar, Toolbar, Typography, Button, Container, Box, Menu, MenuItem, TextField, Alert
 } from '@mui/material';
 
-// Компоненты страниц
+// Страницы
 import Prisoners from './components/Prisoners';
 import Properties from './components/Properties';
 import Courses from './components/Courses';
@@ -25,14 +24,17 @@ import Library from './components/Library';
 
 axios.defaults.withCredentials = true;
 
+// Контекст аутентификации
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
+// Защищённый роут по ролям
 const Protected = ({ allowed, children }) => {
   const { role } = useAuth();
   return allowed.includes(role) ? children : <Navigate to="/" replace />;
 };
 
+// Страница логина
 const AuthPage = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -71,17 +73,76 @@ const AuthPage = ({ onLogin }) => {
   );
 };
 
-function App() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [role, setRole] = useState(null);
-  const [menuAnchor, setMenuAnchor] = useState(null);
+// Навигационный бар
+const NavigationBar = ({ onLogout }) => {
+  const { role } = useAuth();
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const isAdmin     = role === 'admin';
   const isWarden    = role === 'warden';
   const isGuard     = role === 'guard';
   const isLibrarian = role === 'librarian';
   const isMedic     = role === 'medic';
-  const isViewer    = role === 'viewer';
+
+  const openMenu = e => setAnchorEl(e.currentTarget);
+  const closeMenu = () => setAnchorEl(null);
+
+  const NavItem = ({ to, label }) => (
+    <MenuItem component={Link} to={to} onClick={closeMenu}>{label}</MenuItem>
+  );
+
+  return (
+    <AppBar position="static">
+      <Toolbar>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>Пенитенциарная система</Typography>
+        <Button color="inherit" onClick={openMenu}>Меню</Button>
+        <Button color="inherit" onClick={onLogout}>Выйти</Button>
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
+          {/* Доступно всем */}
+          <NavItem to="/prisoners" label="Заключённые" />
+          <NavItem to="/prisoners/properties" label="Вещи" />
+
+          {/* Только админ */}
+          {isAdmin && <>
+            <NavItem to="/staff" label="Персонал" />
+            <NavItem to="/staff/job" label="Должности" />
+          </>}
+
+          {/* Админ и охранник */}
+          {(isAdmin || isGuard) && <>
+            <NavItem to="/cells" label="Камеры" />
+            <NavItem to="/security-levels" label="Уровни защиты" />
+          </>}
+
+          {/* Админ и начальник */}
+          {(isAdmin || isWarden) && <>
+            <NavItem to="/prisoners/courses" label="Обучение" />
+            <NavItem to="/prisoners/prisoner-labor" label="Труд" />
+            <NavItem to="/prisoners/borrowed" label="Книги" />
+            <NavItem to="/enrollments-certs" label="Сертификаты" />
+          </>}
+
+          {/* Админ, начальник, охранник */}
+          {(isAdmin || isWarden || isGuard) && <>
+            <NavItem to="/visitors" label="Регистрация посетителей" />
+            <NavItem to="/visited-by" label="Посещаемость" />
+          </>}
+
+          {/* Админ и медик */}
+          {(isAdmin || isMedic) && <NavItem to="/infirmary" label="Лазарет" />}
+
+          {/* Админ и библиотекарь */}
+          {(isAdmin || isLibrarian) && <NavItem to="/library" label="Библиотека" />}
+        </Menu>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
+// Основной компонент приложения
+function App() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     axios.get('http://localhost:8080/auth/check')
@@ -92,6 +153,11 @@ function App() {
       .catch(() => setAuthenticated(false));
   }, []);
 
+  const handleLogin = (r) => {
+    setAuthenticated(true);
+    setRole(r);
+  };
+
   const handleLogout = async () => {
     await axios.post('http://localhost:8080/auth/logout');
     setAuthenticated(false);
@@ -99,98 +165,13 @@ function App() {
   };
 
   if (!authenticated) {
-    return <AuthPage onLogin={r => setAuthenticated(true) & setRole(r)} />;
+    return <AuthPage onLogin={handleLogin} />;
   }
 
   return (
     <AuthContext.Provider value={{ role }}>
       <Router>
-        <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              Пенитенциарная система
-            </Typography>
-            <Button color="inherit" onClick={e => setMenuAnchor(e.currentTarget)}>Меню</Button>
-            <Button color="inherit" onClick={handleLogout}>Выйти</Button>
-            <Menu
-              anchorEl={menuAnchor}
-              open={Boolean(menuAnchor)}
-              onClose={() => setMenuAnchor(null)}
-            >
-              {/* Всегда доступно */}
-              <MenuItem component={Link} to="/prisoners" onClick={() => setMenuAnchor(null)}>
-                Заключённые
-              </MenuItem>
-              <MenuItem component={Link} to="/prisoners/properties" onClick={() => setMenuAnchor(null)}>
-                Вещи
-              </MenuItem>
-
-              {/* Admin */}
-              {isAdmin && (
-                <>
-                  <MenuItem component={Link} to="/staff" onClick={() => setMenuAnchor(null)}>
-                    Персонал
-                  </MenuItem>
-                  <MenuItem component={Link} to="/staff/job" onClick={() => setMenuAnchor(null)}>
-                    Должности
-                  </MenuItem>
-                </>
-              )}
-              {/* Admin & Guard */}
-              {(isAdmin || isGuard) && (
-                <>
-                  <MenuItem component={Link} to="/cells" onClick={() => setMenuAnchor(null)}>
-                    Камеры
-                  </MenuItem>
-                  <MenuItem component={Link} to="/security-levels" onClick={() => setMenuAnchor(null)}>
-                    Уровни защиты
-                  </MenuItem>
-                </>
-              )}
-              {/* Admin & Warden */}
-              {(isAdmin || isWarden) && (
-                <>
-                  <MenuItem component={Link} to="/prisoners/courses" onClick={() => setMenuAnchor(null)}>
-                    Обучение
-                  </MenuItem>
-                  <MenuItem component={Link} to="/prisoners/prisoner-labor" onClick={() => setMenuAnchor(null)}>
-                    Труд
-                  </MenuItem>
-                  <MenuItem component={Link} to="/prisoners/borrowed" onClick={() => setMenuAnchor(null)}>
-                    Книги
-                  </MenuItem>
-                  <MenuItem component={Link} to="/enrollments-certs" onClick={() => setMenuAnchor(null)}>
-                    Сертификаты
-                  </MenuItem>
-                </>
-              )}
-              {/* Admin, Warden, Guard */}
-              {(isAdmin || isWarden || isGuard) && (
-                <>
-                  <MenuItem component={Link} to="/visitors" onClick={() => setMenuAnchor(null)}>
-                    Регистрация посетителей
-                  </MenuItem>
-                  <MenuItem component={Link} to="/visited-by" onClick={() => setMenuAnchor(null)}>
-                    Посещаемость
-                  </MenuItem>
-                </>
-              )}
-              {/* Admin, Medic, Viewer */}
-              {(isAdmin || isMedic || isViewer) && (
-                <MenuItem component={Link} to="/infirmary" onClick={() => setMenuAnchor(null)}>
-                Лазарет
-                </MenuItem>
-              )}
-              {/* Admin, Librarian, Viewer */}
-              {(isAdmin || isLibrarian || isViewer) && (
-                <MenuItem component={Link} to="/library" onClick={() => setMenuAnchor(null)}>
-                Библиотека
-                </MenuItem>
-              )}
-            </Menu>
-          </Toolbar>
-        </AppBar>
-
+        <NavigationBar onLogout={handleLogout} />
         <Container sx={{ mt: 4 }}>
           <Routes>
             <Route path="/" element={
@@ -200,54 +181,68 @@ function App() {
             } />
 
             <Route path="/prisoners" element={
-              <Protected allowed={['admin','warden','viewer','guard','librarian','medic']}><Prisoners readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden','guard','librarian','medic']}>
+                <Prisoners />
+              </Protected>
+            }/>
             <Route path="/prisoners/properties" element={
-              <Protected allowed={['admin','warden','viewer','guard','librarian','medic']}><Properties readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden','guard','librarian','medic']}>
+                <Properties />
+              </Protected>
+            }/>
             <Route path="/prisoners/courses" element={
-              <Protected allowed={['admin','warden']}><Courses readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden']}>
+                <Courses />
+              </Protected>
+            }/>
             <Route path="/prisoners/prisoner-labor" element={
-              <Protected allowed={['admin','warden']}><PrisonerLaborFrontend readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden']}>
+                <PrisonerLaborFrontend />
+              </Protected>
+            }/>
             <Route path="/prisoners/borrowed" element={
-              <Protected allowed={['admin','librarian']}><Borrowed readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','librarian']}>
+                <Borrowed />
+              </Protected>
+            }/>
             <Route path="/enrollments-certs" element={
-              <Protected allowed={['admin','warden']}><Work readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden']}>
+                <Work />
+              </Protected>
+            }/>
             <Route path="/own-certificate-from" element={
-              <Protected allowed={['admin','warden']}><OwnCertificateFromFrontend readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden']}>
+                <OwnCertificateFromFrontend />
+              </Protected>
+            }/>
 
             <Route path="/staff" element={
               <Protected allowed={['admin']}><Staff /></Protected>
-            } />
+            }/>
             <Route path="/staff/job" element={
               <Protected allowed={['admin']}><Job /></Protected>
-            } />
+            }/>
 
             <Route path="/cells" element={
               <Protected allowed={['admin','guard']}><Cells /></Protected>
-            } />
+            }/>
             <Route path="/security-levels" element={
               <Protected allowed={['admin','guard']}><SecurityLevels /></Protected>
-            } />
+            }/>
 
             <Route path="/visitors" element={
-              <Protected allowed={['admin','warden','guard']}><Visitors readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden','guard']}><Visitors /></Protected>
+            }/>
             <Route path="/visited-by" element={
-              <Protected allowed={['admin','warden','guard']}><VisitedBy readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','warden','guard']}><VisitedBy /></Protected>
+            }/>
 
             <Route path="/infirmary" element={
-              <Protected allowed={['admin','medic','viewer']}><Infirmary readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','medic']}><Infirmary /></Protected>
+            }/>
             <Route path="/library" element={
-              <Protected allowed={['admin','librarian','viewer']}><Library readOnly={isViewer} /></Protected>
-            } />
+              <Protected allowed={['admin','librarian']}><Library /></Protected>
+            }/>
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

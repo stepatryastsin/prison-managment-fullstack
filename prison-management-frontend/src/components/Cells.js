@@ -71,25 +71,32 @@ export default function Cells() {
     fetchCells();
   }, []);
 
-  // Create new cell
   const handleCreate = async () => {
-    if (!newCellNum) return alert('Введите номер камеры');
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cellNum: +newCellNum, lastShakedownDate: newDate })
-      });
-      if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
-      setDlgOpen(false);
-      setNewCellNum('');
-      setNewDate('');
-      fetchCells();
-    } catch (e) {
-      console.error('handleCreate error:', e);
+  if (!newCellNum) return alert('Введите номер камеры');
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cellNum: +newCellNum, lastShakedownDate: newDate })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      const msg = err?.message || 'Ошибка создания камеры';
+      alert(msg);
+      return;
     }
-  };
+
+    setDlgOpen(false);
+    setNewCellNum('');
+    setNewDate('');
+    fetchCells();
+  } catch (e) {
+    console.error('handleCreate error:', e);
+    alert('Ошибка при создании камеры');
+  }
+};
 
   // Init edit mode
   const handleEditInit = (cell) => {
@@ -98,41 +105,53 @@ export default function Cells() {
     setEditErrors({});
   };
 
-  // Save edits
   const handleSave = async (cellNum) => {
-    try {
-      const res = await fetch(`${API_URL}/${cellNum}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cellNum, lastShakedownDate: editDate })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        setEditErrors(err.errors || {});
-        return;
-      }
-      setEditId(null);
-      fetchCells();
-    } catch (e) {
-      console.error('handleSave error:', e);
-    }
-  };
+  try {
+    const res = await fetch(`${API_URL}/${cellNum}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cellNum, lastShakedownDate: editDate })
+    });
 
-  // Delete cell
-  const handleDelete = async (cellNum) => {
-    if (!window.confirm('Удалить камеру?')) return;
-    try {
-      const res = await fetch(`${API_URL}/${cellNum}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
-      fetchCells();
-    } catch (e) {
-      console.error('handleDelete error:', e);
+    const body = await res.json();
+
+    if (!res.ok) {
+      const msg = body?.message || 'Ошибка обновления данных';
+      setEditErrors({ form: msg });
+      return;
     }
-  };
+
+    setEditId(null);
+    fetchCells();
+  } catch (e) {
+    console.error('handleSave error:', e);
+    setEditErrors({ form: 'Ошибка при сохранении' });
+  }
+};
+
+  const handleDelete = async (cellNum) => {
+  if (!window.confirm('Удалить камеру?')) return;
+
+  try {
+    const res = await fetch(`${API_URL}/${cellNum}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      const msg = err?.message || 'Ошибка удаления камеры';
+      alert(msg);
+      return;
+    }
+
+    fetchCells();
+  } catch (e) {
+    console.error('handleDelete error:', e);
+    alert('Ошибка при удалении камеры');
+  }
+};
 
   const openDetail = (item) => {
     setDetailItem(item);
@@ -161,7 +180,7 @@ export default function Cells() {
       </AppBar>
 
       <Grid container spacing={2}>
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {cells.map(cell => (
             <Grid key={cell.cellNum} item xs={12} sm={6} md={4}>
               <motion.div whileHover={{ scale: 1.02 }}>

@@ -1,7 +1,7 @@
 package com.example.PrisonManagement.impl;
 
 import com.example.PrisonManagement.Model.Infirmary;
-import com.example.PrisonManagement.Repository.InfirmaryRepository;
+import com.example.PrisonManagement.Repository.InfirmaryDao;
 import com.example.PrisonManagement.Service.InfirmaryService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -16,115 +16,77 @@ import java.util.List;
 @Transactional
 public class InfirmaryServiceImpl implements InfirmaryService {
 
-    private static final Logger logger = LoggerFactory.getLogger(InfirmaryServiceImpl.class);
-    private final InfirmaryRepository repo;
+    private final InfirmaryDao dao;
 
-    @Autowired
-    public InfirmaryServiceImpl(InfirmaryRepository repo) {
-        this.repo = repo;
-        logger.info("InfirmaryServiceImpl инициализирован");
+    public InfirmaryServiceImpl(InfirmaryDao dao) {
+        this.dao = dao;
     }
 
     @Override
     public List<Infirmary> findAll() {
-        logger.info("Запрошен список всех записей медицинской службы");
-        List<Infirmary> list = repo.findAll();
-        logger.info("Найдено {} записей медицинских назначений", list.size());
-        return list;
+        return dao.findAll();
     }
 
     @Override
     public Infirmary findById(Integer prescriptionNum) {
-        logger.info("Запрошена запись по prescriptionNum={}", prescriptionNum);
-        return repo.findById(prescriptionNum)
-                .map(i -> {
-                    logger.info("Запись prescriptionNum={} найдена", prescriptionNum);
-                    return i;
-                })
-                .orElseThrow(() -> {
-                    logger.warn("Запись prescriptionNum={} не найдена", prescriptionNum);
-                    return new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Запись prescriptionNum=" + prescriptionNum + " не найдена");
-                });
+        return dao.findById(prescriptionNum)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Infirmary record with prescriptionNum=" + prescriptionNum + " not found"));
     }
 
     @Override
     public Infirmary findByPrisonerId(Integer prisonerId) {
-        logger.info("Запрошена запись по prisonerId={}", prisonerId);
-        return repo.findByPrisoner_PrisonerId(prisonerId)
-                .map(i -> {
-                    logger.info("Запись для prisonerId={} найдена", prisonerId);
-                    return i;
-                })
-                .orElseThrow(() -> {
-                    logger.warn("Запись для prisonerId={} не найдена", prisonerId);
-                    return new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Запись для prisonerId=" + prisonerId + " не найдена");
-                });
+        return dao.findByPrisonerId(prisonerId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Infirmary record for prisonerId=" + prisonerId + " not found"));
     }
 
     @Override
     public Infirmary createOrUpdate(Infirmary infirmary) {
-        Integer pid = infirmary.getPrisoner().getPrisonerId();
-        logger.info("Попытка создать или обновить запись для prisonerId={}", pid);
-        Infirmary result = repo.findByPrisoner_PrisonerId(pid)
-                .map(existing -> {
-                    logger.info("Обновление существующей записи для prisonerId={}", pid);
-                    existing.setRelatedDoctor(infirmary.getRelatedDoctor());
-                    existing.setDrugName(infirmary.getDrugName());
-                    existing.setDrugUsageDay(infirmary.getDrugUsageDay());
-                    existing.setDiseaseType(infirmary.getDiseaseType());
-                    Infirmary updated = repo.save(existing);
-                    logger.info("Запись для prisonerId={} успешно обновлена", pid);
-                    return updated;
-                })
-                .orElseGet(() -> {
-                    logger.info("Создание новой записи для prisonerId={}", pid);
-                    Infirmary created = repo.save(infirmary);
-                    logger.info("Новая запись для prisonerId={} успешно создана", pid);
-                    return created;
-                });
-        return result;
+        Integer prescNum = infirmary.getPrescriptionNum();
+        if (prescNum == null) {
+            // create new
+            return dao.create(infirmary);
+        } else {
+            // update existing
+            if (!dao.existsById(prescNum)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Cannot update non-existent prescriptionNum=" + prescNum);
+            }
+            // ensure prisonerId matches if needed, or copy values
+            return dao.update(infirmary);
+        }
     }
 
     @Override
     public Infirmary update(Integer prescriptionNum, Infirmary infirmary) {
-        logger.info("Попытка обновить запись prescriptionNum={}", prescriptionNum);
         Infirmary existing = findById(prescriptionNum);
+        // replace all updatable fields
+        existing.setPrisoner(infirmary.getPrisoner());
         existing.setRelatedDoctor(infirmary.getRelatedDoctor());
         existing.setDrugName(infirmary.getDrugName());
         existing.setDrugUsageDay(infirmary.getDrugUsageDay());
         existing.setDiseaseType(infirmary.getDiseaseType());
-        Infirmary updated = repo.save(existing);
-        logger.info("Запись prescriptionNum={} успешно обновлена", prescriptionNum);
-        return updated;
+        return dao.update(existing);
     }
 
     @Override
     public void deleteByPrescriptionNum(Integer prescriptionNum) {
-        logger.info("Попытка удалить запись prescriptionNum={}", prescriptionNum);
-        if (!repo.existsById(prescriptionNum)) {
-            logger.warn("Невозможно удалить: запись prescriptionNum={} не найдена", prescriptionNum);
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Запись prescriptionNum=" + prescriptionNum + " не найдена");
+        if (!dao.existsById(prescriptionNum)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Infirmary record with prescriptionNum=" + prescriptionNum + " not found");
         }
-        repo.deleteById(prescriptionNum);
-        logger.info("Запись prescriptionNum={} успешно удалена", prescriptionNum);
+        dao.delete(prescriptionNum);
     }
 
     @Override
     public void deleteByPrisonerId(Integer prisonerId) {
-        logger.info("Попытка удалить запись для prisonerId={}", prisonerId);
-        if (!repo.existsByPrisoner_PrisonerId(prisonerId)) {
-            logger.warn("Невозможно удалить: запись для prisonerId={} не найдена", prisonerId);
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Запись для prisonerId=" + prisonerId + " не найдена");
+        if (!dao.existsByPrisonerId(prisonerId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "No infirmary record for prisonerId=" + prisonerId);
         }
-        repo.deleteByPrisoner_PrisonerId(prisonerId);
-        logger.info("Запись для prisonerId={} успешно удалена", prisonerId);
+        dao.deleteByPrisonerId(prisonerId);
     }
 }

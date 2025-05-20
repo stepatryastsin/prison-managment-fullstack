@@ -2,10 +2,9 @@ package com.example.PrisonManagement.impl;
 
 
 import com.example.PrisonManagement.Model.Cell;
-import com.example.PrisonManagement.Repository.CellRepository;
-import com.example.PrisonManagement.Repository.PrisonerRepository;
+import com.example.PrisonManagement.Repository.CellDao;
+import com.example.PrisonManagement.Repository.PrisonerDao;
 import com.example.PrisonManagement.Service.CellService;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,91 +14,81 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
 
 
 @Service
 @Transactional
 public class CellServiceImpl implements CellService {
 
-    private static final Logger logger = LoggerFactory.getLogger(CellServiceImpl.class);
-    private final CellRepository repo;
-    private final PrisonerRepository prisonerRepo;
+    private static final org.slf4j.Logger logger =
+            org.slf4j.LoggerFactory.getLogger(CellServiceImpl.class);
+
+    private final CellDao       cellDao;
+    private final PrisonerDao   prisonerDao;
 
     @Autowired
-    public CellServiceImpl(CellRepository repo, PrisonerRepository prisonerRepo) {
-        this.repo = repo;
-        this.prisonerRepo = prisonerRepo;
-        logger.info("CellServiceImpl инициализирован");
+    public CellServiceImpl(CellDao cellDao, PrisonerDao prisonerDao) {
+        this.cellDao     = cellDao;
+        this.prisonerDao = prisonerDao;
+        logger.info("CellServiceImpl initialized");
     }
 
     @Override
     public List<Cell> findAll() {
-        logger.info("Запрошен список всех камер");
-        List<Cell> cells = repo.findAll();
-        logger.info("Найдено {} камер", cells.size());
-        return cells;
+        logger.info("Fetching all cells");
+        return cellDao.findAll();
     }
 
     @Override
     public Cell findById(Integer id) {
-        logger.info("Запрошена камера с id={}", id);
-        return repo.findById(id)
-                .map(cell -> {
-                    logger.info("Камера с id={} найдена", id);
-                    return cell;
-                })
+        logger.info("Fetching cell id={}", id);
+        return cellDao.findById(id)
                 .orElseThrow(() -> {
-                    logger.warn("Камера с id={} не найдена", id);
+                    logger.warn("Cell id={} not found", id);
                     return new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
-                            "Камера с id=" + id + " не найдена");
+                            "Cell with id=" + id + " not found");
                 });
     }
 
     @Override
     public Cell create(Cell cell) {
         Integer id = cell.getCellNum();
-        logger.info("Попытка создать камеру с id={}", id);
-        if (repo.existsById(id)) {
-            logger.warn("Не удалось создать: камера с id={} уже существует", id);
+        logger.info("Creating cell id={}", id);
+        if (cellDao.existsById(id)) {
+            logger.warn("Conflict: cell id={} already exists", id);
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Камера с id=" + id + " уже существует");
+                    "Cell with id=" + id + " already exists");
         }
-        Cell saved = repo.save(cell);
-        logger.info("Камера с id={} успешно создана", saved.getCellNum());
-        return saved;
+        return cellDao.create(cell);
     }
 
     @Override
     public Cell update(Integer id, Cell cell) {
-        logger.info("Попытка обновить камеру с id={}", id);
+        logger.info("Updating cell id={}", id);
         Cell existing = findById(id);
         existing.setLastShakedownDate(cell.getLastShakedownDate());
-        Cell updated = repo.save(existing);
-        logger.info("Камера с id={} успешно обновлена", id);
-        return updated;
+        return cellDao.update(existing);
     }
 
     @Override
     public void delete(Integer id) {
-        logger.info("Попытка удалить камеру с id={}", id);
-        if (!repo.existsById(id)) {
-            logger.warn("Не удалось удалить: камера с id={} не найдена", id);
+        logger.info("Deleting cell id={}", id);
+        if (!cellDao.existsById(id)) {
+            logger.warn("Cell id={} not found", id);
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    "Камера с id=" + id + " не найдена");
+                    "Cell with id=" + id + " not found");
         }
-        repo.deleteById(id);
-        logger.info("Камера с id={} успешно удалена", id);
+        cellDao.delete(id);
     }
 
     @Override
     public boolean hasPrisoners(Integer id) {
-        logger.info("Проверка наличия заключённых в камере id={}", id);
-        boolean result = prisonerRepo.existsByCell_CellNum(id);
-        logger.info("В камере id={} {} заключённых", id, result ? "есть" : "нет");
+        logger.info("Checking prisoners in cell id={}", id);
+        boolean result = prisonerDao.existsByCellNum(id);
+        logger.info("Cell id={} has prisoners: {}", id, result);
         return result;
     }
 }

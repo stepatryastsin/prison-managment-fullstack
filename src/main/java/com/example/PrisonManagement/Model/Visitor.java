@@ -3,6 +3,7 @@ package com.example.PrisonManagement.Model;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 
@@ -36,9 +37,9 @@ public class Visitor {
     @Column(name = "relation_to_prisoner", length = 20, nullable = false)
     private String relationToPrisoner;
 
-    @Future
     @Column(name = "visit_date")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate visitDate;
 
     public Visitor(Integer visitorId,

@@ -68,8 +68,9 @@ export default function Visitors({ readOnly = false }) {
       setEditingId(null);
       setFormData({ firstName: '', lastName: '', phoneNumber: '', relationToPrisoner: '', visitDate: '' });
       fetchVisitors();
-    } catch {
-      openSnackbar('Ошибка при сохранении', 'error');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Ошибка при сохранении';
+      showSnack(msg, 'error');
     }
   };
 

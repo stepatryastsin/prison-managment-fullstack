@@ -59,8 +59,6 @@ public class Prisoner {
     @NotNull(message = "Уровень безопасности обязателен")
     private SecurityLevel securityLevel;
 
-    @Column(name = "is_released", nullable = false)
-    private Boolean isReleased = false;
 
     public Prisoner() {
     }
@@ -88,7 +86,6 @@ public class Prisoner {
         this.sentenceEndDate = sentenceEndDate;
         this.cell = cell;
         this.securityLevel = securityLevel;
-        this.isReleased = isReleased;
     }
 
     public Integer getPrisonerId() {
@@ -179,13 +176,7 @@ public class Prisoner {
         this.securityLevel = securityLevel;
     }
 
-    public Boolean getReleased() {
-        return isReleased;
-    }
 
-    public void setReleased(Boolean released) {
-        isReleased = released;
-    }
 
     @Override
     public final boolean equals(Object o) {
@@ -202,8 +193,7 @@ public class Prisoner {
                 getIntakeDate().equals(prisoner.getIntakeDate()) &&
                 getSentenceEndDate().equals(prisoner.getSentenceEndDate()) &&
                 getCell().equals(prisoner.getCell()) &&
-                getSecurityLevel().equals(prisoner.getSecurityLevel()) &&
-                isReleased.equals(prisoner.isReleased);
+                getSecurityLevel().equals(prisoner.getSecurityLevel());
     }
 
     @Override
@@ -219,7 +209,6 @@ public class Prisoner {
         result = 31 * result + getSentenceEndDate().hashCode();
         result = 31 * result + getCell().hashCode();
         result = 31 * result + getSecurityLevel().hashCode();
-        result = 31 * result + isReleased.hashCode();
         return result;
     }
 
@@ -237,7 +226,6 @@ public class Prisoner {
                 ", sentenceEndDate=" + sentenceEndDate +
                 ", cell=" + cell +
                 ", securityLevel=" + securityLevel +
-                ", isReleased=" + isReleased +
                 '}';
     }
 }

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/properties")
 @CrossOrigin(origins = "http://localhost:3000")
+@Validated
 public class PropertiesInCellsController {
 
     private static final Logger logger = LoggerFactory.getLogger(PropertiesInCellsController.class);

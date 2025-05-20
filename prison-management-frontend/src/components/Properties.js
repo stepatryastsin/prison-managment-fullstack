@@ -1,5 +1,3 @@
-// src/pages/PropertiesFrontend.jsx
-
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Box,
@@ -51,16 +49,14 @@ export default function PropertiesFrontend({ readOnly = false }) {
   const [viewRec, setViewRec]     = useState(null);
   const [viewOpen, setViewOpen]   = useState(false);
 
-  // edit/create only if not readOnly
   const [editRec, setEditRec]     = useState(null);
   const [editOpen, setEditOpen]   = useState(false);
   const [form, setForm]           = useState({
     prisonerId: '',
-    propertyName: '',
     description: ''
   });
 
-  const [snack, setSnack]         = useState({ open: false, msg: '', sev: 'success' });
+  const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
   const openSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
   const closeSnack = () => setSnack(s => ({ ...s, open: false }));
 
@@ -81,25 +77,28 @@ export default function PropertiesFrontend({ readOnly = false }) {
     }
   }
 
-  const grouped = useMemo(() => {
-    return propsList.reduce((acc, r) => {
+  // Группируем по заключённому
+  const grouped = useMemo(() =>
+    propsList.reduce((acc, r) => {
       const pid = r.prisoner?.prisonerId;
       if (!pid) return acc;
       acc[pid] = acc[pid] || { prisoner: r.prisoner, items: [] };
       acc[pid].items.push(r);
       return acc;
-    }, {});
-  }, [propsList]);
+    }, {}), [propsList]
+  );
 
+  // Фильтр по поиску
   const filteredKeys = useMemo(() => {
     if (!search.trim()) return Object.keys(grouped);
     return Object.keys(grouped).filter(pid => {
       const { prisoner, items } = grouped[pid];
+      const q = search.toLowerCase();
       return (
-        prisoner.firstName.toLowerCase().includes(search.toLowerCase()) ||
-        prisoner.lastName.toLowerCase().includes(search.toLowerCase()) ||
+        prisoner.firstName.toLowerCase().includes(q) ||
+        prisoner.lastName.toLowerCase().includes(q) ||
         items.some(r =>
-          r.id.propertyName.toLowerCase().includes(search.toLowerCase())
+          r.description.toLowerCase().includes(q)
         )
       );
     });
@@ -110,12 +109,11 @@ export default function PropertiesFrontend({ readOnly = false }) {
       setEditRec(rec);
       setForm({
         prisonerId: rec.id.prisonerId,
-        propertyName: rec.id.propertyName,
-        description: rec.description
+        description: rec.description || ''
       });
     } else {
       setEditRec(null);
-      setForm({ prisonerId:'', propertyName:'', description:'' });
+      setForm({ prisonerId:'', description:'' });
     }
     setEditOpen(true);
   }
@@ -125,14 +123,14 @@ export default function PropertiesFrontend({ readOnly = false }) {
       const payload = {
         id: {
           prisonerId: form.prisonerId,
-          propertyName: form.propertyName
+          propertyName: form.description.trim() || `item-${Date.now()}`
         },
         description: form.description,
         prisoner: { prisonerId: form.prisonerId }
       };
       if (editRec) {
         await axios.put(
-          `${API_PROPERTIES}/${form.prisonerId}/${form.propertyName}`,
+          `${API_PROPERTIES}/${form.prisonerId}/${encodeURIComponent(payload.id.propertyName)}`,
           payload
         );
         openSnack('Запись обновлена');
@@ -142,8 +140,9 @@ export default function PropertiesFrontend({ readOnly = false }) {
       }
       setEditOpen(false);
       fetchAll();
-    } catch {
-      openSnack('Ошибка сохранения', 'error');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Ошибка при сохранении';
+      openSnack(msg, 'error');
     }
   }
 
@@ -151,7 +150,7 @@ export default function PropertiesFrontend({ readOnly = false }) {
     if (!window.confirm('Удалить запись?')) return;
     try {
       await axios.delete(
-        `${API_PROPERTIES}/${rec.id.prisonerId}/${rec.id.propertyName}`
+        `${API_PROPERTIES}/${rec.id.prisonerId}/${encodeURIComponent(rec.id.propertyName)}`
       );
       openSnack('Запись удалена');
       fetchAll();
@@ -162,9 +161,7 @@ export default function PropertiesFrontend({ readOnly = false }) {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
-        Вещи заключённых
-      </Typography>
+      <Typography variant="h4" gutterBottom>Вещи заключённых</Typography>
 
       <Stack direction="row" spacing={2} mb={3}>
         <TextField
@@ -172,72 +169,53 @@ export default function PropertiesFrontend({ readOnly = false }) {
           size="small"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            )
-          }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon/></InputAdornment> }}
           sx={{ flexGrow: 1 }}
         />
-        {/* Add button only if not readOnly */}
         {!readOnly && (
           <Button variant="contained" onClick={() => openForm(null)}>
-            Добавить запись
+            Добавить описание
           </Button>
         )}
       </Stack>
 
       {loading && <Typography>Загрузка...</Typography>}
-      {error && <Typography color="error">{error}</Typography>}
+      {error   && <Typography color="error">{error}</Typography>}
 
       <Grid container spacing={3}>
         {filteredKeys.map(pid => {
           const { prisoner, items } = grouped[pid];
           return (
             <Grid item xs={12} sm={6} md={4} key={pid}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: 2,
-                  boxShadow: 2,
-                  '&:hover': { transform: 'scale(1.02)', transition: '0.2s' }
-                }}
-              >
+              <Card sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: 2,
+                boxShadow: 2,
+                '&:hover': { transform: 'scale(1.02)', transition: '0.2s' }
+              }}>
                 <CardHeader
-                  avatar={
-                    <Avatar sx={{ bgcolor: 'primary.main' }}>
-                      {prisoner.firstName[0]}
-                    </Avatar>
-                  }
+                  avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>{prisoner.firstName[0]}</Avatar>}
                   title={`${prisoner.firstName} ${prisoner.lastName}`}
                   subheader={`ID: ${pid}`}
                   action={
                     <Stack direction="row" spacing={1}>
                       <Tooltip title="Просмотр">
-                        <IconButton
-                          onClick={() => {
-                            setViewRec(grouped[pid]);
-                            setViewOpen(true);
-                          }}
-                        >
-                          <InfoIcon />
+                        <IconButton onClick={() => { setViewRec(grouped[pid]); setViewOpen(true); }}>
+                          <InfoIcon/>
                         </IconButton>
                       </Tooltip>
-                      {/* Edit/Delete only if not readOnly */}
                       {!readOnly && (
                         <>
                           <Tooltip title="Редактировать">
                             <IconButton onClick={() => openForm(items[0])}>
-                              <EditIcon />
+                              <EditIcon/>
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Удалить">
                             <IconButton onClick={() => handleDelete(items[0])}>
-                              <DeleteIcon />
+                              <DeleteIcon/>
                             </IconButton>
                           </Tooltip>
                         </>
@@ -248,23 +226,29 @@ export default function PropertiesFrontend({ readOnly = false }) {
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Stack spacing={1}>
                     {items.map(r => (
-                      <Box
-                        component="div"
+                      <Paper
                         key={r.id.propertyName}
-                        sx={{ display: 'flex', justifyContent: 'space-between' }}
+                        variant="outlined"
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: 'background.paper',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
                       >
-                        <Typography variant="body2">
-                          • <strong>{r.id.propertyName}</strong>: {r.description || '—'}
+                        <Typography variant="body2" color="text.secondary">
+                          {r.description || '—'}
                         </Typography>
-                        {/* per-item delete if not readOnly */}
                         {!readOnly && (
                           <Tooltip title="Удалить">
                             <IconButton size="small" onClick={() => handleDelete(r)}>
-                              <DeleteIcon fontSize="small" />
+                              <DeleteIcon fontSize="small"/>
                             </IconButton>
                           </Tooltip>
                         )}
-                      </Box>
+                      </Paper>
                     ))}
                   </Stack>
                 </CardContent>
@@ -278,24 +262,18 @@ export default function PropertiesFrontend({ readOnly = false }) {
       </Grid>
 
       {/* View Dialog */}
-      <Dialog
-        open={viewOpen}
-        onClose={() => setViewOpen(false)}
-        fullWidth
-        maxWidth="sm"
-      >
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Детали заключённого</DialogTitle>
         <DialogContent dividers>
           {viewRec && (
             <>
               <Typography variant="h6" gutterBottom>
-                {viewRec.prisoner.firstName} {viewRec.prisoner.lastName} (ID:{' '}
-                {viewRec.prisoner.prisonerId})
+                {viewRec.prisoner.firstName} {viewRec.prisoner.lastName} (ID: {viewRec.prisoner.prisonerId})
               </Typography>
               <Stack spacing={1}>
                 {viewRec.items.map(r => (
-                  <Typography key={r.id.propertyName}>
-                    • <strong>{r.id.propertyName}</strong>: {r.description || '—'}
+                  <Typography key={r.id.propertyName} variant="body2">
+                    {r.description || '—'}
                   </Typography>
                 ))}
               </Stack>
@@ -307,26 +285,17 @@ export default function PropertiesFrontend({ readOnly = false }) {
         </DialogActions>
       </Dialog>
 
-      {/* Edit/Create Dialog — only if not readOnly */}
+      {/* Edit/Create Dialog */}
       {!readOnly && (
-        <Dialog
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogTitle>
-            {editRec ? 'Редактировать' : 'Добавить'} запись
-          </DialogTitle>
+        <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+          <DialogTitle>{editRec ? 'Редактировать' : 'Добавить'} описание</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2} mt={1}>
               <TextField
                 select
                 label="Заключённый"
                 value={form.prisonerId}
-                onChange={e =>
-                  setForm(f => ({ ...f, prisonerId: e.target.value }))
-                }
+                onChange={e => setForm(f => ({ ...f, prisonerId: e.target.value }))}
                 SelectProps={{ native: true }}
                 fullWidth
               >
@@ -338,22 +307,13 @@ export default function PropertiesFrontend({ readOnly = false }) {
                 ))}
               </TextField>
               <TextField
-                label="Свойство"
-                value={form.propertyName}
-                onChange={e =>
-                  setForm(f => ({ ...f, propertyName: e.target.value }))
-                }
-                fullWidth
-              />
-              <TextField
                 label="Описание"
                 value={form.description}
-                onChange={e =>
-                  setForm(f => ({ ...f, description: e.target.value }))
-                }
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 fullWidth
                 multiline
                 rows={3}
+                required
               />
             </Stack>
           </DialogContent>
@@ -361,7 +321,7 @@ export default function PropertiesFrontend({ readOnly = false }) {
             <Button onClick={() => setEditOpen(false)}>Отмена</Button>
             <Button
               onClick={handleSave}
-              disabled={!form.prisonerId || !form.propertyName}
+              disabled={!form.prisonerId || !form.description.trim()}
             >
               Подтвердить
             </Button>

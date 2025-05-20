@@ -56,20 +56,22 @@ export default function Borrowed() {
     fetchAll();
   }, []);
 
-  async function fetchAll() {
-    try {
-      const [b, p, k] = await Promise.all([
-        axios.get(API.borrowed),
-        axios.get(API.prisoners),
-        axios.get(API.books)
-      ]);
-      setBorrowed(b.data);
-      setPrisoners(p.data);
-      setBooks(k.data);
-    } catch (err) {
-      console.error(err);
-    }
+async function fetchAll() {
+  try {
+    const [b, p, k] = await Promise.all([
+      axios.get(API.borrowed),
+      axios.get(API.prisoners),
+      axios.get(API.books)
+    ]);
+    setBorrowed(b.data);
+    setPrisoners(p.data);
+    setBooks(k.data);
+  } catch (err) {
+    const message = err.response?.data?.message || 'Ошибка загрузки данных';
+    console.error('Ошибка fetchAll:', message);
+    alert(message);
   }
+}
 
   // Group by prisoner
   const grouped = borrowed.reduce((acc, rec) => {
@@ -88,31 +90,40 @@ export default function Borrowed() {
   };
 
   async function create() {
-    setErrors({});
-    if (!selPr || !selBk) {
-      setErrors({ form: 'Выберите заключённого и книгу' });
-      return;
-    }
-    try {
-      await axios.post(API.borrowed, { prisonerId: +selPr, isbn: selBk });
-      setDlgOpen(false);
-      setSelPr(''); setSelBk('');
-      await fetchAll();
-    } catch (err) {
+  setErrors({});
+  if (!selPr || !selBk) {
+    setErrors({ form: 'Выберите заключённого и книгу' });
+    return;
+  }
+
+  try {
+    await axios.post(API.borrowed, { prisonerId: +selPr, isbn: selBk });
+    setDlgOpen(false);
+    setSelPr('');
+    setSelBk('');
+    await fetchAll();
+  } catch (err) {
+    const message = err.response?.data?.message;
+    if (message) {
+      setErrors({ form: message });
+    } else {
       setErrors(err.response?.data?.errors || { form: 'Ошибка сервера' });
     }
   }
+}
 
   async function remove(prisonerId, isbn) {
-    if (!window.confirm('Удалить эту запись?')) return;
-    try {
-      await axios.delete(`${API.borrowed}/${prisonerId}/${encodeURIComponent(isbn)}`);
-      await fetchAll();
-    } catch (err) {
-      console.error(err);
-      alert('Ошибка удаления записи');
-    }
+  if (!window.confirm('Удалить эту запись?')) return;
+
+  try {
+    await axios.delete(`${API.borrowed}/${prisonerId}/${encodeURIComponent(isbn)}`);
+    await fetchAll();
+  } catch (err) {
+    const message = err.response?.data?.message || 'Ошибка удаления записи';
+    console.error('Ошибка удаления:', message);
+    alert(message);
   }
+}
 
   return (
     <Paper sx={{ maxWidth: 1280, mx: 'auto' }}>

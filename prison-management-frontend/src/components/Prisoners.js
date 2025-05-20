@@ -90,38 +90,46 @@ export default function Prisoners({ readOnly = false }) {
   });
 
   const handleSubmit = async e => {
-    e.preventDefault();
-    if (readOnly) return;
-    const payload = {
-      prisonerId: Number(formData.prisonerId),
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      birthPlace: formData.birthPlace,
-      dateOfBirth: formData.dateOfBirth,
-      occupation: formData.occupation,
-      indictment: formData.indictment,
-      intakeDate: formData.intakeDate,
-      sentenceEndDate: formData.sentenceEndDate,
-      cell: { cellNum: Number(formData.cellNum) },
-      securityLevel: { securityLevelNo: Number(formData.securityLevelId) },
-    };
-    try {
-      const url = editingId ? `${API_URL}/${editingId}` : API_URL;
-      const method = editingId ? 'PUT' : 'POST';
-      const res = await fetch(url, fetchOptions({ method, body: JSON.stringify(payload) }));
-      if (!res.ok) throw new Error();
-      const saved = await res.json();
-      setPrisoners(prev =>
-        editingId
-          ? prev.map(p => p.prisonerId === editingId ? saved : p)
-          : [...prev, saved]
-      );
-      setEditingId(null);
-      clearForm();
-    } catch {
-      showError('Ошибка при сохранении');
-    }
+  e.preventDefault();
+  if (readOnly) return;
+
+  const payload = {
+    prisonerId: Number(formData.prisonerId),
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    birthPlace: formData.birthPlace,
+    dateOfBirth: formData.dateOfBirth,
+    occupation: formData.occupation,
+    indictment: formData.indictment,
+    intakeDate: formData.intakeDate,
+    sentenceEndDate: formData.sentenceEndDate,
+    cell: { cellNum: Number(formData.cellNum) },
+    securityLevel: { securityLevelNo: Number(formData.securityLevelId) },
   };
+
+  try {
+    const url = editingId ? `${API_URL}/${editingId}` : API_URL;
+    const method = editingId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, fetchOptions({ method, body: JSON.stringify(payload) }));
+    if (!res.ok) {
+      const errorData = await res.json();
+      const message = errorData?.message || 'Неизвестная ошибка';
+      throw new Error(message);
+    }
+
+    const saved = await res.json();
+    setPrisoners(prev =>
+      editingId
+        ? prev.map(p => p.prisonerId === editingId ? saved : p)
+        : [...prev, saved]
+    );
+    setEditingId(null);
+    clearForm();
+  } catch (err) {
+    showError(`Ошибка при сохранении: ${err.message}`);
+  }
+};
 
   const handleEdit = p => {
     if (readOnly) return;

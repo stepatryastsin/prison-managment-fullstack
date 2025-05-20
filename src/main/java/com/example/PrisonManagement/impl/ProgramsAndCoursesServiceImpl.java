@@ -1,7 +1,9 @@
 package com.example.PrisonManagement.impl;
 
 import com.example.PrisonManagement.Model.ProgramsAndCourses;
-import com.example.PrisonManagement.Repository.ProgramsAndCoursesRepository;
+import com.example.PrisonManagement.Repository.EnrolledInDao;
+import com.example.PrisonManagement.Repository.OwnCertificateFromDao;
+import com.example.PrisonManagement.Repository.ProgramsAndCoursesDao;
 import com.example.PrisonManagement.Service.ProgramsAndCoursesService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -17,102 +19,108 @@ import java.util.Optional;
 @Transactional
 public class ProgramsAndCoursesServiceImpl implements ProgramsAndCoursesService {
 
-    private final ProgramsAndCoursesRepository repository;
+    private final ProgramsAndCoursesDao courseRepo;
+    private final EnrolledInDao enrollRepo;
+    private final OwnCertificateFromDao certRepo;
     private static final Logger logger = LoggerFactory.getLogger(ProgramsAndCoursesServiceImpl.class);
 
-    @Autowired
-    public ProgramsAndCoursesServiceImpl(ProgramsAndCoursesRepository repository) {
-        this.repository = Objects.requireNonNull(repository, "ProgramsAndCoursesRepository не должен быть null");
-        logger.info("Сервис ProgramsAndCoursesServiceImpl инициализирован с репозиторием {}", repository.getClass().getSimpleName());
+    public ProgramsAndCoursesServiceImpl(
+            ProgramsAndCoursesDao courseRepo,
+            EnrolledInDao enrollRepo,
+            OwnCertificateFromDao certRepo) {
+        this.courseRepo = Objects.requireNonNull(courseRepo, "ProgramsAndCoursesDao must not be null");
+        this.enrollRepo = Objects.requireNonNull(enrollRepo,      "EnrolledInDao must not be null");
+        this.certRepo   = Objects.requireNonNull(certRepo,        "OwnCertificateFromDao must not be null");
+        logger.info("ProgramsAndCoursesServiceImpl initialized");
     }
 
     @Override
-    @Transactional
     public List<ProgramsAndCourses> getAllCourses() {
-        logger.debug("Запрошен список всех курсов (включая удалённые)");
-        List<ProgramsAndCourses> list = repository.findAll();
-        logger.info("Получено {} курсов", list.size());
+        logger.info("Fetching all courses");
+        List<ProgramsAndCourses> list = courseRepo.findAll();
+        logger.info("Found {} courses", list.size());
         return list;
     }
 
     @Override
-    @Transactional
     public Optional<ProgramsAndCourses> getCourseById(Integer id) {
-        logger.debug("Поиск курса по id={}", id);
-        return repository.findById(id);
+        logger.info("Fetching course by id={}", id);
+        return courseRepo.findById(id);
     }
 
     @Override
-    public ProgramsAndCourses createCourse(ProgramsAndCourses course) {
-        Objects.requireNonNull(course, "Создаваемый курс не должен быть null");
-        course.setDeleted(false);
-        ProgramsAndCourses saved = repository.save(course);
-        logger.info("Курс успешно создан с id={}", saved.getCourseId());
-        return saved;
+    public ProgramsAndCourses createCourse(ProgramsAndCourses c) {
+        Objects.requireNonNull(c, "Course must not be null");
+        c.setDeleted(false);
+        ProgramsAndCourses created = courseRepo.create(c);
+        logger.info("Created course with id={}", created.getCourseId());
+        return created;
     }
 
     @Override
-    public Optional<ProgramsAndCourses> updateCourse(Integer id, ProgramsAndCourses courseDetails) {
-        logger.debug("Обновление курса с id={}", id);
-        return repository.findById(id)
-                .map(existing -> {
-                    existing.setCourseName(courseDetails.getCourseName());
-                    existing.setInstructor(courseDetails.getInstructor());
-                    existing.setDeleted(courseDetails.getDeleted());
-                    ProgramsAndCourses updated = repository.save(existing);
-                    logger.info("Курс с id={} успешно обновлён", id);
-                    return updated;
-                });
-    }
-
-    @Override
-    public boolean softDeleteCourse(Integer id) {
-        logger.debug("Мягкое удаление (soft delete) курса с id={}", id);
-        return repository.findById(id).map(course -> {
-            if (Boolean.TRUE.equals(course.getDeleted())) {
-                logger.warn("Курс с id={} уже помечен как удалённый", id);
-                return false;
-            }
-            course.setDeleted(true);
-            repository.save(course);
-            logger.info("Курс с id={} успешно помечен как удалённый", id);
-            return true;
-        }).orElseGet(() -> {
-            logger.warn("Курс с id={} не найден для мягкого удаления", id);
-            return false;
+    public Optional<ProgramsAndCourses> updateCourse(Integer id, ProgramsAndCourses d) {
+        logger.info("Updating course id={}", id);
+        return courseRepo.findById(id).map(existing -> {
+            existing.setCourseName(d.getCourseName());
+            existing.setInstructor(d.getInstructor());
+            existing.setDeleted(d.getDeleted());
+            ProgramsAndCourses updated = courseRepo.update(existing);
+            logger.info("Course id={} updated", id);
+            return updated;
         });
     }
 
     @Override
-    public boolean removeCourse(Integer id) {
-        logger.debug("Физическое удаление курса с id={}", id);
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            logger.info("Курс с id={} успешно удалён физически", id);
+    public boolean softDeleteCourse(Integer id) {
+        logger.info("Soft-deleting course id={}", id);
+        return courseRepo.findById(id).map(c -> {
+            if (Boolean.TRUE.equals(c.getDeleted())) {
+                logger.warn("Course id={} already soft-deleted", id);
+                return false;
+            }
+            c.setDeleted(true);
+            courseRepo.update(c);
+            logger.info("Course id={} marked deleted", id);
             return true;
-        }
-        logger.warn("Курс с id={} не найден для физического удаления", id);
-        return false;
+        }).orElse(false);
     }
 
     @Override
-    @Transactional
+    public boolean removeCourse(Integer id) {
+        logger.info("Hard-deleting course id={}", id);
+        if (!courseRepo.existsById(id)) {
+            logger.warn("Course id={} not found for hard delete", id);
+            return false;
+        }
+        // удаляем все enrollments
+        enrollRepo.findByCourseId(id)
+                .forEach(e -> enrollRepo.deleteByPrisonerIdAndCourseId(
+                        e.getId().getPrisonerId(),
+                        e.getId().getCourseId()));
+        // удаляем все certificates
+        certRepo.findByCourseId(id)
+                .forEach(c -> certRepo.deleteByPrisonerIdAndCourseId(
+                        c.getId().getPrisonerId(),
+                        c.getId().getCourseId()));
+        // удаляем сам курс
+        courseRepo.delete(id);
+        logger.info("Course id={} and all relations removed", id);
+        return true;
+    }
+
+    @Override
     public Integer getInstructorIdByCourseId(Integer courseId) {
-        logger.debug("Получение ID преподавателя для курса с id={}", courseId);
-        return repository.findById(courseId)
-                .map(course -> {
-                    if (course.getInstructor() != null) {
-                        Integer instructorId = course.getInstructor().getStaffId();
-                        logger.info("Найден преподаватель с id={} для курса с id={}", instructorId, courseId);
-                        return instructorId;
-                    } else {
-                        logger.warn("Преподаватель не найден для курса с id={}", courseId);
-                        throw new EntityNotFoundException("Преподаватель не найден для курса с id " + courseId);
+        return courseRepo.findById(courseId)
+                .map(c -> {
+                    if (c.getInstructor() == null) {
+                        logger.warn("Instructor not set for course id={}", courseId);
+                        throw new EntityNotFoundException("Instructor not found for course " + courseId);
                     }
+                    return c.getInstructor().getStaffId();
                 })
                 .orElseThrow(() -> {
-                    logger.warn("Курс с id={} не найден", courseId);
-                    return new EntityNotFoundException("Курс не найден с id " + courseId);
+                    logger.warn("Course id={} not found", courseId);
+                    throw new EntityNotFoundException("Course not found " + courseId);
                 });
     }
 }

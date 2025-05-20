@@ -7,6 +7,7 @@ import com.example.PrisonManagement.Service.JobService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
 @RestController
 @RequestMapping("/api/job")
 @CrossOrigin(origins = "http://localhost:3000")
+@Validated
 public class JobController {
 
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);

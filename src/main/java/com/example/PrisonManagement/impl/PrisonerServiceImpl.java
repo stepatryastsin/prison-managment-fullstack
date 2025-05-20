@@ -14,47 +14,45 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 @Service
 @Transactional
 public class PrisonerServiceImpl implements PrisonerService {
 
-    private static final Logger logger = LoggerFactory.getLogger(PrisonerServiceImpl.class);
+    private static final org.slf4j.Logger logger =
+            org.slf4j.LoggerFactory.getLogger(PrisonerServiceImpl.class);
 
-    private final PrisonerRepository repo;
-    private final BorrowedRepository borrowedRepo;
-    private final InfirmaryRepository infirmaryRepo;
+    private final PrisonerDao            dao;
+    private final BorrowedRepository     borrowedRepo;
+    private final InfirmaryDao           infirmaryDao;
     private final PrisonerLaborRepository laborRepo;
     private final PropertiesInCellsRepository propertiesRepo;
 
     @Autowired
-    public PrisonerServiceImpl(PrisonerRepository repo,
+    public PrisonerServiceImpl(PrisonerDao dao,
                                BorrowedRepository borrowedRepo,
-                               InfirmaryRepository infirmaryRepo,
+                               InfirmaryDao infirmaryDao,
                                PrisonerLaborRepository laborRepo,
                                PropertiesInCellsRepository propertiesRepo) {
-        this.repo           = repo;
+        this.dao            = dao;
         this.borrowedRepo   = borrowedRepo;
-        this.infirmaryRepo  = infirmaryRepo;
+        this.infirmaryDao   = infirmaryDao;
         this.laborRepo      = laborRepo;
         this.propertiesRepo = propertiesRepo;
-        logger.info("Initialized PrisonerServiceImpl with repositories");
+        logger.info("Initialized PrisonerServiceImpl with JDBC DAO");
     }
 
     @Override
     public List<Prisoner> getAll() {
-        logger.debug("Fetching all prisoners");
-        List<Prisoner> prisoners = repo.findAll();
-        logger.info("Fetched {} prisoners", prisoners.size());
-        return prisoners;
+        logger.debug("Fetching all prisoners via JDBC");
+        return dao.findAll();
     }
 
     @Override
     public Prisoner findById(Integer id) {
-        logger.debug("Finding prisoner with id={}", id);
-        return repo.findByPrisonerId(id)
+        logger.debug("Fetching prisoner id={}", id);
+        return dao.findById(id)
                 .orElseThrow(() -> {
-                    logger.warn("Prisoner with id={} not found", id);
+                    logger.warn("Prisoner id={} not found", id);
                     return new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
                             "Заключённый с id=" + id + " не найден"
@@ -64,25 +62,22 @@ public class PrisonerServiceImpl implements PrisonerService {
 
     @Override
     public Prisoner create(Prisoner prisoner) {
-        Integer id = prisoner.getPrisonerId();
-        logger.debug("Creating prisoner with id={}", id);
-        if (repo.existsByPrisonerId(id)) {
-            logger.warn("Conflict: prisoner with id={} already exists", id);
+        logger.debug("Creating prisoner id={}", prisoner.getPrisonerId());
+        if (dao.existsById(prisoner.getPrisonerId())) {
+            logger.warn("Conflict: prisoner id={} already exists",
+                    prisoner.getPrisonerId());
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Заключённый с id=" + id + " уже существует"
+                    "Заключённый с id=" + prisoner.getPrisonerId() + " уже существует"
             );
         }
-        Prisoner saved = repo.save(prisoner);
-        logger.info("Created prisoner with id={}", saved.getPrisonerId());
-        return saved;
+        return dao.create(prisoner);
     }
 
     @Override
     public Prisoner update(Integer id, Prisoner prisoner) {
-        logger.debug("Updating prisoner with id={}", id);
+        logger.debug("Updating prisoner id={}", id);
         Prisoner existing = findById(id);
-
         existing.setFirstName(prisoner.getFirstName());
         existing.setLastName(prisoner.getLastName());
         existing.setBirthPlace(prisoner.getBirthPlace());
@@ -93,44 +88,39 @@ public class PrisonerServiceImpl implements PrisonerService {
         existing.setSentenceEndDate(prisoner.getSentenceEndDate());
         existing.setCell(prisoner.getCell());
         existing.setSecurityLevel(prisoner.getSecurityLevel());
-        existing.setReleased(prisoner.getReleased());
-
-        Prisoner updated = repo.save(existing);
-        logger.info("Updated prisoner with id={}", id);
-        return updated;
+        return dao.update(existing);
     }
 
     @Override
     public void delete(Integer prisonerId) {
-        // собираем количество связанных записей
-        long borrowedCount    = borrowedRepo.countByPrisoner_PrisonerId(prisonerId);
-        long infirmaryCount   = infirmaryRepo.countByPrisoner_PrisonerId(prisonerId);
-        long laborCount       = laborRepo.countByPrisoner_PrisonerId(prisonerId);
-        long propertiesCount  = propertiesRepo.countByPrisoner_PrisonerId(prisonerId);
+        long borrowed  = borrowedRepo.countByPrisoner_PrisonerId(prisonerId);
+        long infirmary = infirmaryDao.countByPrisonerId(prisonerId);
+        long labor     = laborRepo.countByPrisoner_PrisonerId(prisonerId);
+        long props     = propertiesRepo.countByPrisoner_PrisonerId(prisonerId);
 
         Map<String, Long> counts = Map.of(
-                "borrowed",              borrowedCount,
-                "infirmary",             infirmaryCount,
-                "prisoner_labor",        laborCount,
-                "properties_in_cells",   propertiesCount
+                "borrowed",            borrowed,
+                "infirmary",           infirmary,
+                "prisoner_labor",      labor,
+                "properties_in_cells", props
         );
 
-        Map<String, Long> nonZero = counts.entrySet().stream()
+        var nonZero = counts.entrySet().stream()
                 .filter(e -> e.getValue() > 0)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toList());
 
         if (!nonZero.isEmpty()) {
-            String details = nonZero.entrySet().stream()
+            String detail = nonZero.stream()
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining(", "));
-            logger.warn("Cannot delete prisoner id={} due to related records: {}", prisonerId, details);
+            logger.warn("Cannot delete prisoner {}: {}", prisonerId, detail);
             throw new IllegalStateException(
                     "Нельзя удалить заключённого с ID=" + prisonerId +
-                            ", найдены связанные записи: " + details
+                            ": найдены связанные записи: " + detail
             );
         }
 
-        repo.deleteByPrisonerId(prisonerId);
-        logger.info("Deleted prisoner with id={}", prisonerId);
+        dao.delete(prisonerId);
+        logger.info("Deleted prisoner id={}", prisonerId);
     }
 }

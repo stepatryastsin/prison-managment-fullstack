@@ -16,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/prisoners")
 @CrossOrigin(origins = "http://localhost:3000")
+@Validated
 public class PrisonerController {
 
     private static final Logger logger = LoggerFactory.getLogger(PrisonerController.class);
