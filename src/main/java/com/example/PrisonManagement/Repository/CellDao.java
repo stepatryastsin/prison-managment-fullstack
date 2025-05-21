@@ -4,11 +4,14 @@ import com.example.PrisonManagement.Repository.RepInterface.AbstractJdbcDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * DAO для работы с сущностью Cell (камера).
@@ -76,5 +79,23 @@ public class CellDao extends AbstractJdbcDao<Cell, Integer> {
     @Override
     protected void setId(Cell entity, Integer id) {
         entity.setCellNum(id);
+    }
+
+    @Override
+    public Cell create(Cell entity) {
+        if (entity.getCellNum() == null) {
+            throw new IllegalArgumentException("CellNum must be provided when creating a Cell");
+        }
+
+        Map<String, Object> params = entityToParams(entity);
+        String columns = String.join(", ", params.keySet());
+        String placeholders = params.keySet().stream()
+                .map(c -> ":" + c)
+                .collect(Collectors.joining(", "));
+
+        String sql = "INSERT INTO cell (" + columns + ") VALUES (" + placeholders + ")";
+        new NamedParameterJdbcTemplate(jdbc)
+                .update(sql, new MapSqlParameterSource(params));
+        return entity;
     }
 }
