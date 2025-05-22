@@ -5,13 +5,18 @@ import com.example.PrisonManagement.Service.PrisonerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+
+
 
 @RestController
 @RequestMapping("/api/prisoners")
@@ -72,16 +77,5 @@ public class PrisonerController {
         logger.info("Заключённый с ID {} удалён", prisonerId);
     }
 
-    /**
-     * Обрабатывает ситуацию, когда нельзя удалить заключённого
-     * из-за наличия связанных записей—возвращает HTTP 409 Conflict.
-     */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleConflict(IllegalStateException ex) {
-        logger.warn("Conflict при удалении: {}", ex.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ex.getMessage());
-    }
 
 }

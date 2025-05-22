@@ -53,6 +53,9 @@ public class Staff {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "photo")
+    private byte[] photo;
     public Staff() {
         // Default constructor
     }
@@ -127,6 +130,14 @@ public class Staff {
     }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+    public byte[] getPhoto() {
+        return photo;
+    }
+
+    public void setPhoto(byte[] photo) {
+        this.photo = photo;
+    }
 
     @Override
     public boolean equals(Object o) {

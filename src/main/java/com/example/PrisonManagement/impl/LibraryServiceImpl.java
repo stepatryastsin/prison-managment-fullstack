@@ -9,10 +9,13 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.util.List;
 
 
@@ -95,5 +98,31 @@ public class LibraryServiceImpl implements LibraryService {
         }
 
         libRepo.deleteByIsbn(isbn);
+    }
+    @Override
+    public Library storePdf(String isbn, MultipartFile file) throws IOException {
+        Library lib = findByIsbn(isbn);
+        if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "Только PDF-файлы допустимы");
+        }
+        lib.setPdfData(file.getBytes());
+        Library saved = libRepo.save(lib);
+        logger.info("PDF загружен для книги ISBN={}", isbn);
+        return saved;
+    }
+
+    // Возвращаем PDF как ресурс
+    @Override
+    public ByteArrayResource loadPdf(String isbn) {
+        Library lib = findByIsbn(isbn);
+        byte[] data = lib.getPdfData();
+        if (data == null || data.length == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "PDF для книги ISBN=" + isbn + " не найден");
+        }
+        return new ByteArrayResource(data);
     }
 }

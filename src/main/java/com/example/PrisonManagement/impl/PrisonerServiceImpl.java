@@ -3,16 +3,25 @@ package com.example.PrisonManagement.impl;
 import com.example.PrisonManagement.Model.Prisoner;
 import com.example.PrisonManagement.Repository.*;
 import com.example.PrisonManagement.Service.PrisonerService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 @Service
 @Transactional
@@ -63,21 +72,48 @@ public class PrisonerServiceImpl implements PrisonerService {
     @Override
     public Prisoner create(Prisoner prisoner) {
         logger.debug("Creating prisoner id={}", prisoner.getPrisonerId());
+
         if (dao.existsById(prisoner.getPrisonerId())) {
-            logger.warn("Conflict: prisoner id={} already exists",
-                    prisoner.getPrisonerId());
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Заключённый с id=" + prisoner.getPrisonerId() + " уже существует"
-            );
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Заключённый с id=" + prisoner.getPrisonerId() + " уже существует");
         }
+
+        if (prisoner.getDateOfBirth() != null && Period.between(prisoner.getDateOfBirth(), LocalDate.now()).getYears() < 18) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Заключённый должен быть старше 18 лет");
+        }
+
+        if (prisoner.getSentenceEndDate().isBefore(prisoner.getIntakeDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Дата окончания срока не может быть раньше даты начала");
+        }
+
+
         return dao.create(prisoner);
     }
 
     @Override
     public Prisoner update(Integer id, Prisoner prisoner) {
-        logger.debug("Updating prisoner id={}", id);
         Prisoner existing = findById(id);
+
+        // Лазаретное ограничение
+        if (infirmaryDao.existsByPrisonerId(id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Нельзя обновить данные заключённого в лазарете");
+        }
+
+        // Трудовое ограничение при переводе
+        if (!Objects.equals(existing.getCell(), prisoner.getCell())) {
+            if (laborRepo.countByPrisoner_PrisonerId(id) > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Нельзя переводить заключённого, который участвует в труде");
+            }
+        }
+
+        if (prisoner.getSentenceEndDate().isBefore(prisoner.getIntakeDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Дата окончания срока не может быть раньше даты начала");
+        }
+
+        // Прочие поля
         existing.setFirstName(prisoner.getFirstName());
         existing.setLastName(prisoner.getLastName());
         existing.setBirthPlace(prisoner.getBirthPlace());
@@ -88,6 +124,7 @@ public class PrisonerServiceImpl implements PrisonerService {
         existing.setSentenceEndDate(prisoner.getSentenceEndDate());
         existing.setCell(prisoner.getCell());
         existing.setSecurityLevel(prisoner.getSecurityLevel());
+
         return dao.update(existing);
     }
 

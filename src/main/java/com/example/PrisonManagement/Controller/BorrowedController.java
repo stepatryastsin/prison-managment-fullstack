@@ -22,7 +22,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/borrowed")
 @CrossOrigin(origins = "http://localhost:3000")
-@Validated
 public class BorrowedController {
 
     private final BorrowedService borrowedService;
@@ -36,11 +35,9 @@ public class BorrowedController {
         logger.info("BorrowedController initialized");
     }
 
-    /** GET /api/borrowed — все записи */
     @GetMapping
     public ResponseEntity<List<Borrowed>> getAll() {
         List<Borrowed> list = borrowedService.findAll();
-        logger.info("Retrieved all borrowed records (count={})", list.size());
         return ResponseEntity.ok(list);
     }
 

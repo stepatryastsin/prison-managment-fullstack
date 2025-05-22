@@ -21,6 +21,7 @@ public class Borrowed {
     @MapsId("libraryId")
     @ManyToOne
     @JoinColumn(name = "library_id", referencedColumnName = "internal_id", nullable = false)
+
     private Library library;
 
     public Borrowed() {}

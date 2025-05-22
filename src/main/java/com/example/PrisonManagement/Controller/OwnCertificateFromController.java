@@ -1,15 +1,20 @@
 package com.example.PrisonManagement.Controller;
 
 import com.example.PrisonManagement.Model.OwnCertificateFrom;
+import com.example.PrisonManagement.Service.CertificateService;
 import com.example.PrisonManagement.Service.OwnCertificateFromService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 @RestController
@@ -20,10 +25,11 @@ public class OwnCertificateFromController {
 
     private static final Logger logger = LoggerFactory.getLogger(OwnCertificateFromController.class);
     private final OwnCertificateFromService service;
-
+    private final CertificateService certService;
     @Autowired
-    public OwnCertificateFromController(OwnCertificateFromService service) {
+    public OwnCertificateFromController(OwnCertificateFromService service, CertificateService certService) {
         this.service = service;
+        this.certService = certService;
         logger.info("OwnCertificateFromController инициализирован");
     }
 
@@ -74,5 +80,32 @@ public class OwnCertificateFromController {
         logger.info("Получен запрос DELETE /api/ownCertificateFrom/{}/{} - удалить запись сертификата", prisonerId, courseId);
         service.delete(prisonerId, courseId);
         logger.info("Запись сертификата для PrisonerId={} и CourseId={} удалена", prisonerId, courseId);
+    }
+    @GetMapping(
+            value = "/{prisonerId}/{courseId}/download",
+            produces = MediaType.APPLICATION_PDF_VALUE
+    )
+    public ResponseEntity<byte[]> downloadCertificate(
+            @PathVariable Integer prisonerId,
+            @PathVariable Integer courseId) {
+
+        logger.info("GET /api/ownCertificateFrom/{}/{}/download – generating PDF", prisonerId, courseId);
+
+        // Генерируем сертификат
+        ByteArrayOutputStream baos = certService.generateCertificate(prisonerId, courseId);
+        byte[] pdfBytes = baos.toByteArray();
+
+        // Заголовки для скачивания
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData(
+                "attachment",
+                String.format("certificate_%d_%d.pdf", prisonerId, courseId)
+        );
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 }

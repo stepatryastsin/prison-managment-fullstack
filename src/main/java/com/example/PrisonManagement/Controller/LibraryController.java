@@ -6,10 +6,16 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -71,5 +77,27 @@ public class LibraryController {
         logger.info("Получен запрос DELETE /api/libraries/{} - удалить библиотеку", isbn);
         service.delete(isbn);
         logger.info("Библиотека с ISBN {} удалена", isbn);
+    }
+
+    @PostMapping("/{isbn}/pdf")
+    public ResponseEntity<Void> uploadPdf(
+            @PathVariable String isbn,
+            @RequestParam("file") MultipartFile file) throws IOException {
+
+        logger.info("POST /api/libraries/{}/pdf — загрузка PDF", isbn);
+        service.storePdf(isbn, file);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /** Скачивает ранее загруженный PDF */
+    @GetMapping("/{isbn}/pdf")
+    public ResponseEntity<ByteArrayResource> downloadPdf(@PathVariable String isbn) {
+        logger.info("GET /api/libraries/{}/pdf — скачивание PDF", isbn);
+        ByteArrayResource resource = service.loadPdf(isbn);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + isbn + ".pdf\"")
+                .body(resource);
     }
 }

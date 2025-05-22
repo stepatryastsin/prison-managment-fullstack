@@ -49,6 +49,9 @@ public class SecurityConfig {
                         // Открытые эндпоинты
                         .requestMatchers("/auth/**").permitAll()
 
+                        // Публичный доступ к 3D-моделям
+                        .requestMatchers("/api/properties-in-cells/model/**").permitAll()
+
                         // Только ADMIN
                         .requestMatchers(
                                 "/staff/**",
@@ -59,26 +62,24 @@ public class SecurityConfig {
 
                         // WARDEN: общие и специализированные маршруты
                         .requestMatchers(
-                                "/prisoners/**",                      // просмотр/управление заключёнными
-                                "/prisoners/prisoner-labor/**",       // labour assignments
-                                "/prisoners/properties/**",           // учёт вещей в камерах
-                                "/prisoners/courses/**",              // курсы и сертификаты
-                                "/enrollments-certs/**",              // запись и выдача сертификатов
-                                "/visitors/**",                       // управление посетителями
-                                "/visited-by/**"                      // связи «посетитель–заключённый»
+                                "/prisoners/**",
+                                "/prisoners/prisoner-labor/**",
+                                "/prisoners/properties/**",
+                                "/prisoners/courses/**",
+                                "/enrollments-certs/**",
+                                "/visitors/**",
+                                "/visited-by/**"
                         ).hasRole("WARDEN")
 
                         // MEDIC: только медицинские предписания
-                        .requestMatchers("/infirmary/**"
-                                )
-                        .hasRole("MEDIC")
+                        .requestMatchers("/infirmary/**").hasRole("MEDIC")
 
                         // LIBRARIAN: только библиотечные ресурсы
-                        .requestMatchers("/library/**",
-                                                     "/prisoners/**",
-                                                     "/prisoners/properties/**"
-                                )
-                        .hasRole("LIBRARIAN")
+                        .requestMatchers(
+                                "/library/**",
+                                "/prisoners/**",
+                                "/prisoners/properties/**"
+                        ).hasRole("LIBRARIAN")
 
                         // GUARD: обход камер и посетители
                         .requestMatchers(

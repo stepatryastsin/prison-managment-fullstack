@@ -3,8 +3,9 @@ import axios from 'axios';
 import {
   Paper, Typography, TextField, Button, Grid,
   Table, TableHead, TableRow, TableCell, TableBody,
-  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
-  Stack, Box, Snackbar, Alert, Slide, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  List, ListItem, ListItemText,
+  Stack, Box, Snackbar, Alert, Slide, IconButton
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,10 +48,12 @@ export default function Staff() {
     salary: '',
     username: '',
     password: '',
+    file: null,
   });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
   const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
+  const [photoDialog, setPhotoDialog] = useState({ open: false, src: null });
 
   useEffect(() => {
     loadData();
@@ -81,6 +84,7 @@ export default function Staff() {
       salary: '',
       username: '',
       password: '',
+      file: null,
     });
     setEditingId(null);
   };
@@ -90,6 +94,10 @@ export default function Staff() {
     setForm(f => ({ ...f, [name]: value }));
   };
 
+  const handleFileChange = e => {
+    setForm(f => ({ ...f, file: e.target.files[0] }));
+  };
+
   const handleSelectJob = job => {
     setForm(f => ({ ...f, jobId: job.jobId, jobDesc: job.jobDescription }));
     setDialogOpen(false);
@@ -97,7 +105,7 @@ export default function Staff() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const { firstName, lastName, jobId, jobDesc, salary, username, password } = form;
+    const { firstName, lastName, jobId, jobDesc, salary, username, password, file } = form;
 
     if (
       !firstName.trim() ||
@@ -110,41 +118,39 @@ export default function Staff() {
       return showSnack('Заполните все поля корректно', 'error');
     }
 
-    const payload = {
-      firstName,
-      lastName,
-      salary: Number(salary),
-      username,
-      password: password || '', // может быть пустым при обновлении
-      job: {
-        jobId,
-        jobDescription: jobDesc,
-      },
-    };
-
     try {
-      if (editingId) {
-        await axios.put(`${STAFF_API}/${editingId}`, payload);
+      const payload = new FormData();
+      payload.append('firstName', firstName);
+      payload.append('lastName', lastName);
+      payload.append('salary', salary);
+      payload.append('username', username);
+      payload.append('password', password || '');
+      payload.append('job.jobId', jobId);
+      payload.append('job.jobDescription', jobDesc);
+      if (file) payload.append('file', file);
 
+      if (editingId) {
+        await axios.put(`${STAFF_API}/${editingId}`, payload, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         if (password.trim()) {
           await axios.post(`${STAFF_API}/set-password`, null, {
             params: { username, password },
           });
         }
-
         showSnack('Сотрудник обновлён', 'success');
       } else {
-        await axios.post(STAFF_API, payload);
+        await axios.post(STAFF_API, payload, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         showSnack('Сотрудник добавлен', 'success');
       }
 
       clearForm();
-
-      setStaff([]);
       await loadData();
 
     } catch (err) {
-      const msg = err.response?.data?.message;
+      const msg = err.response?.data?.message || 'Ошибка при сохранении';
       showSnack(msg, 'error');
     }
   }
@@ -155,10 +161,7 @@ export default function Staff() {
       await axios.delete(`${STAFF_API}/${id}`);
       showSnack('Сотрудник удалён', 'success');
       if (editingId === id) clearForm();
-
-      setStaff([]);
       await loadData();
-
     } catch {
       showSnack('Ошибка при удалении', 'error');
     }
@@ -173,7 +176,8 @@ export default function Staff() {
       jobDesc: emp.job?.jobDescription || '',
       salary: emp.salary.toString(),
       username: emp.username,
-      password: '', // поле очищается при редактировании
+      password: '',
+      file: null,
     });
   };
 
@@ -267,6 +271,16 @@ export default function Staff() {
             />
           </Grid>
           <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Фото"
+              name="file"
+              type="file"
+              onChange={handleFileChange}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
             <Button fullWidth variant="contained" size="large" type="submit">
               {editingId ? 'Сохранить' : 'Добавить'}
             </Button>
@@ -304,57 +318,56 @@ export default function Staff() {
           <Table>
             <TableHead>
               <TableRow>
-                {['ID', 'Имя', 'Фамилия', 'Должность', 'Зарплата', 'Username', 'Действия'].map(h => (
+                {['ID', 'Фото', 'Имя', 'Фамилия', 'Должность', 'Зарплата', 'Username', 'Действия'].map(h => (
                   <StyledTableCell key={h}>{h}</StyledTableCell>
                 ))}
               </TableRow>
             </TableHead>
-
-            <TableBody
-              component={motion.tbody}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              variants={{
-                visible: { transition: { staggerChildren: 0.05 } },
-                hidden: {},
-              }}
-            >
-              <AnimatePresence>
-                {filtered.map((s, idx) => (
-                  <motion.tr
-                    key={s.staffId}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.3 }}
-                    style={{
-                      backgroundColor: idx % 2 ? 'white' : '#f9f9f9',
-                    }}
-                  >
-                    <TableCell>{s.staffId}</TableCell>
-                    <TableCell>{s.firstName}</TableCell>
-                    <TableCell>{s.lastName}</TableCell>
-                    <TableCell>{s.job?.jobDescription}</TableCell>
-                    <TableCell>{s.salary.toLocaleString()}</TableCell>
-                    <TableCell>{s.username}</TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1}>
-                        <Button variant="text" onClick={() => handleEdit(s)}>
-                          Редактировать
-                        </Button>
-                        <Button variant="text" color="error" onClick={() => handleDelete(s.staffId)}>
-                          Удалить
-                        </Button>
-                      </Stack>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
+            <TableBody>
+              {filtered.map((s, idx) => (
+                <TableRow key={s.staffId} hover>
+                  <TableCell>{s.staffId}</TableCell>
+                  <TableCell>
+                    {s.photo ? (
+                      <img
+                        src={`data:image/jpeg;base64,${s.photo}`}
+                        alt="photo"
+                        style={{ width: 40, height: 40, objectFit: 'cover', cursor: 'pointer', borderRadius: 4 }}
+                        onClick={() => setPhotoDialog({ open: true, src: `data:image/jpeg;base64,${s.photo}` })}
+                      />
+                    ) : '—'}
+                  </TableCell>
+                  <TableCell>{s.firstName}</TableCell>
+                  <TableCell>{s.lastName}</TableCell>
+                  <TableCell>{s.job?.jobDescription}</TableCell>
+                  <TableCell>{s.salary.toLocaleString()}</TableCell>
+                  <TableCell>{s.username}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <Button variant="text" onClick={() => handleEdit(s)}>
+                        Редактировать
+                      </Button>
+                      <Button variant="text" color="error" onClick={() => handleDelete(s.staffId)}>
+                        Удалить
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </Paper>
       </AnimatePresence>
+
+      {/* Photo enlarge dialog */}
+      <Dialog open={photoDialog.open} onClose={() => setPhotoDialog({ open: false, src: null })} maxWidth="md">
+        <DialogContent>
+          <img src={photoDialog.src} alt="Enlarged" style={{ width: '100%', height: 'auto' }} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoDialog({ open: false, src: null })}>Закрыть</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth>
         <DialogTitle>

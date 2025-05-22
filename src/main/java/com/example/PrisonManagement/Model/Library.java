@@ -35,6 +35,8 @@ public class Library {
     @Column(name = "genre", length = 15, nullable = false)
     private String genre;
 
+    @Column(name = "pdf_data")
+    private byte[] pdfData;
     public Library() {}
 
     public Library(String isbn, String bookName, String genre) {
@@ -71,6 +73,8 @@ public class Library {
         return result;
     }
 
+    public byte[] getPdfData() { return pdfData; }
+    public void setPdfData(byte[] pdfData) { this.pdfData = pdfData; }
     // 5. toString
     @Override
     public String toString() {

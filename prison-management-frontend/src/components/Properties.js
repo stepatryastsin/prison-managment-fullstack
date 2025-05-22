@@ -1,34 +1,25 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardHeader,
-  CardContent,
-  Avatar,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  IconButton,
-  Stack,
-  InputAdornment,
-  Snackbar,
-  Alert,
-  Tooltip,
-  Paper
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import SearchIcon from '@mui/icons-material/Search';
-import InfoIcon from '@mui/icons-material/Info';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+// src/components/PropertiesFrontend.jsx
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { styled } from '@mui/material/styles';
 
-const API_PROPERTIES = 'http://localhost:8080/api/properties';
+import {
+  Paper, Typography, Stack, TextField, InputAdornment, Button,
+  Grid, Card, CardHeader, Avatar, IconButton, Tooltip, Dialog,
+  DialogTitle, DialogContent, DialogActions, Snackbar, Alert
+} from '@mui/material';
+import {
+  Search as SearchIcon,
+  Info as InfoIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
+} from '@mui/icons-material';
+
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, useProgress, Html } from '@react-three/drei';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+
+const API_PROPERTIES = 'http://localhost:8080/api/properties-in-cells';
 const API_PRISONERS   = 'http://localhost:8080/api/prisoners';
 
 const Container = styled(Paper)(({ theme }) => ({
@@ -38,6 +29,23 @@ const Container = styled(Paper)(({ theme }) => ({
   marginTop: theme.spacing(4),
   background: theme.palette.background.default,
 }));
+
+function ModelViewer({ url }) {
+  const { progress } = useProgress();
+  const [obj, setObj] = useState();
+  useEffect(() => {
+    if (!url) return;
+    new OBJLoader().load(
+      url,
+      loaded => setObj(loaded),
+      () => {},
+      err => console.error(err)
+    );
+  }, [url]);
+  if (!url) return null;
+  if (!obj) return <Html center>{Math.round(progress)}% загружено...</Html>;
+  return <primitive object={obj} />;
+}
 
 export default function PropertiesFrontend({ readOnly = false }) {
   const [propsList, setPropsList] = useState([]);
@@ -51,10 +59,7 @@ export default function PropertiesFrontend({ readOnly = false }) {
 
   const [editRec, setEditRec]     = useState(null);
   const [editOpen, setEditOpen]   = useState(false);
-  const [form, setForm]           = useState({
-    prisonerId: '',
-    description: ''
-  });
+  const [form, setForm]           = useState({ prisonerId: '', name: '', modelFile: null });
 
   const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
   const openSnack = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
@@ -78,28 +83,26 @@ export default function PropertiesFrontend({ readOnly = false }) {
   }
 
   // Группируем по заключённому
-  const grouped = useMemo(() =>
-    propsList.reduce((acc, r) => {
-      const pid = r.prisoner?.prisonerId;
-      if (!pid) return acc;
-      acc[pid] = acc[pid] || { prisoner: r.prisoner, items: [] };
-      acc[pid].items.push(r);
-      return acc;
-    }, {}), [propsList]
-  );
+  const grouped = useMemo(() => {
+    const map = {};
+    propsList.forEach(r => {
+      const pid = r.prisoner.prisonerId;
+      if (!map[pid]) map[pid] = { prisoner: r.prisoner, items: [] };
+      map[pid].items.push(r);
+    });
+    return map;
+  }, [propsList]);
 
-  // Фильтр по поиску
+  // Фильтруем группы по поиску
   const filteredKeys = useMemo(() => {
     if (!search.trim()) return Object.keys(grouped);
+    const q = search.toLowerCase();
     return Object.keys(grouped).filter(pid => {
       const { prisoner, items } = grouped[pid];
-      const q = search.toLowerCase();
       return (
         prisoner.firstName.toLowerCase().includes(q) ||
         prisoner.lastName.toLowerCase().includes(q) ||
-        items.some(r =>
-          r.description.toLowerCase().includes(q)
-        )
+        items.some(r => r.name.toLowerCase().includes(q))
       );
     });
   }, [search, grouped]);
@@ -107,39 +110,54 @@ export default function PropertiesFrontend({ readOnly = false }) {
   function openForm(rec = null) {
     if (rec) {
       setEditRec(rec);
-      setForm({
-        prisonerId: rec.id.prisonerId,
-        description: rec.description || ''
-      });
+      setForm({ prisonerId: rec.id.prisonerId, name: rec.name, modelFile: null });
     } else {
       setEditRec(null);
-      setForm({ prisonerId:'', description:'' });
+      setForm({ prisonerId: '', name: '', modelFile: null });
     }
     setEditOpen(true);
   }
 
   async function handleSave() {
+    if (!form.prisonerId || !form.name.trim()) return;
+
     try {
-      const payload = {
-        id: {
-          prisonerId: form.prisonerId,
-          propertyName: form.description.trim() || `item-${Date.now()}`
-        },
-        description: form.description,
-        prisoner: { prisonerId: form.prisonerId }
-      };
       if (editRec) {
-        await axios.put(
-          `${API_PROPERTIES}/${form.prisonerId}/${encodeURIComponent(payload.id.propertyName)}`,
-          payload
-        );
+        if (form.modelFile) {
+          const data = new FormData();
+          data.append('model', form.modelFile);
+          await axios.put(
+            `${API_PROPERTIES}/upload/${form.prisonerId}/${encodeURIComponent(editRec.name)}`,
+            data,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+          );
+        } else {
+          await axios.put(
+            `${API_PROPERTIES}/${form.prisonerId}/${encodeURIComponent(editRec.name)}`,
+            { ...editRec, name: form.name.trim() }
+          );
+        }
         openSnack('Запись обновлена');
-      } else {
-        await axios.post(API_PROPERTIES, payload);
-        openSnack('Запись добавлена');
+        setEditOpen(false);
+        fetchAll();
+        return;
       }
+
+      // Создание новой записи
+      const data = new FormData();
+      data.append('prisonerId', form.prisonerId);
+      data.append('name', form.name.trim());
+      if (form.modelFile) data.append('model', form.modelFile);
+
+      await axios.post(
+        `${API_PROPERTIES}/upload`,
+        data,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      openSnack('Запись добавлена');
       setEditOpen(false);
       fetchAll();
+
     } catch (err) {
       const msg = err.response?.data?.message || 'Ошибка при сохранении';
       openSnack(msg, 'error');
@@ -150,7 +168,7 @@ export default function PropertiesFrontend({ readOnly = false }) {
     if (!window.confirm('Удалить запись?')) return;
     try {
       await axios.delete(
-        `${API_PROPERTIES}/${rec.id.prisonerId}/${encodeURIComponent(rec.id.propertyName)}`
+        `${API_PROPERTIES}/${rec.id.prisonerId}/${encodeURIComponent(rec.name)}`
       );
       openSnack('Запись удалена');
       fetchAll();
@@ -174,110 +192,77 @@ export default function PropertiesFrontend({ readOnly = false }) {
         />
         {!readOnly && (
           <Button variant="contained" onClick={() => openForm(null)}>
-            Добавить описание
+            Добавить
           </Button>
         )}
       </Stack>
 
       {loading && <Typography>Загрузка...</Typography>}
-      {error   && <Typography color="error">{error}</Typography>}
+      {error && <Typography color="error">{error}</Typography>}
 
-      <Grid container spacing={3}>
-        {filteredKeys.map(pid => {
-          const { prisoner, items } = grouped[pid];
-          return (
-            <Grid item xs={12} sm={6} md={4} key={pid}>
-              <Card sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                borderRadius: 2,
-                boxShadow: 2,
-                '&:hover': { transform: 'scale(1.02)', transition: '0.2s' }
-              }}>
-                <CardHeader
-                  avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>{prisoner.firstName[0]}</Avatar>}
-                  title={`${prisoner.firstName} ${prisoner.lastName}`}
-                  subheader={`ID: ${pid}`}
-                  action={
-                    <Stack direction="row" spacing={1}>
-                      <Tooltip title="Просмотр">
-                        <IconButton onClick={() => { setViewRec(grouped[pid]); setViewOpen(true); }}>
-                          <InfoIcon/>
-                        </IconButton>
-                      </Tooltip>
-                      {!readOnly && (
-                        <>
-                          <Tooltip title="Редактировать">
-                            <IconButton onClick={() => openForm(items[0])}>
-                              <EditIcon/>
+      {filteredKeys.map(pid => {
+        const { prisoner, items } = grouped[pid];
+        return (
+          <React.Fragment key={pid}>
+            <Typography variant="h6" mt={3} mb={1}>
+              {prisoner.firstName} {prisoner.lastName} (ID {pid})
+            </Typography>
+            <Grid container spacing={3}>
+              {items.map(rec => (
+                <Grid item xs={12} sm={6} md={4} key={rec.name}>
+                  <Card sx={{ p: 2, borderRadius: 2, boxShadow: 2 }}>
+                    <CardHeader
+                      avatar={<Avatar>{prisoner.firstName[0]}</Avatar>}
+                      title={rec.name}
+                      action={
+                        <Stack direction="row" spacing={1}>
+                          <Tooltip title="Просмотр">
+                            <IconButton
+                              onClick={() => { setViewRec(rec); setViewOpen(true); }}
+                            >
+                              <InfoIcon/>
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Удалить">
-                            <IconButton onClick={() => handleDelete(items[0])}>
-                              <DeleteIcon/>
-                            </IconButton>
-                          </Tooltip>
-                        </>
-                      )}
-                    </Stack>
-                  }
-                />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Stack spacing={1}>
-                    {items.map(r => (
-                      <Paper
-                        key={r.id.propertyName}
-                        variant="outlined"
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 2,
-                          bgcolor: 'background.paper',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}
-                      >
-                        <Typography variant="body2" color="text.secondary">
-                          {r.description || '—'}
-                        </Typography>
-                        {!readOnly && (
-                          <Tooltip title="Удалить">
-                            <IconButton size="small" onClick={() => handleDelete(r)}>
-                              <DeleteIcon fontSize="small"/>
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Paper>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
+                          {!readOnly && (
+                            <>
+                              <Tooltip title="Редактировать">
+                                <IconButton onClick={() => openForm(rec)}>
+                                  <EditIcon/>
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Удалить">
+                                <IconButton onClick={() => handleDelete(rec)}>
+                                  <DeleteIcon/>
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                        </Stack>
+                      }
+                    />
+                  </Card>
+                </Grid>
+              ))}
             </Grid>
-          );
-        })}
-        {!loading && filteredKeys.length === 0 && (
-          <Typography>Записей не найдено</Typography>
-        )}
-      </Grid>
+          </React.Fragment>
+        );
+      })}
 
-      {/* View Dialog */}
-      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Детали заключённого</DialogTitle>
-        <DialogContent dividers>
+      {/* View 3D-model */}
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>
+          3D-модель:
+        </DialogTitle>
+        <DialogContent dividers sx={{ height: 500 }}>
           {viewRec && (
-            <>
-              <Typography variant="h6" gutterBottom>
-                {viewRec.prisoner.firstName} {viewRec.prisoner.lastName} (ID: {viewRec.prisoner.prisonerId})
-              </Typography>
-              <Stack spacing={1}>
-                {viewRec.items.map(r => (
-                  <Typography key={r.id.propertyName} variant="body2">
-                    {r.description || '—'}
-                  </Typography>
-                ))}
-              </Stack>
-            </>
+            <Canvas camera={{ position: [0, 0, 5] }}>
+              <ambientLight />
+              <directionalLight position={[5, 5, 5]} />
+              <ModelViewer
+                url={`${API_PROPERTIES}/model/${viewRec.prisoner.prisonerId}/${encodeURIComponent(viewRec.name)}`}
+              />
+              <OrbitControls />
+            </Canvas>
           )}
         </DialogContent>
         <DialogActions>
@@ -285,10 +270,12 @@ export default function PropertiesFrontend({ readOnly = false }) {
         </DialogActions>
       </Dialog>
 
-      {/* Edit/Create Dialog */}
+      {/* Edit/Create */}
       {!readOnly && (
         <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
-          <DialogTitle>{editRec ? 'Редактировать' : 'Добавить'} описание</DialogTitle>
+          <DialogTitle>
+            {editRec ? 'Редактировать' : 'Добавить'} описание и модель
+          </DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2} mt={1}>
               <TextField
@@ -307,22 +294,28 @@ export default function PropertiesFrontend({ readOnly = false }) {
                 ))}
               </TextField>
               <TextField
-                label="Описание"
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                label="Имя вещи"
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 fullWidth
                 multiline
-                rows={3}
+                rows={2}
                 required
               />
+              <Button variant="outlined" component="label">
+                {form.modelFile ? form.modelFile.name : 'Выберите OBJ-модель'}
+                <input
+                  type="file"
+                  hidden
+                  accept=".obj"
+                  onChange={e => setForm(f => ({ ...f, modelFile: e.target.files[0] }))}
+                />
+              </Button>
             </Stack>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setEditOpen(false)}>Отмена</Button>
-            <Button
-              onClick={handleSave}
-              disabled={!form.prisonerId || !form.description.trim()}
-            >
+            <Button onClick={handleSave} disabled={!form.prisonerId || !form.name.trim()}>
               Подтвердить
             </Button>
           </DialogActions>
@@ -335,9 +328,7 @@ export default function PropertiesFrontend({ readOnly = false }) {
         onClose={closeSnack}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snack.sev} onClose={closeSnack}>
-          {snack.msg}
-        </Alert>
+        <Alert severity={snack.sev} onClose={closeSnack}>{snack.msg}</Alert>
       </Snackbar>
     </Container>
   );

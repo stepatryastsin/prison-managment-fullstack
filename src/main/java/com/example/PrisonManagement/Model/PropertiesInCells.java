@@ -2,28 +2,31 @@ package com.example.PrisonManagement.Model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import org.hibernate.annotations.Type;
 
 
 @Entity
 @Table(name = "properties_in_cells")
-//ready
 public class PropertiesInCells {
 
     @EmbeddedId
     private PropertiesInCellsKey id;
 
     @NotBlank(message = "Description is required")
-    @Column(name = "description", length = 50)
-    private String description;
+    @Column(name = "name", length = 50, insertable = false, updatable = false)
+    private String name;
 
     @ManyToOne
     @MapsId("prisonerId")
     @JoinColumn(name = "prisoner_id", nullable = false)
     private Prisoner prisoner;
 
-    public PropertiesInCells(String description, Prisoner prisoner) {
-        this.id = new PropertiesInCellsKey(prisoner.getPrisonerId());
-        this.description = description;
+    @Column(name = "model_3d")
+    private byte[] model3d;
+
+    public PropertiesInCells(String name, Prisoner prisoner) {
+        this.id = new PropertiesInCellsKey(prisoner.getPrisonerId(),name);
+        this.name = name;
         this.prisoner = prisoner;
     }
 
@@ -38,18 +41,24 @@ public class PropertiesInCells {
         this.id = id;
     }
 
-    public String getDescription() {
-        return description;
+    public String getName() {
+        return name;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Prisoner getPrisoner() {
         return prisoner;
     }
+    public byte[] getModel3d() {
+        return model3d;
+    }
 
+    public void setModel3d(byte[] model3d) {
+        this.model3d = model3d;
+    }
     public void setPrisoner(Prisoner prisoner) {
         this.prisoner = prisoner;
     }
@@ -60,14 +69,14 @@ public class PropertiesInCells {
         if (!(o instanceof PropertiesInCells that)) return false;
 
         return getId().equals(that.getId()) &&
-               getDescription().equals(that.getDescription()) &&
+               getName().equals(that.getName()) &&
                getPrisoner().equals(that.getPrisoner());
     }
 
     @Override
     public int hashCode() {
         int result = getId().hashCode();
-        result = 31 * result + getDescription().hashCode();
+        result = 31 * result + getName().hashCode();
         result = 31 * result + getPrisoner().hashCode();
         return result;
     }
@@ -76,7 +85,7 @@ public class PropertiesInCells {
     public String toString() {
         return "PropertiesInCells{" +
                 "id=" + id +
-                ", description='" + description + '\'' +
+                ", name='" + name + '\'' +
                 ", prisoner=" + prisoner +
                 '}';
     }

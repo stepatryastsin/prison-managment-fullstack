@@ -6,8 +6,11 @@ import {
   Slide
 } from '@mui/material';
 import {
-  Edit as EditIcon, Delete as DeleteIcon,
-  Book as BookIcon, CardMembership as CertificateIcon
+Edit as EditIcon,
+Delete as DeleteIcon,
+Book as BookIcon,
+CardMembership as CertificateIcon,
+Download as DownloadIcon        // ← добавьте эту строку
 } from '@mui/icons-material';
 
 const API_URL = 'http://localhost:8080/api/prisoners';
@@ -339,55 +342,81 @@ export default function Prisoners({ readOnly = false }) {
   );
 
   const renderBooksDialog = () => (
-    <Dialog open={booksDialogOpen} onClose={() => setBooksDialogOpen(false)} fullWidth maxWidth="sm">
-      <DialogTitle>Книги заключённого</DialogTitle>
-      <DialogContent>
-        {selectedBooks.length > 0 ? (
-          <Box component="ul" sx={{ pl: 2 }}>
-            {selectedBooks.map((b, i) => (
-              <li key={i}>
-                ISBN: {b.id?.isbn}{b.library?.title && ` – ${b.library.title}`}
-              </li>
-            ))}
-          </Box>
-        ) : (
-          <Typography>Нет книг</Typography>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setBooksDialogOpen(false)}>Закрыть</Button>
-      </DialogActions>
-    </Dialog>
-  );
-
-  const renderCertificatesDialog = () => (
-    <Dialog open={certificatesDialogOpen} onClose={() => setCertificatesDialogOpen(false)} fullWidth maxWidth="sm">
-      <DialogTitle>Сертификаты заключённого</DialogTitle>
-      <DialogContent>
-        {selectedCertificates.length > 0 ? (
-          <Stack spacing={2}>
-            {selectedCertificates.map((c, i) => (
-              <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography>
-                  {c.course?.courseName || `ID курса ${c.id.courseId}`}
-                </Typography>
+  <Dialog
+    open={booksDialogOpen}
+    onClose={() => setBooksDialogOpen(false)}
+    fullWidth
+    maxWidth="sm"
+  >
+    <DialogTitle>Книги заключённого</DialogTitle>
+    <DialogContent>
+      {selectedBooks.length > 0 ? (
+        <Box component="ul" sx={{ pl: 2 }}>
+          {selectedBooks.map((b, i) => (
+            <li key={i}>
+              ISBN: {b.id?.isbn}
+              {b.library?.bookName &&
+                // если есть название из связанной сущности Library
+                ` — ${b.library.bookName}`
+              }
+            </li>
+          ))}
+        </Box>
+      ) : (
+        <Typography>Нет книг</Typography>
+      )}
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={() => setBooksDialogOpen(false)}>Закрыть</Button>
+    </DialogActions>
+  </Dialog>
+);
+const renderCertificatesDialog = () => (
+  <Dialog open={certificatesDialogOpen} onClose={() => setCertificatesDialogOpen(false)} fullWidth maxWidth="sm">
+    <DialogTitle>Сертификаты заключённого</DialogTitle>
+    <DialogContent>
+      {selectedCertificates.length > 0 ? (
+        <Stack spacing={2}>
+          {selectedCertificates.map((c, i) => (
+            <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography>
+                {c.course?.courseName || `ID курса ${c.id.courseId}`}
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                {/* Кнопка скачать */}
+                <Button
+                  size="small"
+                  startIcon={<DownloadIcon />}
+                  onClick={() => {
+                    const url = `${CERTIFICATES_API_URL}/${c.prisoner.prisonerId}/${c.id.courseId}/download`;
+                    window.open(url, '_blank');
+                  }}
+                >
+                  Скачать
+                </Button>
+                {/* Кнопка забрать */}
                 {!readOnly && (
-                  <Button size="small" startIcon={<CertificateIcon />} onClick={() => handleIssueCertificate(c)}>
+                  <Button
+                    size="small"
+                    startIcon={<CertificateIcon />}
+                    onClick={() => handleIssueCertificate(c)}
+                  >
                     Забрать
                   </Button>
                 )}
-              </Box>
-            ))}
-          </Stack>
-        ) : (
-          <Typography>Нет сертификатов</Typography>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setCertificatesDialogOpen(false)}>Закрыть</Button>
-      </DialogActions>
-    </Dialog>
-  );
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      ) : (
+        <Typography>Нет сертификатов</Typography>
+      )}
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={() => setCertificatesDialogOpen(false)}>Закрыть</Button>
+    </DialogActions>
+  </Dialog>
+);
 
   return (
     <Paper sx={{ p: 4, maxWidth: 1400, m: 'auto', borderRadius: 2, boxShadow: 3, bgcolor: '#fafafa' }}>

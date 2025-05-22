@@ -65,10 +65,16 @@ public class StaffServiceImpl implements StaffService {
         Objects.requireNonNull(id);
         Objects.requireNonNull(staff);
         Staff exist = findById(id);
+
         exist.setFirstName(staff.getFirstName());
         exist.setLastName(staff.getLastName());
         exist.setJob(staff.getJob());
         exist.setSalary(staff.getSalary());
+
+        if (staff.getPhoto() != null && staff.getPhoto().length > 0) {
+            exist.setPhoto(staff.getPhoto());
+        }
+
         Staff upd = repo.save(exist);
         logger.info("Updated id={}", id);
         return upd;
