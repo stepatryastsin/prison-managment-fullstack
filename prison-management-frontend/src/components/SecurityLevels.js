@@ -190,7 +190,7 @@ export default function SecurityLevels({ readOnly = false }) {
       </AppBar>
 
       <Grid container spacing={3}>
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {levels.map(lvl => (
             <Grid key={lvl.securityLevelNo} item xs={12} sm={6} md={4}>
               <motion.div whileHover={{scale:1.03}}>

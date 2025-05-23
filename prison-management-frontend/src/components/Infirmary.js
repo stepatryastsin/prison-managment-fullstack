@@ -64,18 +64,19 @@ export default function Infirmary({ readOnly = false }) {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    try {
-      const [infRes, prRes] = await Promise.all([
-        axios.get(`${API_BASE}/infirmary`),
-        axios.get(`${API_BASE}/prisoners`),
-      ]);
-      const valid = infRes.data.filter(r => r.prisoner);
-      setRecords(valid);
-      setPrisoners(prRes.data);
-    } catch {
-      showSnack('Ошибка загрузки данных');
-    }
-  };
+  try {
+    const [infRes, prRes] = await Promise.all([
+      axios.get(`${API_BASE}/infirmary`),
+      axios.get(`${API_BASE}/prisoners`),
+    ]);
+    const valid = infRes.data.filter(r => r.prisoner);
+    setRecords(valid);
+    setPrisoners(prRes.data);
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Ошибка загрузки данных';
+    showSnack(msg);
+  }
+};
 
   const showSnack = (msg, sev = 'error') => setSnack({ open: true, msg, sev });
   const closeSnack = () => setSnack(s => ({ ...s, open: false }));
@@ -91,27 +92,27 @@ export default function Infirmary({ readOnly = false }) {
   };
 
   const submit = async e => {
-    e.preventDefault();
-    try {
-      const payload = {
-        prisoner: { prisonerId: Number(form.prisonerId) },
-        relatedDoctor: form.relatedDoctor,
-        drugName: form.drugName,
-        drugUsageDay: Number(form.drugUsageDay),
-        diseaseType: form.diseaseType,
-      };
-      if (editId) {
-        await axios.put(`${API_BASE}/infirmary/${editId}`, payload);
-      } else {
-        await axios.post(`${API_BASE}/infirmary`, payload);
-      }
-      await loadAll();
-      clearForm();
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Ошибка при сохранении';
-      showSnack(msg, 'error');
+  e.preventDefault();
+  try {
+    const payload = {
+      prisoner: { prisonerId: Number(form.prisonerId) },
+      relatedDoctor: form.relatedDoctor,
+      drugName: form.drugName,
+      drugUsageDay: Number(form.drugUsageDay),
+      diseaseType: form.diseaseType,
+    };
+    if (editId) {
+      await axios.put(`${API_BASE}/infirmary/${editId}`, payload);
+    } else {
+      await axios.post(`${API_BASE}/infirmary`, payload);
     }
-  };
+    await loadAll();
+    clearForm();
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Ошибка при сохранении';
+    showSnack(msg, 'error');
+  }
+};
 
   const editRecord = rec => {
     setEditId(rec.prescriptionNum);
@@ -125,15 +126,16 @@ export default function Infirmary({ readOnly = false }) {
   };
 
   const deleteRecord = async id => {
-    if (!window.confirm('Удалить рецепт?')) return;
-    try {
-      await axios.delete(`${API_BASE}/infirmary/${id}`);
-      if (editId === id) clearForm();
-      await loadAll();
-    } catch {
-      showSnack('Ошибка при удалении');
-    }
-  };
+  if (!window.confirm('Удалить рецепт?')) return;
+  try {
+    await axios.delete(`${API_BASE}/infirmary/${id}`);
+    if (editId === id) clearForm();
+    await loadAll();
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Ошибка при удалении';
+    showSnack(msg, 'error');
+  }
+};
 
   const filtered = records.filter(r =>
     `${r.prisoner.prisonerId} ${r.relatedDoctor} ${r.drugName} ${r.diseaseType}`
@@ -145,7 +147,6 @@ export default function Infirmary({ readOnly = false }) {
     <Container
       component={motion.div}
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       <Snackbar

@@ -304,17 +304,7 @@ export default function Staff() {
         />
       </Box>
 
-      <AnimatePresence>
-        <Paper
-          key="staff-table"
-          component={motion.div}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-          elevation={3}
-          sx={{ overflowX: 'auto' }}
-        >
+        <Paper>
           <Table>
             <TableHead>
               <TableRow>
@@ -357,7 +347,6 @@ export default function Staff() {
             </TableBody>
           </Table>
         </Paper>
-      </AnimatePresence>
 
       {/* Photo enlarge dialog */}
       <Dialog open={photoDialog.open} onClose={() => setPhotoDialog({ open: false, src: null })} maxWidth="md">

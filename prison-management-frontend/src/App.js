@@ -1,9 +1,19 @@
+// src/App.js
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  AppBar, Toolbar, Typography, Button, Container, Box,
-  Menu, MenuItem, TextField, Alert
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Container,
+  Box,
+  Menu,
+  MenuItem,
+  TextField,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 
 // Страницы
@@ -26,21 +36,145 @@ import Statistics from './components/Statistics';
 
 axios.defaults.withCredentials = true;
 
-// Контекст авторизации
+// Матрица доступа по ролям
+const rolePermissions = {
+
+  // ========== ADMIN ==========
+  admin: {
+    navItems: [
+      { to: '/prisoners',            label: 'Заключённые' },
+      { to: '/prisoners/properties', label: 'Вещи' },
+      { to: '/statistics',           label: 'Статистика' },
+
+      // admin-only
+      { to: '/staff',                label: 'Персонал' },
+      { to: '/staff/job',            label: 'Должности' },
+
+      // admin + guard
+      { to: '/cells',                label: 'Камеры' },
+      { to: '/security-levels',      label: 'Уровни защиты' },
+
+      // admin + warden
+      { to: '/prisoners/courses',        label: 'Обучение' },
+      { to: '/prisoners/prisoner-labor', label: 'Труд' },
+      { to: '/prisoners/borrowed',       label: 'Книги' },
+      { to: '/enrollments-certs',        label: 'Сертификаты' },
+
+      // admin + warden + guard
+      { to: '/visitors',           label: 'Регистрация посетителей' },
+      { to: '/visited-by',         label: 'Посещаемость' },
+
+      // admin + medic
+      { to: '/infirmary',          label: 'Лазарет' },
+
+      // admin + librarian
+      { to: '/library',            label: 'Библиотека' }
+    ],
+    routes: [
+      { path: '/prisoners',            comp: 'Prisoners' },
+      { path: '/prisoners/properties', comp: 'Properties' },
+      { path: '/statistics',           comp: 'Statistics' },
+      { path: '/staff',                comp: 'Staff' },
+      { path: '/staff/job',            comp: 'Job' },
+      { path: '/cells',                comp: 'Cells' },
+      { path: '/security-levels',      comp: 'SecurityLevels' },
+      { path: '/prisoners/courses',        comp: 'Courses' },
+      { path: '/prisoners/prisoner-labor', comp: 'PrisonerLaborFrontend' },
+      { path: '/prisoners/borrowed',       comp: 'Borrowed' },
+      { path: '/enrollments-certs',        comp: 'Work' },
+      { path: '/visitors',           comp: 'Visitors' },
+      { path: '/visited-by',         comp: 'VisitedBy' },
+      { path: '/infirmary',          comp: 'Infirmary' },
+      { path: '/library',            comp: 'Library' }
+    ]
+  },
+
+  // ========== WARDEN ==========
+  warden: {
+    navItems: [
+      { to: '/prisoners',            label: 'Заключённые' },
+      { to: '/prisoners/properties', label: 'Вещи' },
+      { to: '/prisoners/courses',        label: 'Обучение' },
+      { to: '/prisoners/prisoner-labor', label: 'Труд' },
+      { to: '/enrollments-certs',        label: 'Сертификаты' }
+    ],
+    routes: [
+      { path: '/prisoners',            comp: 'Prisoners' },
+      { path: '/prisoners/properties', comp: 'Properties' },
+      { path: '/prisoners/courses',        comp: 'Courses' },
+      { path: '/prisoners/prisoner-labor', comp: 'PrisonerLaborFrontend' },
+      { path: '/enrollments-certs',        comp: 'Work' }
+    ]
+  },
+
+  // ========== GUARD ==========
+  guard: {
+    navItems: [
+      { to: '/prisoners',            label: 'Заключённые' },
+      { to: '/prisoners/properties', label: 'Вещи' },
+      { to: '/cells',                label: 'Камеры' },
+      { to: '/security-levels',      label: 'Уровни защиты' },
+      { to: '/visitors',             label: 'Регистрация посетителей' },
+      { to: '/visited-by',           label: 'Посещаемость' }
+    ],
+    routes: [
+      { path: '/prisoners',            comp: 'Prisoners' },
+      { path: '/prisoners/properties', comp: 'Properties' },
+      { path: '/cells',                comp: 'Cells' },
+      { path: '/security-levels',      comp: 'SecurityLevels' },
+      { path: '/visitors',             comp: 'Visitors' },
+      { path: '/visited-by',           comp: 'VisitedBy' }
+    ]
+  },
+
+  // ========== LIBRARIAN ==========
+  librarian: {
+    navItems: [
+      { to: '/prisoners',            label: 'Заключённые' },
+      { to: '/statistics',           label: 'Статистика' },
+      { to: '/prisoners/borrowed',       label: 'Книги' },
+      { to: '/library',             label: 'Библиотека' }
+    ],
+    routes: [
+      { path: '/prisoners',            comp: 'Prisoners' },
+      { path: '/statistics',           comp: 'Statistics' },
+      { path: '/prisoners/borrowed',       comp: 'Borrowed' },
+      { path: '/library',             comp: 'Library' }
+    ]
+  },
+
+  // ========== MEDIC ==========
+  medic: {
+    navItems: [
+      { to: '/prisoners',            label: 'Заключённые' },
+      { to: '/infirmary',           label: 'Лазарет' }
+    ],
+    routes: [
+      { path: '/prisoners',            comp: 'Prisoners' },
+      { path: '/infirmary',           comp: 'Infirmary' }
+    ]
+  }
+};
+
+export const ROLES = Object.keys(rolePermissions);
+
+// --- Аутентификация и контекст ---
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
-// Защищённый маршрут
+// Protected-обёртка
 const Protected = ({ allowed, children }) => {
   const { role } = useAuth();
-  return allowed.includes(role) ? children : <Navigate to="/" replace />;
+  return allowed.includes(role)
+    ? children
+    : <Navigate to="/" replace />;
 };
 
 // Страница логина
 const AuthPage = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError]       = useState('');
 
   const handleLogin = async () => {
     try {
@@ -75,88 +209,60 @@ const AuthPage = ({ onLogin }) => {
   );
 };
 
-// Навигационная панель
+// Навигационный бар
 const NavigationBar = ({ onLogout }) => {
   const { role } = useAuth();
+  const perms = rolePermissions[role] || { navItems: [] };
   const [anchorEl, setAnchorEl] = useState(null);
-
-  const openMenu = (e) => setAnchorEl(e.currentTarget);
-  const closeMenu = () => setAnchorEl(null);
-
-  const NavItem = ({ to, label }) => (
-    <MenuItem component={Link} to={to} onClick={closeMenu}>{label}</MenuItem>
-  );
 
   return (
     <AppBar position="static">
       <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          Пенитенциарная система
-        </Typography>
-        <Button color="inherit" onClick={openMenu}>Меню</Button>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>Пенитенциарная система</Typography>
+        <Button color="inherit" onClick={e => setAnchorEl(e.currentTarget)}>Меню</Button>
         <Button color="inherit" onClick={onLogout}>Выйти</Button>
-        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-          {/* Общие */}
-          <NavItem to="/prisoners" label="Заключённые" />
-          <NavItem to="/prisoners/properties" label="Вещи" />
-          <NavItem to="/statistics" label="Статистика" />
-
-          {/* Роли */}
-          {role === 'admin' && (
-            <>
-              <NavItem to="/staff" label="Персонал" />
-              <NavItem to="/staff/job" label="Должности" />
-            </>
-          )}
-          {(role === 'admin' || role === 'guard') && (
-            <>
-              <NavItem to="/cells" label="Камеры" />
-              <NavItem to="/security-levels" label="Уровни защиты" />
-            </>
-          )}
-          {(role === 'admin' || role === 'warden') && (
-            <>
-              <NavItem to="/prisoners/courses" label="Обучение" />
-              <NavItem to="/prisoners/prisoner-labor" label="Труд" />
-              <NavItem to="/prisoners/borrowed" label="Книги" />
-              <NavItem to="/enrollments-certs" label="Сертификаты" />
-            </>
-          )}
-          {(role === 'admin' || role === 'warden' || role === 'guard') && (
-            <>
-              <NavItem to="/visitors" label="Посетители" />
-              <NavItem to="/visited-by" label="Посещаемость" />
-            </>
-          )}
-          {(role === 'admin' || role === 'medic') && (
-            <NavItem to="/infirmary" label="Лазарет" />
-          )}
-          {(role === 'admin' || role === 'librarian') && (
-            <NavItem to="/library" label="Библиотека" />
-          )}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+        >
+          {perms.navItems.map(({ to, label }) => (
+            <MenuItem
+              key={to}
+              component={Link}
+              to={to}
+              onClick={() => setAnchorEl(null)}
+            >
+              {label}
+            </MenuItem>
+          ))}
         </Menu>
       </Toolbar>
     </AppBar>
   );
 };
 
-// Главный компонент
 function App() {
   const [authenticated, setAuthenticated] = useState(false);
-  const [role, setRole] = useState(null);
+  const [role, setRole]                   = useState(null);
+  const [loading, setLoading]             = useState(true);
 
+  // Проверяем сессию
   useEffect(() => {
     axios.get('http://localhost:8080/auth/check')
       .then(res => {
         setAuthenticated(true);
         setRole(res.data.role.replace('ROLE_', '').toLowerCase());
       })
-      .catch(() => setAuthenticated(false));
+      .catch(() => {
+        setAuthenticated(false);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleLogin = (role) => {
+  const handleLogin = (r) => {
     setAuthenticated(true);
-    setRole(role);
+    setRole(r);
   };
 
   const handleLogout = async () => {
@@ -165,7 +271,39 @@ function App() {
     setRole(null);
   };
 
-  if (!authenticated) return <AuthPage onLogin={handleLogin} />;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!authenticated) {
+    return <AuthPage onLogin={handleLogin} />;
+  }
+
+  const perms = rolePermissions[role] || { routes: [] };
+
+  // Для динамической подстановки компонентов по имени
+  const componentMap = {
+    Prisoners,
+    Properties,
+    Courses,
+    PrisonerLaborFrontend,
+    Borrowed,
+    Work,
+    OwnCertificateFromFrontend,
+    Staff,
+    Job,
+    Cells,
+    SecurityLevels,
+    Visitors,
+    VisitedBy,
+    Infirmary,
+    Library,
+    Statistics
+  };
 
   return (
     <AuthContext.Provider value={{ role }}>
@@ -174,29 +312,32 @@ function App() {
         <Container sx={{ mt: 4 }}>
           <Routes>
             {/* Главная */}
-            <Route path="/" element={
-              <Box textAlign="center">
-                <Typography variant="h4">Добро пожаловать, {role}</Typography>
-              </Box>
-            } />
+            <Route
+              path="/"
+              element={
+                <Box textAlign="center">
+                  <Typography variant="h4">Добро пожаловать, {role}</Typography>
+                </Box>
+              }
+            />
 
-            {/* Роуты по ролям */}
-            <Route path="/prisoners" element={<Protected allowed={['admin', 'warden', 'guard', 'librarian', 'medic']}><Prisoners /></Protected>} />
-            <Route path="/prisoners/properties" element={<Protected allowed={['admin', 'warden', 'guard', 'librarian', 'medic']}><Properties /></Protected>} />
-            <Route path="/prisoners/courses" element={<Protected allowed={['admin', 'warden']}><Courses /></Protected>} />
-            <Route path="/prisoners/prisoner-labor" element={<Protected allowed={['admin', 'warden']}><PrisonerLaborFrontend /></Protected>} />
-            <Route path="/prisoners/borrowed" element={<Protected allowed={['admin', 'librarian']}><Borrowed /></Protected>} />
-            <Route path="/enrollments-certs" element={<Protected allowed={['admin', 'warden']}><Work /></Protected>} />
-            <Route path="/own-certificate-from" element={<Protected allowed={['admin', 'warden']}><OwnCertificateFromFrontend /></Protected>} />
-            <Route path="/staff" element={<Protected allowed={['admin']}><Staff /></Protected>} />
-            <Route path="/staff/job" element={<Protected allowed={['admin']}><Job /></Protected>} />
-            <Route path="/cells" element={<Protected allowed={['admin', 'guard']}><Cells /></Protected>} />
-            <Route path="/security-levels" element={<Protected allowed={['admin', 'guard']}><SecurityLevels /></Protected>} />
-            <Route path="/visitors" element={<Protected allowed={['admin', 'warden', 'guard']}><Visitors /></Protected>} />
-            <Route path="/visited-by" element={<Protected allowed={['admin', 'warden', 'guard']}><VisitedBy /></Protected>} />
-            <Route path="/infirmary" element={<Protected allowed={['admin', 'medic']}><Infirmary /></Protected>} />
-            <Route path="/library" element={<Protected allowed={['admin', 'librarian']}><Library /></Protected>} />
-            <Route path="/statistics" element={<Protected allowed={['admin', 'warden', 'guard', 'librarian', 'medic']}><Statistics /></Protected>} />
+            {/* Динамические защищённые маршруты */}
+            {perms.routes.map(({ path, comp }) => {
+              const Component = componentMap[comp];
+              return (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <Protected allowed={rolePermissions[role].routes.map(r => r.path).includes(path) ? [role] : []}>
+                      <Component />
+                    </Protected>
+                  }
+                />
+              );
+            })}
+
+            {/* Фолбэк */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Container>
@@ -206,3 +347,4 @@ function App() {
 }
 
 export default App;
+

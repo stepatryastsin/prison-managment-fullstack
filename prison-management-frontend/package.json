@@ -22,7 +22,10 @@
     "yup": "^1.6.1"
   },
   "devDependencies": {
+    "@craco/craco": "^7.1.0",
     "@types/three": "^0.176.0",
+    "customize-cra": "^1.0.0",
+    "react-app-rewired": "^2.2.1",
     "react-scripts": "^5.0.1"
   },
   "scripts": {

@@ -76,19 +76,21 @@ export default function CoursesFrontend() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailInstructor, setDetailInstructor] = useState(null);
 
-  // load courses
   const fetchCourses = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(COURSES_API, fetchOptions());
-      if (!res.ok) throw new Error(res.statusText);
-      setCourses(await res.json());
-    } catch (err) {
-      setToast({ open: true, msg: 'Ошибка загрузки курсов', severity: 'error' });
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const res = await fetch(COURSES_API, fetchOptions());
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.message || res.statusText);
     }
-  };
+    setCourses(await res.json());
+  } catch (err) {
+    setToast({ open: true, msg: err.message || 'Ошибка загрузки курсов', severity: 'error' });
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(fetchCourses, []);
 
@@ -106,61 +108,78 @@ export default function CoursesFrontend() {
     setDlgOpen(true);
   };
   const handleSave = async () => {
-    try {
-      const url    = isEditing ? `${COURSES_API}/${record.courseId}` : COURSES_API;
-      const method = isEditing ? 'PUT' : 'POST';
-      const res = await fetch(url, fetchOptions({
-        method,
-        body: JSON.stringify(record)
-      }));
-      if (!res.ok) throw new Error();
-      setDlgOpen(false);
-      await fetchCourses();
-      showToast(isEditing ? 'Курс обновлён' : 'Курс создан', 'success');
-    } catch {
-      showToast('Ошибка сохранения курса');
-    }
-  };
+  try {
+    const url = isEditing ? `${COURSES_API}/${record.courseId}` : COURSES_API;
+    const method = isEditing ? 'PUT' : 'POST';
+    const res = await fetch(url, fetchOptions({
+      method,
+      body: JSON.stringify(record)
+    }));
 
-  // deactivate / soft-delete
-  const handleDeactivate = async c => {
-    try {
-      const res = await fetch(`${COURSES_API}/${c.courseId}`, fetchOptions({ method: 'DELETE' }));
-      if (!res.ok) throw new Error();
-      await fetchCourses();
-      showToast('Курс деактивирован', 'success');
-    } catch {
-      showToast('Не удалось деактивировать курс');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.message || 'Ошибка сохранения курса');
     }
-  };
 
-  // reactivate
+    setDlgOpen(false);
+    await fetchCourses();
+    showToast(isEditing ? 'Курс обновлён' : 'Курс создан', 'success');
+  } catch (e) {
+    showToast(e.message || 'Ошибка сохранения курса');
+  }
+};
+
+ const handleDeactivate = async c => {
+  try {
+    const res = await fetch(`${COURSES_API}/${c.courseId}`, fetchOptions({ method: 'DELETE' }));
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.message || 'Не удалось деактивировать курс');
+    }
+
+    await fetchCourses();
+    showToast('Курс деактивирован', 'success');
+  } catch (e) {
+    showToast(e.message || 'Не удалось деактивировать курс');
+  }
+};
+
   const handleActivate = async c => {
-    try {
-      const res = await fetch(`${COURSES_API}/${c.courseId}`, fetchOptions({
-        method: 'PUT',
-        body: JSON.stringify({ ...c, deleted: false })
-      }));
-      if (!res.ok) throw new Error();
-      await fetchCourses();
-      showToast('Курс активирован', 'success');
-    } catch {
-      showToast('Не удалось активировать курс');
-    }
-  };
+  try {
+    const res = await fetch(`${COURSES_API}/${c.courseId}`, fetchOptions({
+      method: 'PUT',
+      body: JSON.stringify({ ...c, deleted: false })
+    }));
 
-  // hard delete
-  const handleDeleteHard = async c => {
-    if (!window.confirm(`Удалить навсегда "${c.courseName}"?`)) return;
-    try {
-      const res = await fetch(`${COURSES_API}/${c.courseId}/full`, fetchOptions({ method: 'DELETE' }));
-      if (!res.ok) throw new Error();
-      await fetchCourses();
-      showToast('Курс окончательно удалён', 'success');
-    } catch {
-      showToast('Ошибка полного удаления');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.message || 'Не удалось активировать курс');
     }
-  };
+
+    await fetchCourses();
+    showToast('Курс активирован', 'success');
+  } catch (e) {
+    showToast(e.message || 'Не удалось активировать курс');
+  }
+};
+
+  const handleDeleteHard = async c => {
+  if (!window.confirm(`Удалить навсегда "${c.courseName}"?`)) return;
+  try {
+    const res = await fetch(`${COURSES_API}/${c.courseId}/full`, fetchOptions({ method: 'DELETE' }));
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.message || 'Ошибка полного удаления');
+    }
+
+    await fetchCourses();
+    showToast('Курс окончательно удалён', 'success');
+  } catch (e) {
+    showToast(e.message || 'Ошибка полного удаления');
+  }
+};
 
   // staff selection
   const openStaffSel = async () => {
@@ -226,7 +245,7 @@ export default function CoursesFrontend() {
       {loading
         ? <Box display="flex" justifyContent="center"><CircularProgress/></Box>
         : <Grid container spacing={2}>
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {filteredGroups.map(([key, list]) => (
                 <Grid item xs={12} key={key}>
                   <Box component={Card} sx={{ p: 2, borderRadius: 2, boxShadow: 2 }}>
